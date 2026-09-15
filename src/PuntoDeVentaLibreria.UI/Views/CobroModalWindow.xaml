@@ -1,0 +1,124 @@
+<Window x:Class="PuntoDeVentaLibreria.UI.Views.CobroModalWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        mc:Ignorable="d"
+        Title="Finalizar Venta y Cobro" 
+        Height="560" Width="680"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F8FAFC"
+        FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Cabecera -->
+        <DockPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="TERMINAL DE COBRO" FontSize="20" FontWeight="Bold" Foreground="#1E293B"/>
+            <TextBlock Text="MR SYS Librería" HorizontalAlignment="Right" FontSize="13" Foreground="#64748B" VerticalAlignment="Center"/>
+        </DockPanel>
+
+        <!-- Total Destacado -->
+        <Border Grid.Row="1" Background="#0F172A" CornerRadius="12" Padding="20,16" Margin="0,0,0,16">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="TOTAL A COBRAR" Foreground="#94A3B8" FontSize="13" FontWeight="SemiBold"/>
+                    <TextBlock Text="{Binding TotalFinal, StringFormat='${0:N2}'}" Foreground="#38BDF8" FontSize="34" FontWeight="Bold"/>
+                </StackPanel>
+                <Border Grid.Column="1" Background="#1E293B" CornerRadius="8" Padding="12,6" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding MetodoPago}" Foreground="#F8FAFC" FontSize="15" FontWeight="Bold"/>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- Métodos y Formulario de Cobro -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Selector de Métodos de Pago -->
+            <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                <TextBlock Text="MEDIO DE PAGO" FontSize="11" FontWeight="Bold" Foreground="#64748B" Margin="0,0,0,8"/>
+                <Button Content="💵 Efectivo" Command="{Binding SeleccionarMetodoCommand}" CommandParameter="Efectivo"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,10" Margin="0,0,0,6"
+                        FontSize="14" FontWeight="SemiBold" Cursor="Hand"/>
+                <Button Content="💳 Tarjeta Débito" Command="{Binding SeleccionarMetodoCommand}" CommandParameter="Debito"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,10" Margin="0,0,0,6"
+                        FontSize="14" FontWeight="SemiBold" Cursor="Hand"/>
+                <Button Content="💳 Tarjeta Crédito" Command="{Binding SeleccionarMetodoCommand}" CommandParameter="Credito"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,10" Margin="0,0,0,6"
+                        FontSize="14" FontWeight="SemiBold" Cursor="Hand"/>
+                <Button Content="📱 Transferencia / QR" Command="{Binding SeleccionarMetodoCommand}" CommandParameter="Transferencia"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,10" Margin="0,0,0,6"
+                        FontSize="14" FontWeight="SemiBold" Cursor="Hand"/>
+                <Button Content="📒 Cta. Cte. / Fiado" Command="{Binding SeleccionarMetodoCommand}" CommandParameter="CtaCte"
+                        HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Padding="12,10" Margin="0,0,0,6"
+                        FontSize="14" FontWeight="SemiBold" Cursor="Hand"/>
+            </StackPanel>
+
+            <!-- Panel de Detalle del Pago -->
+            <Border Grid.Column="1" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="16">
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="Monto Abonado / Recibido:" FontSize="13" Foreground="#475569" Margin="0,0,0,6"/>
+                    <TextBox x:Name="TxtMontoEntregado" Text="{Binding MontoEntregado, UpdateSourceTrigger=PropertyChanged, StringFormat='N2'}" 
+                             FontSize="24" FontWeight="Bold" Padding="10,6" Margin="0,0,0,12" Background="#F1F5F9"/>
+
+                    <!-- Billetes Rápidos para Efectivo -->
+                    <TextBlock Text="Billetes rápidos:" FontSize="12" Foreground="#64748B" Margin="0,0,0,6"/>
+                    <WrapPanel Margin="0,0,0,16">
+                        <Button Content="Exacto" Command="{Binding MontoExactoCommand}" Margin="0,0,6,6" Padding="10,6" FontWeight="SemiBold"/>
+                        <Button Content="+$1.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="1000" Margin="0,0,6,6" Padding="10,6"/>
+                        <Button Content="+$2.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="2000" Margin="0,0,6,6" Padding="10,6"/>
+                        <Button Content="+$5.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="5000" Margin="0,0,6,6" Padding="10,6"/>
+                        <Button Content="+$10.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="10000" Margin="0,0,6,6" Padding="10,6"/>
+                        <Button Content="+$20.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="20000" Margin="0,0,6,6" Padding="10,6"/>
+                    </WrapPanel>
+
+                    <!-- Vuelto o Saldo Pendiente -->
+                    <Border Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="8" Padding="14,10">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="VUELTO A ENTREGAR:" Foreground="#065F46" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Vuelto, StringFormat='${0:N2}'}" Foreground="#047857" FontSize="24" FontWeight="Bold"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Botonera Inferior -->
+        <Grid Grid.Row="3" Margin="0,20,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="Presione [ENTER] o [F2] para confirmar cobro" VerticalAlignment="Center" Foreground="#64748B" FontSize="12"/>
+
+            <Button Grid.Column="1" Content="Cancelar [ESC]" Command="{Binding CancelarCommand}"
+                    Padding="18,10" Margin="0,0,10,0" FontSize="14" Cursor="Hand"/>
+
+            <Button Grid.Column="2" Content="✔ Confirmar Cobro e Imprimir [ENTER]" Command="{Binding ConfirmarCommand}"
+                    Background="#2563EB" Foreground="White" FontWeight="Bold"
+                    Padding="22,10" FontSize="14" Cursor="Hand"/>
+        </Grid>
+    </Grid>
+</Window>
