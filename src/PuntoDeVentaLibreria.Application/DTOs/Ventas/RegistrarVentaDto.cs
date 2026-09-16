@@ -12,6 +12,8 @@ public class RegistrarVentaDto
     public int CantidadCuotas { get; set; } = 1;
     public decimal DescuentoEfectivoMonto { get; set; }
     public decimal RecargoCuotasMonto { get; set; }
+    public decimal MontoEntregado { get; set; }
+    public decimal Vuelto { get; set; }
 }
 
 public class VentaRealizadaDto
@@ -22,8 +24,12 @@ public class VentaRealizadaDto
     public decimal SubtotalBruto { get; set; }
     public decimal DescuentoMonto { get; set; }
     public decimal RecargoMonto { get; set; }
+    public decimal MontoEntregado { get; set; }
+    public decimal Vuelto { get; set; }
     public string MetodoPago { get; set; } = "Efectivo";
     public string? ClienteNombre { get; set; }
+    public string? VendedoraNombre { get; set; }
+    public string? ReferenciaPago { get; set; }
     public DateTime Fecha { get; set; }
     public List<ItemCarritoDto> Lineas { get; set; } = new();
 }

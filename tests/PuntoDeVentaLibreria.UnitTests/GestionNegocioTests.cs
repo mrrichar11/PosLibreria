@@ -124,4 +124,81 @@ public class GestionNegocioTests
         var estado = await service.ObtenerEstadoRetirosDueñoMesAsync();
         estado.TotalRetiradoMes.Should().Be(12500m);
     }
+
+    [Fact]
+    public async Task TicketPrinterService_GenerarTicket80mm_ContieneDatosComercioYLineasVenta()
+    {
+        var printer = new TicketPrinterService();
+        var venta = new PuntoDeVentaLibreria.Application.DTOs.Ventas.VentaRealizadaDto
+        {
+            NumeroComprobante = "L-0001-00000123",
+            Fecha = new DateTime(2026, 9, 16, 11, 30, 0),
+            SubtotalBruto = 5000m,
+            TotalCobrado = 5000m,
+            MontoEntregado = 10000m,
+            Vuelto = 5000m,
+            MetodoPago = "Efectivo",
+            ClienteNombre = "Juan Pérez",
+            VendedoraNombre = "Laura",
+            Lineas = new List<PuntoDeVentaLibreria.Application.DTOs.Ventas.ItemCarritoDto>
+            {
+                new() { Descripcion = "Cuaderno Rivadavia Tapa Dura", Cantidad = 2, PrecioUnitario = 2500m }
+            }
+        };
+
+        var config = new PuntoDeVentaLibreria.Application.DTOs.Peripherals.ConfiguracionTicketDto
+        {
+            NombreComercio = "MR SYS Librería",
+            Cuit = "20-33445566-7",
+            Direccion = "San Martín 123",
+            Telefono = "11-4455-6677",
+            AnchoPapelMm = 80,
+            MensajePie = "Gracias por su compra."
+        };
+
+        var texto = await printer.GenerarTicketTextoAsync(venta, config);
+
+        texto.Should().Contain("MR SYS LIBRERÍA");
+        texto.Should().Contain("CUIT: 20-33445566-7");
+        texto.Should().Contain("TICKET N°: L-0001-00000123");
+        texto.Should().Contain("CAJERO/A:  Laura");
+        texto.Should().Contain("CLIENTE:   Juan Pérez");
+        texto.Should().Contain("Cuaderno Rivadavia Tap");
+        texto.Should().Contain("TOTAL COBRADO:");
+        texto.Should().Contain("Dinero Recibido:");
+        texto.Should().Contain("SU VUELTO:");
+        texto.Should().Contain("Gracias por su compra.");
+    }
+
+    [Fact]
+    public async Task TicketPrinterService_GenerarTicket58mm_GeneraFormatoCompacto()
+    {
+        var printer = new TicketPrinterService();
+        var venta = new PuntoDeVentaLibreria.Application.DTOs.Ventas.VentaRealizadaDto
+        {
+            NumeroComprobante = "L-0001-00000124",
+            Fecha = new DateTime(2026, 9, 16, 11, 35, 0),
+            SubtotalBruto = 1200m,
+            TotalCobrado = 1200m,
+            MetodoPago = "Debito",
+            ReferenciaPago = "Operación #9876",
+            ClienteNombre = "Consumidor Final",
+            Lineas = new List<PuntoDeVentaLibreria.Application.DTOs.Ventas.ItemCarritoDto>
+            {
+                new() { Descripcion = "Regla 30cm Maped", Cantidad = 1, PrecioUnitario = 1200m }
+            }
+        };
+
+        var config = new PuntoDeVentaLibreria.Application.DTOs.Peripherals.ConfiguracionTicketDto
+        {
+            NombreComercio = "MR SYS Librería",
+            AnchoPapelMm = 58
+        };
+
+        var texto = await printer.GenerarTicketTextoAsync(venta, config);
+
+        texto.Should().Contain("MR SYS LIBRERÍA");
+        texto.Should().Contain("TARJETA DE DÉBITO");
+        texto.Should().Contain("Ref/Comprobante: Operación #9876");
+    }
 }

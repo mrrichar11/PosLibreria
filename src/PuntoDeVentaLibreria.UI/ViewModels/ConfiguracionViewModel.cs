@@ -52,13 +52,35 @@ public partial class ConfiguracionViewModel : ObservableObject
     private string _mensajeBackup = string.Empty;
 
     [ObservableProperty]
-    private string _impresoraSeleccionada = string.Empty;
-
-    [ObservableProperty]
-    private int _anchoPapel = 80;
-
-    [ObservableProperty]
     private string _mensajeGuardado = string.Empty;
+
+    public bool EsPapel80Mm
+    {
+        get => Config.AnchoPapelMm == 80;
+        set
+        {
+            if (value)
+            {
+                Config.AnchoPapelMm = 80;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(EsPapel58Mm));
+            }
+        }
+    }
+
+    public bool EsPapel58Mm
+    {
+        get => Config.AnchoPapelMm == 58;
+        set
+        {
+            if (value)
+            {
+                Config.AnchoPapelMm = 58;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(EsPapel80Mm));
+            }
+        }
+    }
 
     public ObservableCollection<string> ImpresorasDisponibles { get; } = new();
     public ObservableCollection<BackupInfoDto> HistorialBackups { get; } = new();
@@ -74,6 +96,7 @@ public partial class ConfiguracionViewModel : ObservableObject
         "Personalizado"
     };
 
+    public Func<string, string, int, string, Task>? SolicitarVistaPreviaTicket { get; set; }
     public event Action? OnConfiguracionGuardada;
 
     public ConfiguracionViewModel(
@@ -150,6 +173,8 @@ public partial class ConfiguracionViewModel : ObservableObject
         catch { }
 
         await CargarHistorialBackupsAsync();
+        OnPropertyChanged(nameof(EsPapel80Mm));
+        OnPropertyChanged(nameof(EsPapel58Mm));
     }
 
     private async Task CargarHistorialBackupsAsync()
@@ -258,33 +283,62 @@ public partial class ConfiguracionViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ProbarVistaPreviaTicketAsync()
+    {
+        var ventaDemo = CrearVentaDemo();
+        var configTicket = CrearConfigTicket();
+
+        var textoTicket = await _ticketPrinterService.GenerarTicketTextoAsync(ventaDemo, configTicket);
+
+        if (SolicitarVistaPreviaTicket != null)
+        {
+            await SolicitarVistaPreviaTicket(textoTicket, ventaDemo.NumeroComprobante, Config.AnchoPapelMm, Config.ImpresoraTickets);
+        }
+    }
+
+    [RelayCommand]
     private async Task ProbarTicketAsync()
     {
-        var ventaDemo = new VentaRealizadaDto
+        var ventaDemo = CrearVentaDemo();
+        var configTicket = CrearConfigTicket();
+
+        await _ticketPrinterService.ImprimirTicketVentaAsync(ventaDemo, configTicket);
+        MensajeGuardado = "Ticket de prueba generado y guardado en la carpeta ./Tickets/";
+    }
+
+    private VentaRealizadaDto CrearVentaDemo()
+    {
+        return new VentaRealizadaDto
         {
-            NumeroComprobante = "L-DEMO01",
+            NumeroComprobante = "L-DEMO-0012",
             Fecha = DateTime.Now,
-            SubtotalBruto = 4120m,
-            TotalCobrado = 4120m,
+            SubtotalBruto = 6820m,
+            TotalCobrado = 6820m,
+            MontoEntregado = 10000m,
+            Vuelto = 3180m,
             MetodoPago = "Efectivo",
+            ClienteNombre = "Consumidor Final",
+            VendedoraNombre = Config.VendedoraDefecto,
             Lineas = new List<ItemCarritoDto>
             {
-                new() { Descripcion = "Cuaderno Tapa Dura", Cantidad = 1, PrecioUnitario = 3520m },
-                new() { Descripcion = "Bolígrafo BIC Azul", Cantidad = 1, PrecioUnitario = 600m }
+                new() { Descripcion = "Cuaderno Tapa Dura Rivadavia 48H Rayado", Cantidad = 1, PrecioUnitario = 3520m },
+                new() { Descripcion = "Bolígrafo BIC Cristal Azul 1.0mm", Cantidad = 3, PrecioUnitario = 600m },
+                new() { Descripcion = "Resaltador Pelikan Fluo Amarillo", Cantidad = 1, PrecioUnitario = 1500m }
             }
         };
+    }
 
-        var configTicket = new ConfiguracionTicketDto
+    private ConfiguracionTicketDto CrearConfigTicket()
+    {
+        return new ConfiguracionTicketDto
         {
             NombreComercio = Config.NombreComercio,
             Direccion = Config.Direccion,
             Telefono = Config.Telefono,
             Cuit = Config.Cuit,
-            AnchoPapelMm = AnchoPapel,
-            ImpresoraNombre = ImpresoraSeleccionada
+            AnchoPapelMm = Config.AnchoPapelMm,
+            ImpresoraNombre = Config.ImpresoraTickets,
+            MensajePie = Config.MensajePieTicket
         };
-
-        await _ticketPrinterService.ImprimirTicketVentaAsync(ventaDemo, configTicket);
-        MensajeGuardado = "Ticket de prueba generado en carpeta ./Tickets/";
     }
 }

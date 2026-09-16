@@ -193,8 +193,12 @@ public class VentaService : IVentaService
             SubtotalBruto = subtotalBruto,
             DescuentoMonto = dto.DescuentoEfectivoMonto,
             RecargoMonto = dto.RecargoCuotasMonto,
+            MontoEntregado = dto.MontoEntregado > 0 ? dto.MontoEntregado : totalVenta,
+            Vuelto = dto.Vuelto,
             MetodoPago = dto.MetodoPago,
             ClienteNombre = clienteInfo,
+            VendedoraNombre = dto.VendedoraNombre,
+            ReferenciaPago = dto.ReferenciaPago,
             Fecha = venta.FechaVenta,
             Lineas = dto.Items
         };

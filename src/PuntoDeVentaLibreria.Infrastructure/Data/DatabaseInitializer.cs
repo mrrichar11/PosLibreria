@@ -28,6 +28,36 @@ public static class DatabaseInitializer
         }
         catch { }
 
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN ImpresoraTickets TEXT NOT NULL DEFAULT '';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN AnchoPapelMm INTEGER NOT NULL DEFAULT 80;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN MensajePieTicket TEXT NOT NULL DEFAULT '¡Muchas gracias por su compra!\nCambios con ticket dentro de los 15 días.\nNo se aceptan cambios de fotocopias.';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN ImprimirAutomaticoAlCobrar INTEGER NOT NULL DEFAULT 0;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN MostrarVistaPreviaTicket INTEGER NOT NULL DEFAULT 1;", cancellationToken);
+        }
+        catch { }
+
         // 3. Optimización WAL para SQLite
         try
         {

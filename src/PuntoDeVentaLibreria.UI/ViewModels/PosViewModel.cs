@@ -15,6 +15,7 @@ public partial class PosViewModel : ObservableObject
     private readonly ICajaService _cajaService;
     private readonly IClienteService _clienteService;
     private readonly IConfiguracionService _configuracionService;
+    private readonly ITicketPrinterService _ticketPrinterService;
 
     [ObservableProperty]
     private string _codigoBarrasInput = string.Empty;
@@ -44,6 +45,7 @@ public partial class PosViewModel : ObservableObject
     private decimal _cantidadArticulos;
 
     private int _contadorEspera = 1;
+    private VentaRealizadaDto? _ultimaVentaRealizada;
 
     public ObservableCollection<PosItemModel> Items { get; } = new();
     public ObservableCollection<ArticuloDto> BotonesRapidos { get; } = new();
@@ -51,6 +53,7 @@ public partial class PosViewModel : ObservableObject
 
     public bool HayVentasEnEspera => VentasEnEspera.Count > 0;
     public bool HayItemsEnCarrito => Items.Count > 0;
+    public bool TieneUltimaVenta => _ultimaVentaRealizada != null;
 
     public Guid? TurnoActivoId { get; private set; }
 
@@ -59,19 +62,22 @@ public partial class PosViewModel : ObservableObject
     public Func<IReadOnlyList<ArticuloDto>, string, Task<ArticuloDto?>>? SolicitarSeleccionArticulo { get; set; }
     public Func<Task<(string descripcion, decimal precio, decimal cantidad)?>>? SolicitarVentaManualDialogo { get; set; }
     public Func<string, string, Task<bool>>? SolicitarConfirmacionDialogo { get; set; }
+    public Func<string, string, int, string, Task>? SolicitarVistaPreviaTicket { get; set; }
 
     public PosViewModel(
         IInventarioService inventarioService,
         IVentaService ventaService,
         ICajaService cajaService,
         IClienteService clienteService,
-        IConfiguracionService configuracionService)
+        IConfiguracionService configuracionService,
+        ITicketPrinterService ticketPrinterService)
     {
         _inventarioService = inventarioService ?? throw new ArgumentNullException(nameof(inventarioService));
         _ventaService = ventaService ?? throw new ArgumentNullException(nameof(ventaService));
         _cajaService = cajaService ?? throw new ArgumentNullException(nameof(cajaService));
         _clienteService = clienteService ?? throw new ArgumentNullException(nameof(clienteService));
         _configuracionService = configuracionService ?? throw new ArgumentNullException(nameof(configuracionService));
+        _ticketPrinterService = ticketPrinterService ?? throw new ArgumentNullException(nameof(ticketPrinterService));
 
         Items.CollectionChanged += (s, e) => RecalcularTotales();
     }
@@ -457,6 +463,8 @@ public partial class PosViewModel : ObservableObject
                 CantidadCuotas = cobroVm.CantidadCuotas,
                 DescuentoEfectivoMonto = cobroVm.DescuentoEfectivoMonto,
                 RecargoCuotasMonto = cobroVm.RecargoCuotasMonto,
+                MontoEntregado = cobroVm.MontoEntregado,
+                Vuelto = cobroVm.Vuelto,
                 Items = Items.Select(i => new ItemCarritoDto
                 {
                     ArticuloId = i.ArticuloId,
@@ -473,15 +481,68 @@ public partial class PosViewModel : ObservableObject
 
             var resultado = await _ventaService.ProcesarVentaAsync(ventaDto);
 
+            _ultimaVentaRealizada = resultado;
             NumeroComprobanteUltimaVenta = resultado.NumeroComprobante;
+            OnPropertyChanged(nameof(TieneUltimaVenta));
+
             MensajeEstado = $"¡Venta {resultado.NumeroComprobante} confirmada exitosamente ({cobroVm.NombreCliente})! Total: ${resultado.TotalCobrado:N2}";
 
             Items.Clear();
             RecalcularTotales();
+
+            // Gestionar generación y vista previa / impresión del ticket térmico
+            var config = await _configuracionService.ObtenerConfiguracionAsync();
+            var configTicket = new PuntoDeVentaLibreria.Application.DTOs.Peripherals.ConfiguracionTicketDto
+            {
+                NombreComercio = config.NombreComercio,
+                Direccion = config.Direccion,
+                Telefono = config.Telefono,
+                Cuit = config.Cuit,
+                AnchoPapelMm = config.AnchoPapelMm,
+                ImpresoraNombre = config.ImpresoraTickets,
+                MensajePie = config.MensajePieTicket
+            };
+
+            var textoTicket = await _ticketPrinterService.GenerarTicketTextoAsync(resultado, configTicket);
+            await _ticketPrinterService.ImprimirTicketVentaAsync(resultado, configTicket);
+
+            if (config.MostrarVistaPreviaTicket && SolicitarVistaPreviaTicket != null)
+            {
+                await SolicitarVistaPreviaTicket(textoTicket, resultado.NumeroComprobante, config.AnchoPapelMm, config.ImpresoraTickets);
+            }
         }
         catch (Exception ex)
         {
             MensajeEstado = $"Error al procesar cobro: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private async Task ReimprimirUltimoTicketAsync()
+    {
+        if (_ultimaVentaRealizada == null)
+        {
+            MensajeEstado = "No hay ventas registradas en esta sesión para reimprimir.";
+            return;
+        }
+
+        var config = await _configuracionService.ObtenerConfiguracionAsync();
+        var configTicket = new PuntoDeVentaLibreria.Application.DTOs.Peripherals.ConfiguracionTicketDto
+        {
+            NombreComercio = config.NombreComercio,
+            Direccion = config.Direccion,
+            Telefono = config.Telefono,
+            Cuit = config.Cuit,
+            AnchoPapelMm = config.AnchoPapelMm,
+            ImpresoraNombre = config.ImpresoraTickets,
+            MensajePie = config.MensajePieTicket
+        };
+
+        var textoTicket = await _ticketPrinterService.GenerarTicketTextoAsync(_ultimaVentaRealizada, configTicket);
+
+        if (SolicitarVistaPreviaTicket != null)
+        {
+            await SolicitarVistaPreviaTicket(textoTicket, _ultimaVentaRealizada.NumeroComprobante, config.AnchoPapelMm, config.ImpresoraTickets);
         }
     }
 

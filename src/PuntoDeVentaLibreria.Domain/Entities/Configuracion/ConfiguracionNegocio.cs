@@ -33,6 +33,13 @@ public class ConfiguracionNegocio : BaseEntity
     public string SimboloMoneda { get; set; } = "$";
     public string BilletesHabilitados { get; set; } = "100,200,500,1000,2000,10000,20000";
 
+    // Configuración de Tickets Térmicos
+    public string ImpresoraTickets { get; set; } = string.Empty;
+    public int AnchoPapelMm { get; set; } = 80;
+    public string MensajePieTicket { get; set; } = "¡Muchas gracias por su compra!\nCambios con ticket dentro de los 15 días.\nNo se aceptan cambios de fotocopias.";
+    public bool ImprimirAutomaticoAlCobrar { get; set; } = false;
+    public bool MostrarVistaPreviaTicket { get; set; } = true;
+
     // Actualizaciones Oficiales Silenciosas
     public string GitHubRepoOwner { get; set; } = "mrrichar11";
     public string GitHubRepoName { get; set; } = "puntoVentaLibreriaMR";

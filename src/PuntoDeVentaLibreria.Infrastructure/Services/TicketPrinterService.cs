@@ -16,7 +16,8 @@ public class TicketPrinterService : ITicketPrinterService
         {
             var dir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Tickets");
             Directory.CreateDirectory(dir);
-            var filePath = Path.Combine(dir, $"Ticket_{venta.NumeroComprobante}_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
+            var safeNumero = string.Join("_", venta.NumeroComprobante.Split(Path.GetInvalidFileNameChars()));
+            var filePath = Path.Combine(dir, $"Ticket_{safeNumero}_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
             await File.WriteAllTextAsync(filePath, textoTicket, Encoding.UTF8, cancellationToken);
         }
         catch { }
@@ -26,66 +27,159 @@ public class TicketPrinterService : ITicketPrinterService
 
     public Task<bool> AbrirCajonDineroAsync(string nombreImpresora, CancellationToken cancellationToken = default)
     {
-        // Secuencia estándar ESC/POS: ESC p 0 25 250
+        // Secuencia estándar ESC/POS para cajón de dinero: ESC p 0 25 250
         return Task.FromResult(true);
     }
 
     public Task<string> GenerarTicketTextoAsync(VentaRealizadaDto venta, ConfiguracionTicketDto config, CancellationToken cancellationToken = default)
     {
-        int ancho = config.AnchoPapelMm == 58 ? 32 : 42;
-        var sep = new string('-', ancho);
+        int ancho = config.AnchoPapelMm == 58 ? 32 : 44;
+        var sepDoble = new string('=', ancho);
+        var sepSimple = new string('-', ancho);
         var sb = new StringBuilder();
 
-        // Encabezado
-        sb.AppendLine(Centrar(config.NombreComercio, ancho));
+        // 1. Encabezado del Comercio
+        sb.AppendLine(Centrar(config.NombreComercio.ToUpperInvariant(), ancho));
         if (!string.IsNullOrWhiteSpace(config.Cuit))
             sb.AppendLine(Centrar($"CUIT: {config.Cuit}", ancho));
         if (!string.IsNullOrWhiteSpace(config.Direccion))
             sb.AppendLine(Centrar(config.Direccion, ancho));
         if (!string.IsNullOrWhiteSpace(config.Telefono))
-            sb.AppendLine(Centrar($"Tel: {config.Telefono}", ancho));
+            sb.AppendLine(Centrar($"TEL: {config.Telefono}", ancho));
 
-        sb.AppendLine(sep);
-        sb.AppendLine($"COMPROBANTE: {venta.NumeroComprobante}");
-        sb.AppendLine($"FECHA: {venta.Fecha:dd/MM/yyyy HH:mm}");
-        if (!string.IsNullOrWhiteSpace(venta.ClienteNombre))
-            sb.AppendLine($"CLIENTE: {venta.ClienteNombre}");
+        sb.AppendLine(sepDoble);
 
-        sb.AppendLine(sep);
-        sb.AppendLine("CANT ARTICULO                 TOTAL");
-        sb.AppendLine(sep);
+        // 2. Datos de la Operación
+        sb.AppendLine($"TICKET N°: {venta.NumeroComprobante}");
+        sb.AppendLine($"FECHA:     {venta.Fecha:dd/MM/yyyy  HH:mm:ss}");
+        if (!string.IsNullOrWhiteSpace(venta.VendedoraNombre))
+            sb.AppendLine($"CAJERO/A:  {venta.VendedoraNombre}");
+        var cliente = !string.IsNullOrWhiteSpace(venta.ClienteNombre) ? venta.ClienteNombre : "Consumidor Final";
+        sb.AppendLine($"CLIENTE:   {cliente}");
 
-        // Ítems
-        foreach (var item in venta.Lineas)
+        sb.AppendLine(sepSimple);
+
+        // 3. Detalle de Ítems
+        if (ancho >= 44)
         {
-            var maxDesc = ancho - 14;
-            var nombre = item.Descripcion.Length > maxDesc ? item.Descripcion.Substring(0, maxDesc) : item.Descripcion;
-            var subtotalStr = $"${item.Subtotal:N2}";
-            var fila = $"{item.Cantidad,3} {nombre.PadRight(maxDesc - 4)} {subtotalStr,10}";
-            sb.AppendLine(fila);
+            // Formato 80 mm (44 columnas)
+            sb.AppendLine("CANT DESCRIPCIÓN             P.UNIT    TOTAL");
+            sb.AppendLine(sepSimple);
+
+            foreach (var item in venta.Lineas)
+            {
+                var cantStr = item.Cantidad.ToString("0.##").PadLeft(4);
+                var unitStr = $"${item.PrecioUnitario:N2}";
+                var subStr = $"${item.Subtotal:N2}";
+                var maxDescLen = 22;
+
+                var desc = item.Descripcion.Trim();
+                if (desc.Length <= maxDescLen)
+                {
+                    var descPadded = desc.PadRight(maxDescLen);
+                    sb.AppendLine($"{cantStr} {descPadded} {unitStr,9} {subStr,9}");
+                }
+                else
+                {
+                    // Dividir descripción en dos líneas para evitar truncar
+                    var primeraLinea = desc.Substring(0, maxDescLen);
+                    var restante = desc.Substring(maxDescLen).Trim();
+                    if (restante.Length > maxDescLen)
+                        restante = restante.Substring(0, maxDescLen);
+
+                    sb.AppendLine($"{cantStr} {primeraLinea.PadRight(maxDescLen)} {unitStr,9} {subStr,9}");
+                    sb.AppendLine($"     {restante.PadRight(maxDescLen)}");
+                }
+            }
+        }
+        else
+        {
+            // Formato 58 mm (32 columnas)
+            sb.AppendLine("CANT ARTÍCULO              TOTAL");
+            sb.AppendLine(sepSimple);
+
+            foreach (var item in venta.Lineas)
+            {
+                var cantStr = item.Cantidad.ToString("0.##").PadLeft(3);
+                var subStr = $"${item.Subtotal:N2}";
+                var maxDescLen = 17;
+
+                var desc = item.Descripcion.Trim();
+                if (desc.Length > maxDescLen)
+                    desc = desc.Substring(0, maxDescLen);
+
+                sb.AppendLine($"{cantStr} {desc.PadRight(maxDescLen)} {subStr,10}");
+            }
         }
 
-        sb.AppendLine(sep);
-        sb.AppendLine($"Subtotal:".PadRight(ancho - 12) + $"${venta.SubtotalBruto,10:N2}");
+        sb.AppendLine(sepSimple);
 
-        if (venta.DescuentoMonto > 0)
-            sb.AppendLine($"Descuento:".PadRight(ancho - 12) + $"-${venta.DescuentoMonto,9:N2}");
-
-        if (venta.RecargoMonto > 0)
-            sb.AppendLine($"Recargo Cuotas:".PadRight(ancho - 12) + $"+${venta.RecargoMonto,9:N2}");
-
-        sb.AppendLine(sep);
-        sb.AppendLine($"TOTAL COBRADO:".PadRight(ancho - 14) + $"${venta.TotalCobrado,12:N2}");
-        sb.AppendLine($"Medio de Pago: {venta.MetodoPago}");
-        sb.AppendLine(sep);
-
-        if (!string.IsNullOrWhiteSpace(config.MensajePie))
+        // 4. Totales
+        if (venta.DescuentoMonto > 0 || venta.RecargoMonto > 0)
         {
-            sb.AppendLine(Centrar(config.MensajePie, ancho));
-            sb.AppendLine(sep);
+            sb.AppendLine(AlinearExtremos("Subtotal:", $"${venta.SubtotalBruto:N2}", ancho));
+
+            if (venta.DescuentoMonto > 0)
+                sb.AppendLine(AlinearExtremos("Descuento Efectivo:", $"-${venta.DescuentoMonto:N2}", ancho));
+
+            if (venta.RecargoMonto > 0)
+                sb.AppendLine(AlinearExtremos("Recargo Cuotas:", $"+${venta.RecargoMonto:N2}", ancho));
+
+            sb.AppendLine(sepSimple);
         }
+
+        sb.AppendLine(sepDoble);
+        sb.AppendLine(AlinearExtremos("TOTAL COBRADO:", $"${venta.TotalCobrado:N2}", ancho));
+        sb.AppendLine(sepDoble);
+
+        // 5. Forma de Pago y Desglose
+        var medioTexto = FormatearMedioPago(venta.MetodoPago);
+        sb.AppendLine($"FORMA DE PAGO: {medioTexto}");
+
+        if (venta.MetodoPago == "Efectivo" && venta.MontoEntregado > 0)
+        {
+            sb.AppendLine(AlinearExtremos("Dinero Recibido:", $"${venta.MontoEntregado:N2}", ancho));
+            sb.AppendLine(AlinearExtremos("SU VUELTO:", $"${venta.Vuelto:N2}", ancho));
+        }
+        else if (venta.MetodoPago == "CtaCte")
+        {
+            sb.AppendLine(Centrar("*** CUENTA CORRIENTE (FIADO) ***", ancho));
+        }
+        else if (!string.IsNullOrWhiteSpace(venta.ReferenciaPago))
+        {
+            sb.AppendLine($"Ref/Comprobante: {venta.ReferenciaPago}");
+        }
+
+        sb.AppendLine(sepSimple);
+
+        // 6. Mensaje de Pie Configurable
+        var mensajePie = !string.IsNullOrWhiteSpace(config.MensajePie) 
+            ? config.MensajePie 
+            : "¡Muchas gracias por su compra!\nCambios con ticket dentro de los 15 días.";
+
+        var lineasPie = mensajePie.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var linea in lineasPie)
+        {
+            sb.AppendLine(Centrar(linea.Trim(), ancho));
+        }
+
+        sb.AppendLine(sepSimple);
+        sb.AppendLine(Centrar("*** MR SYS - SISTEMA DE VENTAS ***", ancho));
 
         return Task.FromResult(sb.ToString());
+    }
+
+    private static string FormatearMedioPago(string metodo)
+    {
+        return metodo switch
+        {
+            "Efectivo" => "EFECTIVO",
+            "Debito" => "TARJETA DE DÉBITO",
+            "Credito" => "TARJETA DE CRÉDITO",
+            "Transferencia" => "TRANSFERENCIA BANCARIA / QR",
+            "CtaCte" => "CTA. CTE. (FIADO)",
+            _ => metodo.ToUpperInvariant()
+        };
     }
 
     private static string Centrar(string texto, int ancho)
@@ -94,5 +188,12 @@ public class TicketPrinterService : ITicketPrinterService
         if (texto.Length >= ancho) return texto.Substring(0, ancho);
         int espacios = (ancho - texto.Length) / 2;
         return texto.PadLeft(espacios + texto.Length);
+    }
+
+    private static string AlinearExtremos(string izquierda, string derecha, int ancho)
+    {
+        int espacios = ancho - izquierda.Length - derecha.Length;
+        if (espacios < 1) espacios = 1;
+        return izquierda + new string(' ', espacios) + derecha;
     }
 }

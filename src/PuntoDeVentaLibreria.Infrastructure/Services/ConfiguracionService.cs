@@ -50,6 +50,11 @@ public class ConfiguracionService : IConfiguracionService
             Pais = config.Pais,
             SimboloMoneda = config.SimboloMoneda,
             BilletesHabilitados = config.BilletesHabilitados,
+            ImpresoraTickets = config.ImpresoraTickets,
+            AnchoPapelMm = config.AnchoPapelMm,
+            MensajePieTicket = config.MensajePieTicket,
+            ImprimirAutomaticoAlCobrar = config.ImprimirAutomaticoAlCobrar,
+            MostrarVistaPreviaTicket = config.MostrarVistaPreviaTicket,
             GitHubRepoOwner = config.GitHubRepoOwner,
             GitHubRepoName = config.GitHubRepoName
         };
@@ -85,6 +90,11 @@ public class ConfiguracionService : IConfiguracionService
         config.Pais = string.IsNullOrWhiteSpace(dto.Pais) ? "Argentina" : dto.Pais.Trim();
         config.SimboloMoneda = string.IsNullOrWhiteSpace(dto.SimboloMoneda) ? "$" : dto.SimboloMoneda.Trim();
         config.BilletesHabilitados = string.IsNullOrWhiteSpace(dto.BilletesHabilitados) ? "100,200,500,1000,2000,10000,20000" : dto.BilletesHabilitados.Trim();
+        config.ImpresoraTickets = dto.ImpresoraTickets ?? string.Empty;
+        config.AnchoPapelMm = dto.AnchoPapelMm == 58 ? 58 : 80;
+        config.MensajePieTicket = string.IsNullOrWhiteSpace(dto.MensajePieTicket) ? "¡Muchas gracias por su compra!" : dto.MensajePieTicket;
+        config.ImprimirAutomaticoAlCobrar = dto.ImprimirAutomaticoAlCobrar;
+        config.MostrarVistaPreviaTicket = dto.MostrarVistaPreviaTicket;
         config.GitHubRepoOwner = dto.GitHubRepoOwner.Trim();
         config.GitHubRepoName = dto.GitHubRepoName.Trim();
 

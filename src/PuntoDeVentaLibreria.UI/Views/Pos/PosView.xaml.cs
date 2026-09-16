@@ -3,6 +3,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using PuntoDeVentaLibreria.UI.ViewModels;
 using PuntoDeVentaLibreria.UI.Views;
+using PuntoDeVentaLibreria.UI.Views.Tickets;
 
 namespace PuntoDeVentaLibreria.UI.Views.Pos;
 
@@ -66,6 +67,17 @@ public partial class PosView : UserControl
             return Task.FromResult(res == MessageBoxResult.Yes);
         };
 
+        ViewModel.SolicitarVistaPreviaTicket = (texto, comprobante, ancho, impresora) =>
+        {
+            var modal = new TicketPreviewWindow(texto, comprobante, ancho, impresora)
+            {
+                Owner = Window.GetWindow(this)
+            };
+            modal.ShowDialog();
+            TxtCodigoBarras.Focus();
+            return Task.CompletedTask;
+        };
+
         Loaded += async (s, e) =>
         {
             await ViewModel.InicializarAsync();
@@ -114,6 +126,14 @@ public partial class PosView : UserControl
                 if (ViewModel.PausarVentaActualCommand.CanExecute(null))
                 {
                     ViewModel.PausarVentaActualCommand.Execute(null);
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.F9)
+            {
+                if (ViewModel.ReimprimirUltimoTicketCommand.CanExecute(null))
+                {
+                    await ViewModel.ReimprimirUltimoTicketCommand.ExecuteAsync(null);
                     e.Handled = true;
                 }
             }

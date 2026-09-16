@@ -489,6 +489,6 @@ $RECYCLE.BIN/
 *.sqlite
 gemini_key.txt
 Backups/
-Tickets/
+/Tickets/
 Logos/
 dist/
