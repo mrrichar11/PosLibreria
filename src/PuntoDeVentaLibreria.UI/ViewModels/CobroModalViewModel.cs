@@ -155,16 +155,31 @@ public partial class CobroModalViewModel : ObservableObject
         }
     }
 
+    private bool _iniciandoConteoBilletes = true;
+
+    partial void OnMontoEntregadoChanged(decimal value)
+    {
+        if (value == 0)
+        {
+            _iniciandoConteoBilletes = true;
+        }
+    }
+
     [RelayCommand]
     private void AgregarBillete(object? montoParam)
     {
         if (montoParam == null) return;
         if (decimal.TryParse(montoParam.ToString(), out var monto))
         {
-            if (MontoEntregado < TotalFinal)
+            if (_iniciandoConteoBilletes)
+            {
                 MontoEntregado = monto;
+                _iniciandoConteoBilletes = false;
+            }
             else
+            {
                 MontoEntregado += monto;
+            }
         }
     }
 
@@ -172,6 +187,14 @@ public partial class CobroModalViewModel : ObservableObject
     private void MontoExacto()
     {
         MontoEntregado = TotalFinal;
+        _iniciandoConteoBilletes = true;
+    }
+
+    [RelayCommand]
+    private void LimpiarMonto()
+    {
+        MontoEntregado = 0;
+        _iniciandoConteoBilletes = true;
     }
 
     [RelayCommand]

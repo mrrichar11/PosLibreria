@@ -132,18 +132,23 @@
                             <TextBox x:Name="TxtMontoEntregado" Text="{Binding MontoEntregado, UpdateSourceTrigger=PropertyChanged, StringFormat='N2'}" 
                                      FontSize="24" FontWeight="Bold" Padding="10,6" Margin="0,0,0,10" Background="#F1F5F9"/>
 
-                            <!-- Billetes Rápidos con $100, $200 y $500 solicitados -->
-                            <TextBlock Text="Billetes rápidos:" FontSize="12" Foreground="#64748B" Margin="0,0,0,6"/>
+                            <!-- Billetes Rápidos -->
+                            <TextBlock Text="Billetes rápidos recibidos (toque para sumar):" FontSize="12" Foreground="#64748B" Margin="0,0,0,6"/>
                             <WrapPanel Margin="0,0,0,12">
-                                <Button Content="Exacto" Command="{Binding MontoExactoCommand}" Margin="0,0,6,6" Padding="10,6" FontWeight="SemiBold"/>
-                                <Button Content="+$100" Command="{Binding AgregarBilleteCommand}" CommandParameter="100" Margin="0,0,6,6" Padding="10,6"/>
-                                <Button Content="+$200" Command="{Binding AgregarBilleteCommand}" CommandParameter="200" Margin="0,0,6,6" Padding="10,6"/>
-                                <Button Content="+$500" Command="{Binding AgregarBilleteCommand}" CommandParameter="500" Margin="0,0,6,6" Padding="10,6"/>
-                                <Button Content="+$1.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="1000" Margin="0,0,6,6" Padding="10,6"/>
-                                <Button Content="+$2.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="2000" Margin="0,0,6,6" Padding="10,6"/>
-                                <Button Content="+$5.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="5000" Margin="0,0,6,6" Padding="10,6"/>
-                                <Button Content="+$10.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="10000" Margin="0,0,6,6" Padding="10,6"/>
-                                <Button Content="+$20.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="20000" Margin="0,0,6,6" Padding="10,6"/>
+                                <Button Content="Exacto" Command="{Binding MontoExactoCommand}" 
+                                        Background="#DCFCE7" BorderBrush="#86EFAC" BorderThickness="1" Foreground="#15803D"
+                                        Margin="0,0,6,6" Padding="12,6" FontWeight="Bold" Cursor="Hand" ToolTip="Paga con el importe justo"/>
+                                <Button Content="Borrar ($0)" Command="{Binding LimpiarMontoCommand}" 
+                                        Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" Foreground="#DC2626"
+                                        Margin="0,0,6,6" Padding="10,6" FontWeight="SemiBold" Cursor="Hand" ToolTip="Poner en $0 para contar billetes"/>
+                                <Button Content="$100" Command="{Binding AgregarBilleteCommand}" CommandParameter="100" Margin="0,0,6,6" Padding="10,6" FontWeight="SemiBold" Cursor="Hand"/>
+                                <Button Content="$200" Command="{Binding AgregarBilleteCommand}" CommandParameter="200" Margin="0,0,6,6" Padding="10,6" FontWeight="SemiBold" Cursor="Hand"/>
+                                <Button Content="$500" Command="{Binding AgregarBilleteCommand}" CommandParameter="500" Margin="0,0,6,6" Padding="10,6" FontWeight="SemiBold" Cursor="Hand"/>
+                                <Button Content="$1.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="1000" Margin="0,0,6,6" Padding="10,6" FontWeight="SemiBold" Cursor="Hand"/>
+                                <Button Content="$2.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="2000" Margin="0,0,6,6" Padding="10,6" FontWeight="SemiBold" Cursor="Hand"/>
+                                <Button Content="$5.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="5000" Margin="0,0,6,6" Padding="10,6" FontWeight="SemiBold" Cursor="Hand"/>
+                                <Button Content="$10.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="10000" Margin="0,0,6,6" Padding="10,6" FontWeight="SemiBold" Cursor="Hand"/>
+                                <Button Content="$20.000" Command="{Binding AgregarBilleteCommand}" CommandParameter="20000" Margin="0,0,6,6" Padding="10,6" FontWeight="SemiBold" Cursor="Hand"/>
                             </WrapPanel>
 
                             <!-- Vuelto a entregar -->
