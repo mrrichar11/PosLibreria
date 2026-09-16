@@ -50,8 +50,10 @@ public class BackupService : IBackupService
 
         var rutaSqlite = rutaDestino.Replace('\\', '/').Replace("'", "''");
 
-        // Snapshot atómico nativo de SQLite con VACUUM INTO
+        // Snapshot atómico nativo de SQLite con VACUUM INTO (no admite parámetros @p0)
+#pragma warning disable EF1002
         await _context.Database.ExecuteSqlRawAsync($"VACUUM INTO '{rutaSqlite}';", cancellationToken);
+#pragma warning restore EF1002
 
         var fileInfo = new FileInfo(rutaDestino);
 
