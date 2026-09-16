@@ -16,29 +16,55 @@
 
         <!-- Cabecera y Filtros de Tiempo -->
         <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+            <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">
                 <TextBlock Text="DASHBOARD &amp; ANALÍTICAS DE LIBRERÍA" FontSize="20" FontWeight="Bold" Foreground="#0F172A"/>
                 <TextBlock Text="{Binding Datos.PeriodoTexto, StringFormat='Reporte financiero de ventas, costos y utilidades: {0}'}" 
                            FontSize="12" Foreground="#64748B" Margin="0,2,0,0"/>
             </StackPanel>
 
-            <!-- Botonera de Períodos -->
-            <Border Grid.Column="1" Background="#F1F5F9" CornerRadius="8" Padding="4">
-                <StackPanel Orientation="Horizontal">
-                    <Button Content="Hoy" Command="{Binding FiltrarHoyCommand}"
-                            Padding="14,6" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
-                    <Button Content="7 Días" Command="{Binding FiltrarSemanaCommand}"
-                            Padding="14,6" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
-                    <Button Content="Este Mes" Command="{Binding FiltrarMesCommand}"
-                            Padding="14,6" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
-                    <Button Content="Todo" Command="{Binding FiltrarHistoricoCommand}"
-                            Padding="14,6" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
-                </StackPanel>
+            <!-- Botón Exportar CSV -->
+            <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <Button Content="📥 Exportar Resumen (CSV / Excel)" Command="{Binding ExportarReporteCsvCommand}"
+                        Background="#0F172A" Foreground="White" FontWeight="Bold" Padding="14,7" FontSize="12" Cursor="Hand"/>
+            </StackPanel>
+
+            <!-- Barra de Filtros Rápidos y Selector de Fechas Personalizadas -->
+            <Border Grid.Row="1" Grid.ColumnSpan="2" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="10,6" Margin="0,12,0,0">
+                <DockPanel LastChildFill="False">
+                    <!-- Botonera de Períodos Rápidos -->
+                    <Border DockPanel.Dock="Left" Background="#F1F5F9" CornerRadius="8" Padding="3" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Hoy" Command="{Binding FiltrarHoyCommand}"
+                                    Padding="12,5" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
+                            <Button Content="7 Días" Command="{Binding FiltrarSemanaCommand}"
+                                    Padding="12,5" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
+                            <Button Content="Este Mes" Command="{Binding FiltrarMesCommand}"
+                                    Padding="12,5" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
+                            <Button Content="Histórico" Command="{Binding FiltrarHistoricoCommand}"
+                                    Padding="12,5" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Selector de Rango Personalizado -->
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Rango personalizado:" FontWeight="SemiBold" FontSize="12" Foreground="#475569" VerticalAlignment="Center" Margin="14,0,8,0"/>
+                        <TextBlock Text="Desde:" FontSize="11" Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <DatePicker SelectedDate="{Binding FechaDesde}" Width="120" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="Hasta:" FontSize="11" Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <DatePicker SelectedDate="{Binding FechaHasta}" Width="120" Margin="0,0,8,0" VerticalAlignment="Center"/>
+                        <Button Content="🔍 Filtrar" Command="{Binding FiltrarRangoPersonalizadoCommand}"
+                                Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="12,5" FontSize="12" Cursor="Hand"/>
+                    </StackPanel>
+                </DockPanel>
             </Border>
         </Grid>
 

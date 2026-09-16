@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Cobro de Cuenta Corriente" 
-        Height="420" Width="480"
+        Height="460" Width="480"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="#F8FAFC"
@@ -47,7 +47,10 @@
             </ComboBox>
 
             <TextBlock Text="Observaciones / Comprobante:" FontSize="12" Foreground="#64748B" Margin="0,0,0,4"/>
-            <TextBox x:Name="TxtObservaciones" Text="Pago a cuenta corriente" Padding="6,4"/>
+            <TextBox x:Name="TxtObservaciones" Text="Pago a cuenta corriente" Padding="6,4" Margin="0,0,0,10"/>
+
+            <CheckBox x:Name="ChkImprimirRecibo" Content="Imprimir / Previsualizar Recibo Térmico (80mm / 58mm)" IsChecked="True" 
+                      FontWeight="SemiBold" Foreground="#1E293B" Cursor="Hand"/>
         </StackPanel>
 
         <DockPanel Grid.Row="2" Margin="0,16,0,0">

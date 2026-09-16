@@ -26,6 +26,7 @@ public partial class ClientesViewModel : ObservableObject
 
     public Func<ClienteDto, Task<bool>>? SolicitarEditorCliente { get; set; }
     public Func<ClienteDto, Task<bool>>? SolicitarCobroDeuda { get; set; }
+    public Func<ClienteDto, Task>? SolicitarHistorialCliente { get; set; }
 
     public ClientesViewModel(IClienteService clienteService)
     {
@@ -102,6 +103,18 @@ public partial class ClientesViewModel : ObservableObject
             {
                 await CargarDatosAsync();
             }
+        }
+    }
+
+    [RelayCommand]
+    private async Task VerHistorialAsync(ClienteDto? cliente)
+    {
+        var c = cliente ?? ClienteSeleccionado;
+        if (c == null) return;
+
+        if (SolicitarHistorialCliente != null)
+        {
+            await SolicitarHistorialCliente(c);
         }
     }
 }

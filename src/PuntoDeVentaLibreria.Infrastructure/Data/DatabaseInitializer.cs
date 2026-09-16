@@ -58,6 +58,12 @@ public static class DatabaseInitializer
         }
         catch { }
 
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosCaja ADD COLUMN ClienteId TEXT NULL;", cancellationToken);
+        }
+        catch { }
+
         // 3. Optimización WAL para SQLite
         try
         {

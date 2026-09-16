@@ -23,4 +23,5 @@ public class MovimientoCaja : BaseEntity
     public string Concepto { get; set; } = string.Empty;
     public string? UsuarioNombre { get; set; }
     public Guid? VentaId { get; set; }
+    public Guid? ClienteId { get; set; }
 }

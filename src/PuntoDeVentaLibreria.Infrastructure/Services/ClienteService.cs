@@ -104,7 +104,7 @@ public class ClienteService : IClienteService
         }
     }
 
-    public async Task CobrarSaldoCuentaCorrienteAsync(RegistrarEntregaCuentaCorrienteDto dto, CancellationToken cancellationToken = default)
+    public async Task<ReciboCobroCtaCteDto> CobrarSaldoCuentaCorrienteAsync(RegistrarEntregaCuentaCorrienteDto dto, CancellationToken cancellationToken = default)
     {
         if (dto.MontoEntrega <= 0)
             throw new ArgumentException("El monto a entregar debe ser mayor a 0.");
@@ -115,13 +115,16 @@ public class ClienteService : IClienteService
         var turno = await _context.TurnosCaja.FirstOrDefaultAsync(t => t.Id == dto.TurnoCajaId && t.FechaCierre == null, cancellationToken)
                     ?? throw new InvalidOperationException("No hay una caja abierta para asentar el cobro.");
 
+        decimal saldoAnterior = cliente.SaldoDeudorActual;
         cliente.SaldoDeudorActual = Math.Max(0, cliente.SaldoDeudorActual - dto.MontoEntrega);
+        decimal saldoRestante = cliente.SaldoDeudorActual;
 
-        // Asentar ingreso en caja
+        // Asentar ingreso en caja como cobro de cuenta corriente
         _context.MovimientosCaja.Add(new MovimientoCaja
         {
             TurnoCajaId = turno.Id,
-            Tipo = TipoMovimientoCaja.IngresoVenta,
+            ClienteId = cliente.Id,
+            Tipo = TipoMovimientoCaja.CobroCuentaCorriente,
             Monto = dto.MontoEntrega,
             MetodoPago = dto.MetodoPago,
             Concepto = $"Cobro Cta. Cte. Cliente: {cliente.NombreCompleto}. {dto.Observaciones}".Trim(),
@@ -129,5 +132,81 @@ public class ClienteService : IClienteService
         });
 
         await _context.SaveChangesAsync(cancellationToken);
+
+        var random = new Random();
+        var numRecibo = $"REC-{DateTime.Now:yyyyMMdd}-{random.Next(1000, 9999)}";
+
+        return new ReciboCobroCtaCteDto
+        {
+            NumeroRecibo = numRecibo,
+            Fecha = DateTime.Now,
+            ClienteNombre = cliente.NombreCompleto,
+            ClienteDni = cliente.DniOCuit,
+            SaldoAnterior = saldoAnterior,
+            MontoAbonado = dto.MontoEntrega,
+            SaldoRestante = saldoRestante,
+            MetodoPago = dto.MetodoPago,
+            Cajero = dto.UsuarioNombre,
+            Observaciones = dto.Observaciones
+        };
+    }
+
+    public async Task<IReadOnlyList<MovimientoClienteDto>> ObtenerHistorialClienteAsync(Guid clienteId, CancellationToken cancellationToken = default)
+    {
+        var cliente = await _context.Clientes.FindAsync(new object[] { clienteId }, cancellationToken);
+        if (cliente == null) return Array.Empty<MovimientoClienteDto>();
+
+        var historial = new List<MovimientoClienteDto>();
+
+        // 1. Ventas realizadas al cliente
+        var ventas = await _context.Ventas
+            .AsNoTracking()
+            .Include(v => v.LineasVenta)
+            .Where(v => v.ClienteId == clienteId)
+            .ToListAsync(cancellationToken);
+
+        foreach (var v in ventas)
+        {
+            bool esCtaCte = v.MetodoPagoPrincipal == "CtaCte";
+            var detalleItems = string.Join(", ", v.LineasVenta.Take(3).Select(l => $"{l.Cantidad}x {l.Descripcion}"));
+            if (v.LineasVenta.Count > 3)
+            {
+                detalleItems += $" y {v.LineasVenta.Count - 3} más...";
+            }
+
+            historial.Add(new MovimientoClienteDto
+            {
+                Fecha = v.FechaVenta,
+                Tipo = esCtaCte ? "Compra Fiada (Cta. Cte.)" : $"Compra ({v.MetodoPagoPrincipal})",
+                Comprobante = v.NumeroComprobante,
+                Monto = v.TotalVenta,
+                MetodoPago = v.MetodoPagoPrincipal,
+                Detalle = detalleItems,
+                EsAbono = false
+            });
+        }
+
+        // 2. Cobros / Abonos a la cuenta corriente
+        var movimientosCaja = await _context.MovimientosCaja
+            .AsNoTracking()
+            .Where(m => m.ClienteId == clienteId || 
+                       (m.Tipo == TipoMovimientoCaja.CobroCuentaCorriente && m.Concepto.Contains(cliente.NombreCompleto)))
+            .ToListAsync(cancellationToken);
+
+        foreach (var m in movimientosCaja)
+        {
+            historial.Add(new MovimientoClienteDto
+            {
+                Fecha = m.FechaCreacion,
+                Tipo = "Abono / Cobro Cta. Cte.",
+                Comprobante = "Abono en Caja",
+                Monto = m.Monto,
+                MetodoPago = m.MetodoPago,
+                Detalle = m.Concepto,
+                EsAbono = true
+            });
+        }
+
+        return historial.OrderByDescending(h => h.Fecha).ToList();
     }
 }

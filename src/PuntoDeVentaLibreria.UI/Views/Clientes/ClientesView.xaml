@@ -101,10 +101,13 @@
                     </DataGridTextColumn>
 
                     <!-- Acciones -->
-                    <DataGridTemplateColumn Header="Acciones" Width="160">
+                    <DataGridTemplateColumn Header="Acciones" Width="230">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Button Content="📜 Movimientos" Padding="6,2" Margin="0,0,6,0" Cursor="Hand"
+                                            Command="{Binding DataContext.VerHistorialCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            CommandParameter="{Binding}"/>
                                     <Button Content="✏ Editar" Padding="6,2" Margin="0,0,6,0" Cursor="Hand"
                                             Command="{Binding DataContext.EditarClienteCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                             CommandParameter="{Binding}"/>

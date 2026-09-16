@@ -23,7 +23,7 @@ public class ArticuloDto
     public string? Ubicacion { get; set; }
     public bool EsBotonRapido { get; set; }
     public string? ColorBoton { get; set; }
-    public List<ComboComponenteDto> ComponentesDelCombo { get; set; } = new();
+    public System.Collections.ObjectModel.ObservableCollection<ComboComponenteDto> ComponentesDelCombo { get; set; } = new();
 }
 
 public class ComboComponenteDto

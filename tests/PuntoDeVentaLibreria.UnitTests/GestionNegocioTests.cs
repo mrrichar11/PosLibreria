@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
+using PuntoDeVentaLibreria.Application.DTOs.Caja;
 using PuntoDeVentaLibreria.Application.DTOs.Clientes;
 using PuntoDeVentaLibreria.Application.DTOs.Configuracion;
+using PuntoDeVentaLibreria.Application.DTOs.Inventario;
 using PuntoDeVentaLibreria.Domain.Entities.Finanzas;
 using PuntoDeVentaLibreria.Infrastructure.Data;
 using PuntoDeVentaLibreria.Infrastructure.Services;
@@ -200,5 +202,207 @@ public class GestionNegocioTests
         texto.Should().Contain("MR SYS LIBRERÍA");
         texto.Should().Contain("TARJETA DE DÉBITO");
         texto.Should().Contain("Ref/Comprobante: Operación #9876");
+    }
+
+    [Fact]
+    public async Task TicketPrinterService_GenerarTicketCierreCaja_MuestraDesgloseYDiferencia()
+    {
+        var printer = new TicketPrinterService();
+        var resumen = new ResumenCierreTurnoDto
+        {
+            TurnoId = Guid.NewGuid(),
+            FechaApertura = new DateTime(2026, 9, 16, 8, 0, 0),
+            FechaCierre = new DateTime(2026, 9, 16, 20, 0, 0),
+            UsuarioApertura = "Laura",
+            UsuarioCierre = "Laura",
+            FondoInicial = 10000m,
+            VentasEfectivo = 35000m,
+            CobrosCtaCteEfectivo = 5000m,
+            VentasDebito = 12000m,
+            VentasCredito = 8000m,
+            VentasTransferencia = 15000m,
+            VentasCtaCte = 4000m,
+            GastosOperativos = 2000m,
+            RetirosDueño = 5000m,
+            EfectivoRealContado = 43000m,
+            CantidadOperaciones = 42,
+            Observaciones = "Cierre sin novedades"
+        };
+
+        var config = new PuntoDeVentaLibreria.Application.DTOs.Peripherals.ConfiguracionTicketDto
+        {
+            NombreComercio = "MR SYS Librería",
+            AnchoPapelMm = 80
+        };
+
+        var ticket = await printer.GenerarTicketCierreCajaAsync(resumen, config);
+
+        ticket.Should().Contain("CIERRE Y ARQUEO DE CAJA");
+        ticket.Should().Contain("Ventas en Efectivo:");
+        ticket.Should().Contain("Cobros Fiado Efectivo:");
+        ticket.Should().Contain("TOTAL FACTURADO:");
+        ticket.Should().Contain("EFECTIVO ESPERADO:");
+        ticket.Should().Contain("EFECTIVO REAL DECLARADO:");
+        ticket.Should().Contain("EXACTO ($0.00)");
+        ticket.Should().Contain("Cierre sin novedades");
+    }
+
+    [Fact]
+    public async Task TicketPrinterService_GenerarTicketReciboCtaCte_MuestraAbonoYSaldoRestante()
+    {
+        var printer = new TicketPrinterService();
+        var recibo = new ReciboCobroCtaCteDto
+        {
+            NumeroRecibo = "REC-20260916-4521",
+            Fecha = new DateTime(2026, 9, 16, 16, 45, 0),
+            ClienteNombre = "Escuela Normal N° 1",
+            ClienteDni = "30-55443322-9",
+            SaldoAnterior = 50000m,
+            MontoAbonado = 20000m,
+            SaldoRestante = 30000m,
+            MetodoPago = "Efectivo",
+            Cajero = "Laura",
+            Observaciones = "Pago cuota mensual útiles"
+        };
+
+        var config = new PuntoDeVentaLibreria.Application.DTOs.Peripherals.ConfiguracionTicketDto
+        {
+            NombreComercio = "MR SYS Librería",
+            Direccion = "Av. San Martín 450",
+            Cuit = "20-12345678-9",
+            Telefono = "11-4567-8900",
+            AnchoPapelMm = 80
+        };
+
+        var ticket = await printer.GenerarTicketReciboCtaCteAsync(recibo, config);
+
+        ticket.Should().Contain("RECIBO DE COBRO - CTA. CTE.");
+        ticket.Should().Contain("RECIBO:  REC-20260916-4521");
+        ticket.Should().Contain("CLIENTE: Escuela Normal N° 1");
+        ticket.Should().Contain("Saldo Anterior:");
+        ticket.Should().Contain("50");
+        ticket.Should().Contain("(-) MONTO ABONADO:");
+        ticket.Should().Contain("20");
+        ticket.Should().Contain("SALDO PENDIENTE:");
+        ticket.Should().Contain("30");
+        ticket.Should().Contain("Pago cuota mensual útiles");
+    }
+
+    [Fact]
+    public async Task InventarioService_ExportarEImportarCsv_ExportaArticulosCorrectamente()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        await inventarioService.GuardarArticuloAsync(new ArticuloDto
+        {
+            CodigoBarras = "7791234567890",
+            Nombre = "Cuaderno Espiral 84 Hojas",
+            CategoriaNombre = "Cuadernos",
+            PrecioCosto = 1000m,
+            PrecioVenta = 1800m,
+            StockActual = 50,
+            StockMinimo = 10
+        });
+
+        var csv = await inventarioService.ExportarCatalogoCsvAsync();
+
+        csv.Should().Contain("CodigoBarras;SKU;Nombre;Categoria;Marca;Tipo;PrecioCosto;PorcentajeGanancia;PrecioVenta;StockActual;StockMinimo;Ubicacion");
+        csv.Should().Contain("7791234567890;;Cuaderno Espiral 84 Hojas;;;0;1000;0;1800;50;10;");
+    }
+
+    [Fact]
+    public async Task ClienteService_ObtenerHistorialCliente_DevuelveMovimientosCorrectos()
+    {
+        using var context = CrearContextoEnMemoria();
+        var clienteService = new ClienteService(context);
+
+        var cliente = await clienteService.GuardarClienteAsync(new ClienteDto
+        {
+            NombreCompleto = "Profesor Carlos Mendoza",
+            PermiteFiado = true,
+            LimiteCredito = 80000m
+        });
+
+        var turno = new TurnoCaja { MontoInicialEfectivo = 5000m, UsuarioApertura = "cajero" };
+        context.TurnosCaja.Add(turno);
+        await context.SaveChangesAsync();
+
+        cliente.SaldoDeudorActual = 12000m;
+        await context.SaveChangesAsync();
+
+        // Realizar un abono
+        var recibo = await clienteService.CobrarSaldoCuentaCorrienteAsync(new RegistrarEntregaCuentaCorrienteDto
+        {
+            ClienteId = cliente.Id,
+            TurnoCajaId = turno.Id,
+            MontoEntrega = 5000m,
+            MetodoPago = "Efectivo",
+            Observaciones = "Abono inicial",
+            UsuarioNombre = "Laura"
+        });
+
+        recibo.SaldoAnterior.Should().Be(12000m);
+        recibo.MontoAbonado.Should().Be(5000m);
+        recibo.SaldoRestante.Should().Be(7000m);
+        recibo.NumeroRecibo.Should().StartWith("REC-");
+
+        var historial = await clienteService.ObtenerHistorialClienteAsync(cliente.Id);
+        historial.Should().HaveCount(1);
+        historial[0].Tipo.Should().Contain("Abono");
+        historial[0].Monto.Should().Be(5000m);
+        historial[0].EsAbono.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task ReporteService_FiltroRangoPersonalizado_CalculaMetricasCorrectas()
+    {
+        using var context = CrearContextoEnMemoria();
+        var reporteService = new ReporteService(context);
+
+        var turno = new TurnoCaja { MontoInicialEfectivo = 1000m, UsuarioApertura = "cajero" };
+        context.TurnosCaja.Add(turno);
+
+        var fechaVenta = new DateTime(2026, 9, 10, 14, 0, 0, DateTimeKind.Utc);
+        var venta = new PuntoDeVentaLibreria.Domain.Entities.Ventas.Venta
+        {
+            NumeroComprobante = "VTA-001",
+            FechaVenta = fechaVenta,
+            TurnoCajaId = turno.Id,
+            VendedoraNombre = "Laura",
+            TotalVenta = 5000m,
+            TotalCostoHistorico = 2000m,
+            MetodoPagoPrincipal = "Efectivo"
+        };
+        venta.Pagos.Add(new PuntoDeVentaLibreria.Domain.Entities.Ventas.PagoVenta
+        {
+            VentaId = venta.Id,
+            MetodoPago = "Efectivo",
+            Monto = 5000m
+        });
+        venta.LineasVenta.Add(new PuntoDeVentaLibreria.Domain.Entities.Ventas.LineaVenta
+        {
+            VentaId = venta.Id,
+            Descripcion = "Kit Lapiceras Parker",
+            Cantidad = 2,
+            PrecioUnitarioVenta = 2500m
+        });
+
+        context.Ventas.Add(venta);
+        await context.SaveChangesAsync();
+
+        // Consultar con filtro personalizado que incluye la venta
+        var desde = new DateTime(2026, 9, 1, 0, 0, 0, DateTimeKind.Utc);
+        var hasta = new DateTime(2026, 9, 15, 23, 59, 59, DateTimeKind.Utc);
+
+        var reporte = await reporteService.ObtenerMetricasDashboardAsync(desde, hasta, "Rango Personalizado");
+
+        reporte.FacturacionTotal.Should().Be(5000m);
+        reporte.CostoTotalEstimado.Should().Be(2000m);
+        reporte.GananciaNetaEstimada.Should().Be(3000m);
+        reporte.CantidadVentas.Should().Be(1);
+        reporte.CantidadArticulosVendidos.Should().Be(2);
+        reporte.TopArticulos.Should().HaveCount(1);
+        reporte.TopArticulos[0].Descripcion.Should().Be("Kit Lapiceras Parker");
     }
 }

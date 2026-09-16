@@ -3,9 +3,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:conv="clr-namespace:PuntoDeVentaLibreria.UI.Converters"
              mc:Ignorable="d" 
              d:DesignHeight="700" d:DesignWidth="1100"
              FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
+
+    <UserControl.Resources>
+        <conv:StockToBrushConverter x:Key="StockBrushConv"/>
+        <conv:StockToBadgeBackgroundConverter x:Key="StockBadgeBgConv"/>
+        <conv:StockToEstadoTextoConverter x:Key="StockTextoConv"/>
+    </UserControl.Resources>
 
     <Grid Margin="16">
         <Grid.RowDefinitions>
@@ -44,11 +51,13 @@
             </Border>
         </Grid>
 
-        <!-- Barra de Búsqueda y Botón Nuevo -->
+        <!-- Barra de Búsqueda y Botonera -->
         <Border Grid.Row="1" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="10" Padding="12,10" Margin="0,0,0,14">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
@@ -60,7 +69,15 @@
                 <Button Grid.Column="1" Content="🔍 Buscar" Command="{Binding BuscarCommand}"
                         Padding="16,8" FontWeight="SemiBold" Margin="0,0,10,0" Cursor="Hand"/>
 
-                <Button Grid.Column="2" Content="➕ Nuevo Artículo / Útil" Command="{Binding NuevoArticuloCommand}"
+                <Button Grid.Column="2" Content="📤 Exportar CSV" Command="{Binding ExportarCsvCommand}"
+                        Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" Padding="12,8" FontWeight="SemiBold" Margin="0,0,8,0" Cursor="Hand"
+                        ToolTip="Exportar todo el catálogo para abrir o editar en Excel"/>
+
+                <Button Grid.Column="3" Content="📥 Importar CSV" Command="{Binding ImportarCsvCommand}"
+                        Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" Padding="12,8" FontWeight="SemiBold" Margin="0,0,10,0" Cursor="Hand"
+                        ToolTip="Cargar o actualizar artículos masivamente desde archivo CSV"/>
+
+                <Button Grid.Column="4" Content="➕ Nuevo Artículo / Útil" Command="{Binding NuevoArticuloCommand}"
                         Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="18,8" Cursor="Hand"/>
             </Grid>
         </Border>
@@ -101,15 +118,24 @@
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Stock Actual" Binding="{Binding StockActual, StringFormat='N0'}" Width="95">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="FontWeight" Value="Bold"/>
-                                <Setter Property="VerticalAlignment" Value="Center"/>
-                                <Setter Property="HorizontalAlignment" Value="Center"/>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
+                    <!-- Stock Actual con Alerta Visual de Color -->
+                    <DataGridTemplateColumn Header="Stock Actual" Width="110">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Border Background="{Binding Converter={StaticResource StockBadgeBgConv}}" 
+                                        BorderBrush="{Binding Converter={StaticResource StockBrushConv}}" 
+                                        BorderThickness="1" CornerRadius="6" Padding="6,2" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding StockActual, StringFormat='N0'}" FontWeight="Bold" FontSize="12"
+                                                   Foreground="{Binding Converter={StaticResource StockBrushConv}}" Margin="0,0,4,0"/>
+                                        <TextBlock Text="{Binding Converter={StaticResource StockTextoConv}, StringFormat='({0})'}" 
+                                                   FontSize="10" FontWeight="SemiBold"
+                                                   Foreground="{Binding Converter={StaticResource StockBrushConv}}"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Mínimo" Binding="{Binding StockMinimo, StringFormat='N0'}" Width="75"/>
 
                     <!-- Acciones -->

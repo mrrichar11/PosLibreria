@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PuntoDeVentaLibreria.Application.DTOs.Caja;
 using PuntoDeVentaLibreria.Application.Services;
 using PuntoDeVentaLibreria.Domain.Entities.Finanzas;
 using PuntoDeVentaLibreria.Infrastructure.Data;
@@ -45,7 +46,7 @@ public class CajaService : ICajaService
                     ?? throw new InvalidOperationException("No hay ningún turno de caja abierto.");
 
         var ingresosEfectivo = turno.Movimientos
-            .Where(m => m.MetodoPago == "Efectivo" && m.Tipo == TipoMovimientoCaja.IngresoVenta)
+            .Where(m => m.MetodoPago == "Efectivo" && (m.Tipo == TipoMovimientoCaja.IngresoVenta || m.Tipo == TipoMovimientoCaja.CobroCuentaCorriente))
             .Sum(m => m.Monto);
 
         var egresosEfectivo = turno.Movimientos
@@ -63,6 +64,48 @@ public class CajaService : ICajaService
 
         await _context.SaveChangesAsync(ct);
         return turno;
+    }
+
+    public async Task<ResumenCierreTurnoDto> ObtenerResumenTurnoAsync(Guid turnoId, CancellationToken ct = default)
+    {
+        var turno = await _context.TurnosCaja
+            .Include(t => t.Movimientos)
+            .FirstOrDefaultAsync(t => t.Id == turnoId, ct)
+            ?? throw new InvalidOperationException($"No se encontró el turno con ID {turnoId}");
+
+        var ventasEf = turno.Movimientos.Where(m => m.Tipo == TipoMovimientoCaja.IngresoVenta && m.MetodoPago == "Efectivo").Sum(m => m.Monto);
+        var cobrosCta = turno.Movimientos.Where(m => m.Tipo == TipoMovimientoCaja.CobroCuentaCorriente && m.MetodoPago == "Efectivo").Sum(m => m.Monto);
+        var gastos = turno.Movimientos.Where(m => m.Tipo == TipoMovimientoCaja.GastoOperativo).Sum(m => m.Monto);
+        var retiros = turno.Movimientos.Where(m => m.Tipo == TipoMovimientoCaja.RetiroDueño).Sum(m => m.Monto);
+
+        var ventasDeb = turno.Movimientos.Where(m => m.Tipo == TipoMovimientoCaja.IngresoVenta && m.MetodoPago == "Debito").Sum(m => m.Monto);
+        var ventasCred = turno.Movimientos.Where(m => m.Tipo == TipoMovimientoCaja.IngresoVenta && m.MetodoPago == "Credito").Sum(m => m.Monto);
+        var ventasTransf = turno.Movimientos.Where(m => m.Tipo == TipoMovimientoCaja.IngresoVenta && m.MetodoPago == "Transferencia").Sum(m => m.Monto);
+        var ventasCta = turno.Movimientos.Where(m => m.Tipo == TipoMovimientoCaja.IngresoVenta && m.MetodoPago == "CtaCte").Sum(m => m.Monto);
+
+        var fechaCierre = turno.FechaCierre ?? DateTime.UtcNow;
+        var realContado = turno.MontoCierreEfectivoReal ?? (turno.MontoInicialEfectivo + ventasEf + cobrosCta - gastos - retiros);
+
+        return new ResumenCierreTurnoDto
+        {
+            TurnoId = turno.Id,
+            FechaApertura = turno.FechaApertura,
+            FechaCierre = fechaCierre,
+            UsuarioApertura = turno.UsuarioApertura,
+            UsuarioCierre = turno.UsuarioCierre ?? "Cajero",
+            FondoInicial = turno.MontoInicialEfectivo,
+            VentasEfectivo = ventasEf,
+            CobrosCtaCteEfectivo = cobrosCta,
+            GastosOperativos = gastos,
+            RetirosDueño = retiros,
+            EfectivoRealContado = realContado,
+            VentasDebito = ventasDeb,
+            VentasCredito = ventasCred,
+            VentasTransferencia = ventasTransf,
+            VentasCtaCte = ventasCta,
+            CantidadOperaciones = turno.Movimientos.Count,
+            Observaciones = turno.ObservacionesCierre
+        };
     }
 
     public async Task<MovimientoCaja> RegistrarGastoOperativoAsync(decimal monto, string concepto, string usuario, CancellationToken ct = default)

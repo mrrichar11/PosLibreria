@@ -102,4 +102,62 @@ public partial class InventarioViewModel : ObservableObject
             }
         }
     }
+
+    [RelayCommand]
+    private async Task ExportarCsvAsync()
+    {
+        try
+        {
+            var sfd = new Microsoft.Win32.SaveFileDialog
+            {
+                FileName = $"Catalogo_Libreria_{DateTime.Now:yyyyMMdd_HHmm}.csv",
+                Filter = "Archivo CSV (*.csv)|*.csv|Todos los archivos (*.*)|*.*",
+                DefaultExt = ".csv"
+            };
+
+            if (sfd.ShowDialog() == true)
+            {
+                var csv = await _inventarioService.ExportarCatalogoCsvAsync();
+                await System.IO.File.WriteAllTextAsync(sfd.FileName, csv, System.Text.Encoding.UTF8);
+                System.Windows.MessageBox.Show("Catálogo exportado exitosamente a CSV.", "Exportación Completa", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Error al exportar: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task ImportarCsvAsync()
+    {
+        try
+        {
+            var ofd = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "Archivo CSV (*.csv)|*.csv|Todos los archivos (*.*)|*.*",
+                DefaultExt = ".csv"
+            };
+
+            if (ofd.ShowDialog() == true)
+            {
+                var csv = await System.IO.File.ReadAllTextAsync(ofd.FileName, System.Text.Encoding.UTF8);
+                var (creados, actualizados, errores) = await _inventarioService.ImportarCatalogoCsvAsync(csv);
+                await CargarDatosAsync();
+
+                System.Windows.MessageBox.Show(
+                    $"Importación finalizada:\n\n" +
+                    $"• Artículos nuevos creados: {creados}\n" +
+                    $"• Artículos existentes actualizados: {actualizados}\n" +
+                    $"• Filas omitidas / errores: {errores}",
+                    "Resultado de Importación",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Error al importar catálogo: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
 }

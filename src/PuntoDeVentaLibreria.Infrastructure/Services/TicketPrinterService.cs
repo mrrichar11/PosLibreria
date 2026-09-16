@@ -1,4 +1,5 @@
 using System.Text;
+using PuntoDeVentaLibreria.Application.DTOs.Clientes;
 using PuntoDeVentaLibreria.Application.DTOs.Peripherals;
 using PuntoDeVentaLibreria.Application.DTOs.Ventas;
 using PuntoDeVentaLibreria.Application.Services;
@@ -165,6 +166,141 @@ public class TicketPrinterService : ITicketPrinterService
 
         sb.AppendLine(sepSimple);
         sb.AppendLine(Centrar("*** MR SYS - SISTEMA DE VENTAS ***", ancho));
+
+        return Task.FromResult(sb.ToString());
+    }
+
+    public Task<string> GenerarTicketCierreCajaAsync(PuntoDeVentaLibreria.Application.DTOs.Caja.ResumenCierreTurnoDto resumen, ConfiguracionTicketDto config, CancellationToken cancellationToken = default)
+    {
+        int ancho = config.AnchoPapelMm == 58 ? 32 : 44;
+        var sepDoble = new string('=', ancho);
+        var sepSimple = new string('-', ancho);
+        var sb = new StringBuilder();
+
+        // 1. Encabezado
+        sb.AppendLine(Centrar(config.NombreComercio.ToUpperInvariant(), ancho));
+        sb.AppendLine(Centrar("CIERRE Y ARQUEO DE CAJA", ancho));
+        sb.AppendLine(sepDoble);
+
+        // 2. Datos del Turno
+        sb.AppendLine($"APERTURA: {resumen.FechaApertura:dd/MM/yyyy HH:mm}");
+        sb.AppendLine($"POR:      {resumen.UsuarioApertura}");
+        sb.AppendLine($"CIERRE:   {resumen.FechaCierre:dd/MM/yyyy HH:mm}");
+        sb.AppendLine($"POR:      {resumen.UsuarioCierre}");
+        sb.AppendLine($"OPERACIONES: {resumen.CantidadOperaciones}");
+        sb.AppendLine(sepSimple);
+
+        // 3. Ventas por Medio de Pago
+        sb.AppendLine(Centrar("--- FACTURACIÓN POR MEDIO DE PAGO ---", ancho));
+        sb.AppendLine(AlinearExtremos("Ventas en Efectivo:", $"${resumen.VentasEfectivo:N2}", ancho));
+        if (resumen.CobrosCtaCteEfectivo > 0)
+            sb.AppendLine(AlinearExtremos("Cobros Fiado Efectivo:", $"${resumen.CobrosCtaCteEfectivo:N2}", ancho));
+        if (resumen.VentasDebito > 0)
+            sb.AppendLine(AlinearExtremos("Tarjetas Débito:", $"${resumen.VentasDebito:N2}", ancho));
+        if (resumen.VentasCredito > 0)
+            sb.AppendLine(AlinearExtremos("Tarjetas Crédito:", $"${resumen.VentasCredito:N2}", ancho));
+        if (resumen.VentasTransferencia > 0)
+            sb.AppendLine(AlinearExtremos("Transferencias / QR:", $"${resumen.VentasTransferencia:N2}", ancho));
+        if (resumen.VentasCtaCte > 0)
+            sb.AppendLine(AlinearExtremos("Ventas Fiadas (CtaCte):", $"${resumen.VentasCtaCte:N2}", ancho));
+
+        sb.AppendLine(sepSimple);
+        sb.AppendLine(AlinearExtremos("TOTAL FACTURADO:", $"${resumen.TotalFacturadoTurno:N2}", ancho));
+        sb.AppendLine(sepDoble);
+
+        // 4. Arqueo de Efectivo Físico
+        sb.AppendLine(Centrar("--- ARQUEO Y FLUJO DE EFECTIVO ---", ancho));
+        sb.AppendLine(AlinearExtremos("Fondo Inicial:", $"${resumen.FondoInicial:N2}", ancho));
+        sb.AppendLine(AlinearExtremos("(+) Entradas Efectivo:", $"${resumen.TotalIngresosEfectivo:N2}", ancho));
+        if (resumen.GastosOperativos > 0)
+            sb.AppendLine(AlinearExtremos("(-) Gastos Operativos:", $"-${resumen.GastosOperativos:N2}", ancho));
+        if (resumen.RetirosDueño > 0)
+            sb.AppendLine(AlinearExtremos("(-) Retiros de Dueño:", $"-${resumen.RetirosDueño:N2}", ancho));
+
+        sb.AppendLine(sepSimple);
+        sb.AppendLine(AlinearExtremos("EFECTIVO ESPERADO:", $"${resumen.EfectivoEsperadoEnCajon:N2}", ancho));
+        sb.AppendLine(AlinearExtremos("EFECTIVO REAL DECLARADO:", $"${resumen.EfectivoRealContado:N2}", ancho));
+        sb.AppendLine(sepSimple);
+
+        var difTexto = resumen.Diferencia switch
+        {
+            > 0 => $"SOBRANTE (+${resumen.Diferencia:N2})",
+            < 0 => $"FALTANTE (-${Math.Abs(resumen.Diferencia):N2})",
+            _ => "EXACTO ($0.00)"
+        };
+        sb.AppendLine(AlinearExtremos("DIFERENCIA DE CAJA:", difTexto, ancho));
+        sb.AppendLine(sepDoble);
+
+        if (!string.IsNullOrWhiteSpace(resumen.Observaciones))
+        {
+            sb.AppendLine("OBSERVACIONES:");
+            sb.AppendLine(resumen.Observaciones.Trim());
+            sb.AppendLine(sepSimple);
+        }
+
+        sb.AppendLine(Centrar($"IMPRESO: {DateTime.Now:dd/MM/yyyy HH:mm:ss}", ancho));
+        sb.AppendLine(Centrar("*** COMPROBANTE DE CONTROL INTERNO ***", ancho));
+
+        return Task.FromResult(sb.ToString());
+    }
+
+    public Task<string> GenerarTicketReciboCtaCteAsync(ReciboCobroCtaCteDto recibo, ConfiguracionTicketDto config, CancellationToken cancellationToken = default)
+    {
+        int ancho = config.AnchoPapelMm == 58 ? 32 : 44;
+        var sepDoble = new string('=', ancho);
+        var sepSimple = new string('-', ancho);
+        var sb = new StringBuilder();
+
+        // 1. Encabezado de la Librería
+        sb.AppendLine(Centrar(config.NombreComercio.ToUpperInvariant(), ancho));
+        if (!string.IsNullOrWhiteSpace(config.Direccion))
+            sb.AppendLine(Centrar(config.Direccion, ancho));
+        if (!string.IsNullOrWhiteSpace(config.Cuit))
+            sb.AppendLine(Centrar($"CUIT/RUT: {config.Cuit}", ancho));
+        if (!string.IsNullOrWhiteSpace(config.Telefono))
+            sb.AppendLine(Centrar($"Tel: {config.Telefono}", ancho));
+
+        sb.AppendLine(sepDoble);
+        sb.AppendLine(Centrar("RECIBO DE COBRO - CTA. CTE.", ancho));
+        sb.AppendLine(sepDoble);
+
+        // 2. Datos del Comprobante
+        sb.AppendLine($"RECIBO:  {recibo.NumeroRecibo}");
+        sb.AppendLine($"FECHA:   {recibo.Fecha:dd/MM/yyyy HH:mm}");
+        sb.AppendLine($"CAJERO:  {recibo.Cajero}");
+        sb.AppendLine(sepSimple);
+
+        // 3. Datos del Cliente
+        sb.AppendLine($"CLIENTE: {recibo.ClienteNombre}");
+        if (!string.IsNullOrWhiteSpace(recibo.ClienteDni))
+            sb.AppendLine($"DNI/CUIT: {recibo.ClienteDni}");
+        sb.AppendLine(sepSimple);
+
+        // 4. Detalle Financiero del Saldo
+        sb.AppendLine(Centrar("--- ESTADO DE CUENTA ---", ancho));
+        sb.AppendLine(AlinearExtremos("Saldo Anterior:", $"${recibo.SaldoAnterior:N2}", ancho));
+        sb.AppendLine(AlinearExtremos("(-) MONTO ABONADO:", $"${recibo.MontoAbonado:N2}", ancho));
+        var medioTexto = FormatearMedioPago(recibo.MetodoPago);
+        sb.AppendLine(AlinearExtremos("Medio de Pago:", medioTexto, ancho));
+        sb.AppendLine(sepDoble);
+        sb.AppendLine(AlinearExtremos("SALDO PENDIENTE:", $"${recibo.SaldoRestante:N2}", ancho));
+        sb.AppendLine(sepDoble);
+
+        // 5. Observaciones
+        if (!string.IsNullOrWhiteSpace(recibo.Observaciones))
+        {
+            sb.AppendLine("OBSERVACIONES / DETALLE:");
+            sb.AppendLine(recibo.Observaciones.Trim());
+            sb.AppendLine(sepSimple);
+        }
+
+        // 6. Firma y pie
+        sb.AppendLine();
+        sb.AppendLine(Centrar("--------------------------------", ancho));
+        sb.AppendLine(Centrar("Firma y Aclaración", ancho));
+        sb.AppendLine();
+        sb.AppendLine(Centrar("*** COMPROBANTE NO VÁLIDO COMO FACTURA ***", ancho));
+        sb.AppendLine(Centrar("*** MR SYS - GESTION COMERCIAL ***", ancho));
 
         return Task.FromResult(sb.ToString());
     }
