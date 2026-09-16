@@ -33,7 +33,10 @@ public class GestionNegocioTests
             Telefono = "+54 11 9988-7766",
             Cuit = "20-11223344-5",
             PorcentajeDescuentoEfectivo = 15m,
-            MargenGananciaSugerido = 70m
+            MargenGananciaSugerido = 70m,
+            Pais = "Chile",
+            SimboloMoneda = "$",
+            BilletesHabilitados = "1000,2000,5000,10000,20000"
         };
 
         await service.GuardarConfiguracionAsync(dto);
@@ -42,6 +45,8 @@ public class GestionNegocioTests
         guardado.NombreComercio.Should().Be("Librería Central San Martín");
         guardado.PorcentajeDescuentoEfectivo.Should().Be(15m);
         guardado.MargenGananciaSugerido.Should().Be(70m);
+        guardado.Pais.Should().Be("Chile");
+        guardado.BilletesHabilitados.Should().Be("1000,2000,5000,10000,20000");
     }
 
     [Fact]

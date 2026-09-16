@@ -25,6 +25,9 @@ public class ConfiguracionNegocioDto
     public decimal TopeMensualRetiroDueño { get; set; } = 700000m;
 
     public string TemaInterfaz { get; set; } = "Light";
+    public string Pais { get; set; } = "Argentina";
+    public string SimboloMoneda { get; set; } = "$";
+    public string BilletesHabilitados { get; set; } = "100,200,500,1000,2000,10000,20000";
 
     public string GitHubRepoOwner { get; set; } = "mrrichar11";
     public string GitHubRepoName { get; set; } = "puntoVentaLibreriaMR";

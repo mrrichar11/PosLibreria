@@ -74,16 +74,53 @@ public partial class CobroModalViewModel : ObservableObject
 
     public event Action? OnCerrar;
 
-    public CobroModalViewModel(decimal totalACobrar, IEnumerable<ClienteDto>? clientes = null)
+    public ObservableCollection<BilleteRapidoDto> BilletesDisponibles { get; } = new();
+
+    [ObservableProperty]
+    private string _simboloMoneda = "$";
+
+    public CobroModalViewModel(
+        decimal totalACobrar, 
+        IEnumerable<ClienteDto>? clientes = null,
+        string? billetesConfig = null,
+        string? simboloMoneda = null)
     {
         TotalACobrar = totalACobrar;
         MontoEntregado = totalACobrar;
+
+        if (!string.IsNullOrWhiteSpace(simboloMoneda))
+        {
+            SimboloMoneda = simboloMoneda.Trim();
+        }
 
         if (clientes != null)
         {
             foreach (var c in clientes)
             {
                 ClientesDisponibles.Add(c);
+            }
+        }
+
+        CargarBilletes(billetesConfig);
+    }
+
+    private void CargarBilletes(string? billetesConfig)
+    {
+        BilletesDisponibles.Clear();
+        var texto = string.IsNullOrWhiteSpace(billetesConfig)
+            ? "100,200,500,1000,2000,10000,20000"
+            : billetesConfig;
+
+        var partes = texto.Split(',', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var p in partes)
+        {
+            if (decimal.TryParse(p.Trim(), out var valor) && valor > 0)
+            {
+                BilletesDisponibles.Add(new BilleteRapidoDto
+                {
+                    Valor = valor,
+                    Etiqueta = $"{SimboloMoneda}{valor:N0}"
+                });
             }
         }
     }
@@ -233,4 +270,10 @@ public partial class CobroModalViewModel : ObservableObject
         VentaConfirmada = false;
         OnCerrar?.Invoke();
     }
+}
+
+public class BilleteRapidoDto
+{
+    public decimal Valor { get; set; }
+    public string Etiqueta { get; set; } = string.Empty;
 }

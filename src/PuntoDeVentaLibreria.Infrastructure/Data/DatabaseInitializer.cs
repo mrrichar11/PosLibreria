@@ -9,7 +9,26 @@ public static class DatabaseInitializer
         // 1. Asegura creación de tablas
         await context.Database.EnsureCreatedAsync(cancellationToken);
 
-        // 2. Optimización WAL para SQLite
+        // 2. Migración segura de nuevas columnas si la base de datos ya existía
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN Pais TEXT NOT NULL DEFAULT 'Argentina';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN SimboloMoneda TEXT NOT NULL DEFAULT '$';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN BilletesHabilitados TEXT NOT NULL DEFAULT '100,200,500,1000,2000,10000,20000';", cancellationToken);
+        }
+        catch { }
+
+        // 3. Optimización WAL para SQLite
         try
         {
             await context.Database.ExecuteSqlRawAsync("PRAGMA journal_mode = WAL;", cancellationToken);

@@ -14,6 +14,7 @@ public partial class PosViewModel : ObservableObject
     private readonly IVentaService _ventaService;
     private readonly ICajaService _cajaService;
     private readonly IClienteService _clienteService;
+    private readonly IConfiguracionService _configuracionService;
 
     [ObservableProperty]
     private string _codigoBarrasInput = string.Empty;
@@ -63,12 +64,14 @@ public partial class PosViewModel : ObservableObject
         IInventarioService inventarioService,
         IVentaService ventaService,
         ICajaService cajaService,
-        IClienteService clienteService)
+        IClienteService clienteService,
+        IConfiguracionService configuracionService)
     {
         _inventarioService = inventarioService ?? throw new ArgumentNullException(nameof(inventarioService));
         _ventaService = ventaService ?? throw new ArgumentNullException(nameof(ventaService));
         _cajaService = cajaService ?? throw new ArgumentNullException(nameof(cajaService));
         _clienteService = clienteService ?? throw new ArgumentNullException(nameof(clienteService));
+        _configuracionService = configuracionService ?? throw new ArgumentNullException(nameof(configuracionService));
 
         Items.CollectionChanged += (s, e) => RecalcularTotales();
     }
@@ -425,8 +428,9 @@ public partial class PosViewModel : ObservableObject
             await RecargarCajaAsync();
         }
 
+        var config = await _configuracionService.ObtenerConfiguracionAsync();
         var clientes = await _clienteService.BuscarClientesAsync(string.Empty);
-        var cobroVm = new CobroModalViewModel(TotalVenta, clientes);
+        var cobroVm = new CobroModalViewModel(TotalVenta, clientes, config.BilletesHabilitados, config.SimboloMoneda);
 
         if (SolicitarCobroDialogo != null)
         {

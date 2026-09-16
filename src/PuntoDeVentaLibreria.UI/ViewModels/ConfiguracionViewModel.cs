@@ -62,6 +62,17 @@ public partial class ConfiguracionViewModel : ObservableObject
 
     public ObservableCollection<string> ImpresorasDisponibles { get; } = new();
     public ObservableCollection<BackupInfoDto> HistorialBackups { get; } = new();
+    public ObservableCollection<string> PaisesDisponibles { get; } = new()
+    {
+        "Argentina",
+        "Chile",
+        "Uruguay",
+        "Estados Unidos",
+        "España / Europa",
+        "México",
+        "Colombia",
+        "Personalizado"
+    };
 
     public event Action? OnConfiguracionGuardada;
 
@@ -77,6 +88,47 @@ public partial class ConfiguracionViewModel : ObservableObject
         _updateService = updateService ?? throw new ArgumentNullException(nameof(updateService));
         _backupService = backupService ?? throw new ArgumentNullException(nameof(backupService));
         _ticketPrinterService = ticketPrinterService ?? throw new ArgumentNullException(nameof(ticketPrinterService));
+    }
+
+    [RelayCommand]
+    public void SeleccionarPais(string? pais)
+    {
+        if (string.IsNullOrWhiteSpace(pais)) return;
+        Config.Pais = pais;
+
+        switch (pais)
+        {
+            case "Argentina":
+                Config.SimboloMoneda = "$";
+                Config.BilletesHabilitados = "100,200,500,1000,2000,10000,20000";
+                break;
+            case "Chile":
+                Config.SimboloMoneda = "$";
+                Config.BilletesHabilitados = "1000,2000,5000,10000,20000";
+                break;
+            case "Uruguay":
+                Config.SimboloMoneda = "$";
+                Config.BilletesHabilitados = "20,50,100,200,500,1000,2000";
+                break;
+            case "Estados Unidos":
+                Config.SimboloMoneda = "US$";
+                Config.BilletesHabilitados = "1,2,5,10,20,50,100";
+                break;
+            case "España / Europa":
+                Config.SimboloMoneda = "€";
+                Config.BilletesHabilitados = "5,10,20,50,100,200";
+                break;
+            case "México":
+                Config.SimboloMoneda = "$";
+                Config.BilletesHabilitados = "20,50,100,200,500,1000";
+                break;
+            case "Colombia":
+                Config.SimboloMoneda = "$";
+                Config.BilletesHabilitados = "2000,5000,10000,20000,50000,100000";
+                break;
+        }
+
+        OnPropertyChanged(nameof(Config));
     }
 
     public async Task CargarDatosAsync()

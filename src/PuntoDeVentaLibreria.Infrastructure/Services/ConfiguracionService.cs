@@ -47,6 +47,9 @@ public class ConfiguracionService : IConfiguracionService
             TopeFiadoDefecto = config.TopeFiadoDefecto,
             TopeMensualRetiroDueño = config.TopeMensualRetiroDueño,
             TemaInterfaz = config.TemaInterfaz,
+            Pais = config.Pais,
+            SimboloMoneda = config.SimboloMoneda,
+            BilletesHabilitados = config.BilletesHabilitados,
             GitHubRepoOwner = config.GitHubRepoOwner,
             GitHubRepoName = config.GitHubRepoName
         };
@@ -79,6 +82,9 @@ public class ConfiguracionService : IConfiguracionService
         config.TopeFiadoDefecto = dto.TopeFiadoDefecto;
         config.TopeMensualRetiroDueño = dto.TopeMensualRetiroDueño;
         config.TemaInterfaz = dto.TemaInterfaz;
+        config.Pais = string.IsNullOrWhiteSpace(dto.Pais) ? "Argentina" : dto.Pais.Trim();
+        config.SimboloMoneda = string.IsNullOrWhiteSpace(dto.SimboloMoneda) ? "$" : dto.SimboloMoneda.Trim();
+        config.BilletesHabilitados = string.IsNullOrWhiteSpace(dto.BilletesHabilitados) ? "100,200,500,1000,2000,10000,20000" : dto.BilletesHabilitados.Trim();
         config.GitHubRepoOwner = dto.GitHubRepoOwner.Trim();
         config.GitHubRepoName = dto.GitHubRepoName.Trim();
 

@@ -18,4 +18,12 @@ public partial class ConfiguracionView : UserControl
             await ViewModel.CargarDatosAsync();
         };
     }
+
+    private void CmbPais_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CmbPais.SelectedItem is string pais)
+        {
+            ViewModel.SeleccionarPais(pais);
+        }
+    }
 }
