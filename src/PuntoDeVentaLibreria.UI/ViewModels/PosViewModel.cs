@@ -13,21 +13,16 @@ public partial class PosViewModel : ObservableObject
     private readonly IInventarioService _inventarioService;
     private readonly IVentaService _ventaService;
     private readonly ICajaService _cajaService;
+    private readonly IClienteService _clienteService;
 
     [ObservableProperty]
     private string _codigoBarrasInput = string.Empty;
 
     [ObservableProperty]
-    private string _mensajeEstado = "Listo para escanear artículos...";
+    private string _usuarioActual = "Cajero Principal";
 
     [ObservableProperty]
-    private bool _esCajaAbierta;
-
-    [ObservableProperty]
-    private string _usuarioActual = "Cajero";
-
-    [ObservableProperty]
-    private string _numeroComprobanteUltimaVenta = "-";
+    private string _mensajeEstado = "Listo para escanear o buscar artículos.";
 
     [ObservableProperty]
     private decimal _subtotalBruto;
@@ -37,6 +32,12 @@ public partial class PosViewModel : ObservableObject
 
     [ObservableProperty]
     private decimal _totalVenta;
+
+    [ObservableProperty]
+    private bool _esCajaAbierta;
+
+    [ObservableProperty]
+    private string _numeroComprobanteUltimaVenta = "---";
 
     [ObservableProperty]
     private decimal _cantidadArticulos;
@@ -51,11 +52,16 @@ public partial class PosViewModel : ObservableObject
     public Func<IReadOnlyList<ArticuloDto>, string, Task<ArticuloDto?>>? SolicitarSeleccionArticulo { get; set; }
     public Func<Task<(string descripcion, decimal precio, decimal cantidad)?>>? SolicitarVentaManualDialogo { get; set; }
 
-    public PosViewModel(IInventarioService inventarioService, IVentaService ventaService, ICajaService cajaService)
+    public PosViewModel(
+        IInventarioService inventarioService,
+        IVentaService ventaService,
+        ICajaService cajaService,
+        IClienteService clienteService)
     {
         _inventarioService = inventarioService ?? throw new ArgumentNullException(nameof(inventarioService));
         _ventaService = ventaService ?? throw new ArgumentNullException(nameof(ventaService));
         _cajaService = cajaService ?? throw new ArgumentNullException(nameof(cajaService));
+        _clienteService = clienteService ?? throw new ArgumentNullException(nameof(clienteService));
 
         Items.CollectionChanged += (s, e) => RecalcularTotales();
     }
@@ -281,7 +287,8 @@ public partial class PosViewModel : ObservableObject
             await RecargarCajaAsync();
         }
 
-        var cobroVm = new CobroModalViewModel(TotalVenta);
+        var clientes = await _clienteService.BuscarClientesAsync(string.Empty);
+        var cobroVm = new CobroModalViewModel(TotalVenta, clientes);
 
         if (SolicitarCobroDialogo != null)
         {
@@ -300,6 +307,9 @@ public partial class PosViewModel : ObservableObject
             var ventaDto = new RegistrarVentaDto
             {
                 TurnoCajaId = TurnoActivoId!.Value,
+                ClienteId = cobroVm.ClienteSeleccionado?.Id,
+                ClienteNombre = cobroVm.NombreCliente,
+                ReferenciaPago = cobroVm.ReferenciaPago,
                 VendedoraNombre = UsuarioActual,
                 MetodoPago = cobroVm.MetodoPago,
                 CantidadCuotas = cobroVm.CantidadCuotas,
@@ -322,7 +332,7 @@ public partial class PosViewModel : ObservableObject
             var resultado = await _ventaService.ProcesarVentaAsync(ventaDto);
 
             NumeroComprobanteUltimaVenta = resultado.NumeroComprobante;
-            MensajeEstado = $"¡Venta {resultado.NumeroComprobante} confirmada exitosamente! Total: ${resultado.TotalCobrado:N2}";
+            MensajeEstado = $"¡Venta {resultado.NumeroComprobante} confirmada exitosamente ({cobroVm.NombreCliente})! Total: ${resultado.TotalCobrado:N2}";
 
             Items.Clear();
             RecalcularTotales();

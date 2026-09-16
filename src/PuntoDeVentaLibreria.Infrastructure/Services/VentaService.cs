@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PuntoDeVentaLibreria.Application.DTOs.Ventas;
 using PuntoDeVentaLibreria.Application.Services;
 using PuntoDeVentaLibreria.Domain.Entities.Catalogo;
+using PuntoDeVentaLibreria.Domain.Entities.Clientes;
 using PuntoDeVentaLibreria.Domain.Entities.Finanzas;
 using PuntoDeVentaLibreria.Domain.Entities.Inventario;
 using PuntoDeVentaLibreria.Domain.Entities.Ventas;
@@ -131,22 +132,52 @@ public class VentaService : IVentaService
 
         venta.TotalCostoHistorico = totalCostoHistorico;
 
+        // Si se especificó un cliente registrado, asociarlo a la venta
+        Cliente? cliente = null;
+        if (dto.ClienteId.HasValue)
+        {
+            cliente = await _context.Clientes.FindAsync(new object[] { dto.ClienteId.Value }, ct);
+            if (cliente != null)
+            {
+                venta.ClienteId = cliente.Id;
+                // Si la venta es con Cuenta Corriente / Fiado, sumarle el saldo deudor
+                if (dto.MetodoPago == "CtaCte")
+                {
+                    cliente.SaldoDeudorActual += totalVenta;
+                }
+            }
+        }
+
         // Registrar Pago
         venta.Pagos.Add(new PagoVenta
         {
             VentaId = venta.Id,
             MetodoPago = dto.MetodoPago,
-            Monto = totalVenta
+            Monto = totalVenta,
+            ReferenciaOperacion = dto.ReferenciaPago
         });
 
-        // Registrar Ingreso en Movimientos de Caja
+        // Generar concepto detallado para trazabilidad de caja y movimientos
+        var clienteInfo = !string.IsNullOrWhiteSpace(dto.ClienteNombre) ? dto.ClienteNombre : (cliente?.NombreCompleto ?? "Consumidor Final");
+        var detalleRef = !string.IsNullOrWhiteSpace(dto.ReferenciaPago) ? $" - Ref/Titular: {dto.ReferenciaPago}" : string.Empty;
+
+        string concepto = dto.MetodoPago switch
+        {
+            "CtaCte" => $"Venta fiada Cta. Cte. {numeroComprobante} - Cliente: {clienteInfo}",
+            "Transferencia" => $"Cobro venta {numeroComprobante} (Transferencia{detalleRef})",
+            "Debito" => $"Cobro venta {numeroComprobante} (Débito{detalleRef})",
+            "Credito" => $"Cobro venta {numeroComprobante} (Crédito {dto.CantidadCuotas}c{detalleRef})",
+            _ => $"Cobro venta {numeroComprobante} (Efectivo - {clienteInfo})"
+        };
+
+        // Registrar en Movimientos de Caja
         _context.MovimientosCaja.Add(new MovimientoCaja
         {
             TurnoCajaId = turno.Id,
-            Tipo = TipoMovimientoCaja.IngresoVenta,
+            Tipo = dto.MetodoPago == "CtaCte" ? TipoMovimientoCaja.CobroCuentaCorriente : TipoMovimientoCaja.IngresoVenta,
             Monto = totalVenta,
             MetodoPago = dto.MetodoPago,
-            Concepto = $"Cobro venta {numeroComprobante} ({dto.MetodoPago})",
+            Concepto = concepto,
             UsuarioNombre = dto.VendedoraNombre,
             VentaId = venta.Id
         });
@@ -163,6 +194,7 @@ public class VentaService : IVentaService
             DescuentoMonto = dto.DescuentoEfectivoMonto,
             RecargoMonto = dto.RecargoCuotasMonto,
             MetodoPago = dto.MetodoPago,
+            ClienteNombre = clienteInfo,
             Fecha = venta.FechaVenta,
             Lineas = dto.Items
         };

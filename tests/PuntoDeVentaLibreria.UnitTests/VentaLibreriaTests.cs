@@ -179,4 +179,50 @@ public class VentaLibreriaTests
         var fotocopiaDb = await context.Articulos.FindAsync(fotocopia.Id);
         fotocopiaDb!.StockActual.Should().Be(9999);
     }
+
+    [Fact]
+    public async Task ProcesarVenta_CuentaCorrienteFiado_IncrementaSaldoDeudorCliente()
+    {
+        using var context = CrearContextoEnMemoria();
+        var turno = new TurnoCaja { MontoInicialEfectivo = 5000m, UsuarioApertura = "admin" };
+        context.TurnosCaja.Add(turno);
+
+        var cliente = new PuntoDeVentaLibreria.Domain.Entities.Clientes.Cliente
+        {
+            NombreCompleto = "Colegio Sarmiento",
+            PermiteFiado = true,
+            LimiteCredito = 50000m,
+            SaldoDeudorActual = 1000m
+        };
+        context.Clientes.Add(cliente);
+        await context.SaveChangesAsync();
+
+        var service = new VentaService(context);
+        var dto = new RegistrarVentaDto
+        {
+            TurnoCajaId = turno.Id,
+            ClienteId = cliente.Id,
+            ClienteNombre = cliente.NombreCompleto,
+            MetodoPago = "CtaCte",
+            Items = new List<ItemCarritoDto>
+            {
+                new()
+                {
+                    ArticuloId = null,
+                    Descripcion = "Resma A4 Autor",
+                    Cantidad = 2,
+                    PrecioUnitario = 4500m,
+                    EsVentaManual = true
+                }
+            }
+        };
+
+        var resultado = await service.ProcesarVentaAsync(dto);
+
+        resultado.TotalCobrado.Should().Be(9000m);
+        resultado.ClienteNombre.Should().Be("Colegio Sarmiento");
+
+        var clienteDb = await context.Clientes.FindAsync(cliente.Id);
+        clienteDb!.SaldoDeudorActual.Should().Be(10000m); // 1000 anterior + 9000 de la compra fiada
+    }
 }

@@ -4,6 +4,8 @@ public class RegistrarVentaDto
 {
     public Guid TurnoCajaId { get; set; }
     public Guid? ClienteId { get; set; }
+    public string? ClienteNombre { get; set; }
+    public string? ReferenciaPago { get; set; }
     public string VendedoraNombre { get; set; } = "Cajero";
     public List<ItemCarritoDto> Items { get; set; } = new();
     public string MetodoPago { get; set; } = "Efectivo"; // Efectivo, Debito, Credito, Transferencia, CtaCte
