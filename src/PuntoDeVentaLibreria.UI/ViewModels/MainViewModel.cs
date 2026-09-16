@@ -93,13 +93,17 @@ public partial class MainViewModel : ObservableObject
             {
                 EstadoCajaTexto = "CAJA ABIERTA";
                 ColorFondoEstadoCaja = "#10B981"; // Verde
-                UsuarioActivoTexto = $"Turno de {turno.UsuarioApertura} ({turno.FechaApertura:HH:mm})";
             }
             else
             {
                 EstadoCajaTexto = "CAJA CERRADA";
                 ColorFondoEstadoCaja = "#EF4444"; // Rojo
-                UsuarioActivoTexto = "Sin turno abierto";
+            }
+
+            if (SesionActual != null)
+            {
+                var turnoInfo = turno != null ? $"Turno #{turno.Id.ToString()[..4]} ({turno.UsuarioApertura})" : "Caja sin abrir";
+                UsuarioActivoTexto = $"👤 {SesionActual.NombreCompleto} ({SesionActual.Rol}) · {turnoInfo}";
             }
         }
         catch { }

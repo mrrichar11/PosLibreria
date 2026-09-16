@@ -26,6 +26,11 @@ public partial class LoginWindow : Window
             {
                 BorderError.Visibility = string.IsNullOrWhiteSpace(ViewModel.MensajeError) ? Visibility.Collapsed : Visibility.Visible;
             }
+            else if (e.PropertyName == nameof(ViewModel.Username))
+            {
+                TxtPassword.Password = string.Empty;
+                TxtPassword.Focus();
+            }
         };
 
         Loaded += async (s, e) =>
@@ -34,11 +39,11 @@ public partial class LoginWindow : Window
             TxtPassword.Focus();
         };
 
-        KeyDown += (s, e) =>
+        TxtUsuario.KeyDown += (s, e) =>
         {
             if (e.Key == Key.Enter)
             {
-                BtnIngresar_Click(this, new RoutedEventArgs());
+                TxtPassword.Focus();
                 e.Handled = true;
             }
         };
@@ -46,6 +51,7 @@ public partial class LoginWindow : Window
 
     private async void BtnIngresar_Click(object sender, RoutedEventArgs e)
     {
+        if (ViewModel.EstaCargando) return;
         ViewModel.Password = TxtPassword.Password;
         await ViewModel.IniciarSesionCommand.ExecuteAsync(null);
     }

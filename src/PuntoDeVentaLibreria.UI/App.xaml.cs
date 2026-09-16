@@ -96,33 +96,48 @@ public partial class App : System.Windows.Application
 
     private void IniciarFlujoLogin()
     {
-        var loginWindow = _host!.Services.GetRequiredService<LoginWindow>();
-        var loginResult = loginWindow.ShowDialog();
-
-        if (loginResult == true && loginWindow.ViewModel.SesionAutenticada != null)
+        try
         {
-            var sesion = loginWindow.ViewModel.SesionAutenticada;
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
-            var mainVm = _host.Services.GetRequiredService<MainViewModel>();
-            mainVm.EstablecerSesion(sesion);
+            var loginWindow = _host!.Services.GetRequiredService<LoginWindow>();
+            var loginResult = loginWindow.ShowDialog();
 
-            var posVm = _host.Services.GetRequiredService<PosViewModel>();
-            posVm.UsuarioActual = sesion.NombreCompleto;
+            if (loginResult == true && loginWindow.ViewModel.SesionAutenticada != null)
+            {
+                var sesion = loginWindow.ViewModel.SesionAutenticada;
 
-            var mainWindow = _host.Services.GetRequiredService<MainWindow>();
-            mainWindow.OnCerrarSesionSolicitado -= HandleCerrarSesion;
-            mainWindow.OnCerrarSesionSolicitado += HandleCerrarSesion;
+                var mainVm = _host.Services.GetRequiredService<MainViewModel>();
+                mainVm.EstablecerSesion(sesion);
 
-            mainWindow.Show();
+                var posVm = _host.Services.GetRequiredService<PosViewModel>();
+                posVm.UsuarioActual = sesion.NombreCompleto;
+
+                var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+                mainWindow.OnCerrarSesionSolicitado -= HandleCerrarSesion;
+                mainWindow.OnCerrarSesionSolicitado += HandleCerrarSesion;
+
+                MainWindow = mainWindow;
+                ShutdownMode = ShutdownMode.OnMainWindowClose;
+
+                mainWindow.Show();
+                mainWindow.Activate();
+            }
+            else
+            {
+                Shutdown();
+            }
         }
-        else
+        catch (Exception ex)
         {
+            MessageBox.Show($"Error al iniciar el sistema:\n\n{ex.Message}\n\n{ex.StackTrace}", "Error de Inicio - MR SYS", MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown();
         }
     }
 
     private void HandleCerrarSesion()
     {
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
         var mainWindow = _host!.Services.GetRequiredService<MainWindow>();
         mainWindow.Hide();
         IniciarFlujoLogin();

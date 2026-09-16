@@ -68,6 +68,7 @@
                 <!-- Botón de Ingreso -->
                 <Button x:Name="BtnIngresar" Content="🔑 Ingresar al Sistema [ENTER]" 
                         Click="BtnIngresar_Click"
+                        IsDefault="True"
                         Background="#2563EB" Foreground="White" FontSize="14" FontWeight="Bold"
                         Padding="16,12" Cursor="Hand" Margin="0,0,0,16"/>
 
