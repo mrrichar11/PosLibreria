@@ -159,7 +159,12 @@ public class VentaService : IVentaService
             VentaId = venta.Id,
             NumeroComprobante = numeroComprobante,
             TotalCobrado = totalVenta,
-            Fecha = venta.FechaVenta
+            SubtotalBruto = subtotalBruto,
+            DescuentoMonto = dto.DescuentoEfectivoMonto,
+            RecargoMonto = dto.RecargoCuotasMonto,
+            MetodoPago = dto.MetodoPago,
+            Fecha = venta.FechaVenta,
+            Lineas = dto.Items
         };
     }
 }

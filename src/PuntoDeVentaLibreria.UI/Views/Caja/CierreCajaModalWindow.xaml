@@ -1,0 +1,71 @@
+<Window x:Class="PuntoDeVentaLibreria.UI.Views.Caja.CierreCajaModalWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Cierre y Arqueo de Caja" 
+        Height="520" Width="540"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F8FAFC"
+        FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Cabecera -->
+        <Border Grid.Row="0" Margin="0,0,0,16">
+            <StackPanel>
+                <TextBlock Text="ARQUEO Y CIERRE DE TURNO" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
+                <TextBlock Text="Declare el efectivo real físico presente en el cajón" FontSize="12" Foreground="#64748B"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Formulario Arqueo -->
+        <StackPanel Grid.Row="1">
+            <!-- Efectivo Estimado por Sistema -->
+            <Border Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Efectivo Teórico en Sistema:" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" x:Name="TxtEfectivoSistema" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
+                </Grid>
+            </Border>
+
+            <!-- Input Efectivo Real Físico -->
+            <TextBlock Text="Efectivo Real Físico Contado ($):" FontSize="13" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,6"/>
+            <TextBox x:Name="TxtEfectivoReal" FontSize="20" FontWeight="Bold" Padding="10,6" Margin="0,0,0,14" TextChanged="TxtEfectivoReal_TextChanged"/>
+
+            <!-- Diferencia de Caja -->
+            <Border x:Name="BrdDiferencia" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="LblTipoDiferencia" Text="Diferencia:" FontSize="13" FontWeight="Bold" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" x:Name="TxtDiferenciaMonto" Text="$0.00" FontSize="18" FontWeight="Bold"/>
+                </Grid>
+            </Border>
+
+            <!-- Observaciones -->
+            <TextBlock Text="Observaciones del Cierre:" FontSize="12" FontWeight="SemiBold" Foreground="#64748B" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtObservaciones" Height="60" TextWrapping="Wrap" AcceptsReturn="True" FontSize="12" Padding="6"/>
+        </StackPanel>
+
+        <!-- Botonera -->
+        <DockPanel Grid.Row="2" Margin="0,16,0,0">
+            <Button Content="Cancelar" Click="BtnCancelar_Click" Padding="16,8" FontSize="13" Cursor="Hand"/>
+            <Button Content="🔒 Cerrar Turno Definitivo" Click="BtnConfirmar_Click" HorizontalAlignment="Right"
+                    Background="#DC2626" Foreground="White" FontWeight="Bold" Padding="20,8" FontSize="13" Cursor="Hand"/>
+        </DockPanel>
+    </Grid>
+</Window>

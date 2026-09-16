@@ -6,6 +6,11 @@ using PuntoDeVentaLibreria.Application.Services;
 using PuntoDeVentaLibreria.Infrastructure.Data;
 using PuntoDeVentaLibreria.Infrastructure.Services;
 using PuntoDeVentaLibreria.UI.ViewModels;
+using PuntoDeVentaLibreria.UI.Views.Caja;
+using PuntoDeVentaLibreria.UI.Views.Clientes;
+using PuntoDeVentaLibreria.UI.Views.Configuracion;
+using PuntoDeVentaLibreria.UI.Views.Inventario;
+using PuntoDeVentaLibreria.UI.Views.Pos;
 
 namespace PuntoDeVentaLibreria.UI;
 
@@ -24,13 +29,31 @@ public partial class App : System.Windows.Application
                 services.AddDbContext<AppDbContext>(options =>
                     options.UseSqlite("Data Source=punto_venta_libreria.db"));
 
-                // Servicios de Aplicación
+                // Servicios de Dominio e Infraestructura
                 services.AddScoped<IInventarioService, InventarioService>();
                 services.AddScoped<IVentaService, VentaService>();
                 services.AddScoped<ICajaService, CajaService>();
+                services.AddScoped<IConfiguracionService, ConfiguracionService>();
+                services.AddScoped<IClienteService, ClienteService>();
+                services.AddScoped<ILicenseService, LicenseService>();
+                services.AddScoped<IUpdateService, GitHubUpdateService>();
+                services.AddScoped<IBackupService, BackupService>();
+                services.AddScoped<ITicketPrinterService, TicketPrinterService>();
 
-                // ViewModels y Ventanas
+                // ViewModels
+                services.AddSingleton<MainViewModel>();
                 services.AddSingleton<PosViewModel>();
+                services.AddSingleton<InventarioViewModel>();
+                services.AddSingleton<CajaViewModel>();
+                services.AddSingleton<ClientesViewModel>();
+                services.AddSingleton<ConfiguracionViewModel>();
+
+                // Vistas Principales (UserControls y Ventana)
+                services.AddSingleton<PosView>();
+                services.AddSingleton<InventarioView>();
+                services.AddSingleton<CajaView>();
+                services.AddSingleton<ClientesView>();
+                services.AddSingleton<ConfiguracionView>();
                 services.AddSingleton<MainWindow>();
             })
             .Build();

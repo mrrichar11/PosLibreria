@@ -1,0 +1,59 @@
+<Window x:Class="PuntoDeVentaLibreria.UI.Views.Clientes.CobroDeudaModalWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Cobro de Cuenta Corriente" 
+        Height="420" Width="480"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F8FAFC"
+        FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="ENTREGA / COBRO DE DEUDA" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
+            <TextBlock x:Name="TxtClienteInfo" Text="Cliente: -" FontSize="12" Foreground="#64748B"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1">
+            <Border Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Deuda Total Actual:" FontSize="13" FontWeight="SemiBold" Foreground="#991B1B" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="1" x:Name="TxtDeudaTotal" Text="$0.00" FontSize="18" FontWeight="Bold" Foreground="#DC2626"/>
+                </Grid>
+            </Border>
+
+            <TextBlock Text="Monto a Entregar / Cobrar ($):" FontSize="13" FontWeight="Bold" Margin="0,0,0,6"/>
+            <TextBox x:Name="TxtMontoEntrega" FontSize="20" FontWeight="Bold" Padding="8,6" Margin="0,0,0,12"/>
+
+            <TextBlock Text="Medio de Pago:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+            <ComboBox x:Name="CmbMetodo" SelectedIndex="0" Padding="8,6" Margin="0,0,0,10">
+                <ComboBoxItem Content="Efectivo"/>
+                <ComboBoxItem Content="Tarjeta Débito"/>
+                <ComboBoxItem Content="Tarjeta Crédito"/>
+                <ComboBoxItem Content="Transferencia / QR"/>
+            </ComboBox>
+
+            <TextBlock Text="Observaciones / Comprobante:" FontSize="12" Foreground="#64748B" Margin="0,0,0,4"/>
+            <TextBox x:Name="TxtObservaciones" Text="Pago a cuenta corriente" Padding="6,4"/>
+        </StackPanel>
+
+        <DockPanel Grid.Row="2" Margin="0,16,0,0">
+            <Button Content="Cancelar" Click="BtnCancelar_Click" Padding="16,8" FontSize="13" Cursor="Hand"/>
+            <Button Content="✔ Asentar Cobro en Caja" Click="BtnConfirmar_Click" HorizontalAlignment="Right"
+                    Background="#16A34A" Foreground="White" FontWeight="Bold" Padding="20,8" FontSize="13" Cursor="Hand"/>
+        </DockPanel>
+    </Grid>
+</Window>

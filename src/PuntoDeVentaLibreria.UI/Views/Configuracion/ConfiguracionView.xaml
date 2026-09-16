@@ -1,0 +1,296 @@
+<UserControl x:Class="PuntoDeVentaLibreria.UI.Views.Configuracion.ConfiguracionView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:converters="clr-namespace:PuntoDeVentaLibreria.UI.Converters"
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="1100"
+             FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
+
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
+    </UserControl.Resources>
+
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Cabecera -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock Text="CONFIGURACIÓN DEL SISTEMA" FontSize="20" FontWeight="Bold" Foreground="#0F172A"/>
+                <TextBlock Text="Ajustes de comercio, finanzas, tickets, backups, licencia y actualizaciones" FontSize="12" Foreground="#64748B"/>
+            </StackPanel>
+
+            <Button Grid.Column="1" Content="💾 Guardar Cambios" Command="{Binding GuardarConfiguracionCommand}"
+                    Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="20,10" FontSize="14" Cursor="Hand"/>
+        </Grid>
+
+        <!-- Pestañas de Configuración -->
+        <TabControl Grid.Row="1" Background="White" BorderBrush="#E2E8F0" BorderThickness="1">
+            <!-- TAB 1: DATOS DEL COMERCIO -->
+            <TabItem Header="🏬 Datos del Comercio">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="700" HorizontalAlignment="Left">
+                        <TextBlock Text="INFORMACIÓN GENERAL DEL NEGOCIO" FontSize="14" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Nombre Comercial de la Librería:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding Config.NombreComercio, UpdateSourceTrigger=PropertyChanged}" FontSize="14" Padding="8,6" Margin="0,0,0,12"/>
+
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="CUIT / Identificación Tributaria:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding Config.Cuit, UpdateSourceTrigger=PropertyChanged}" FontSize="14" Padding="8,6"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Text="Teléfono / WhatsApp:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding Config.Telefono, UpdateSourceTrigger=PropertyChanged}" FontSize="14" Padding="8,6"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="Dirección / Domicilio del Local:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding Config.Direccion, UpdateSourceTrigger=PropertyChanged}" FontSize="14" Padding="8,6" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Vendedora / Cajero por Defecto:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding Config.VendedoraDefecto, UpdateSourceTrigger=PropertyChanged}" FontSize="14" Padding="8,6" Margin="0,0,0,12"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 2: FINANZAS & MEDIOS DE PAGO -->
+            <TabItem Header="💳 Finanzas &amp; Pagos">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="700" HorizontalAlignment="Left">
+                        <TextBlock Text="POLÍTICAS DE PRECIOS Y MEDIOS DE PAGO" FontSize="14" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,12"/>
+
+                        <Grid Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                <TextBlock Text="Descuento en Efectivo (%):" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding Config.PorcentajeDescuentoEfectivo, UpdateSourceTrigger=PropertyChanged, StringFormat='N1'}" FontSize="14" Padding="8,6"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                <TextBlock Text="Margen Ganancia Sugerido (%):" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding Config.MargenGananciaSugerido, UpdateSourceTrigger=PropertyChanged, StringFormat='N1'}" FontSize="14" Padding="8,6"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="Cuotas y Tarjetas:" FontSize="13" FontWeight="Bold" Foreground="#1E293B" Margin="0,8,0,8"/>
+
+                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <CheckBox Content="Habilitar Plan 3 Cuotas" IsChecked="{Binding Config.Habilitar3Cuotas}" FontWeight="Bold" Margin="0,0,0,6"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Recargo 3 Cuotas (%):" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBox Width="100" Text="{Binding Config.Recargo3Cuotas, UpdateSourceTrigger=PropertyChanged, StringFormat='N1'}" Padding="6,4"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                            <StackPanel>
+                                <CheckBox Content="Habilitar Plan 6 Cuotas" IsChecked="{Binding Config.Habilitar6Cuotas}" FontWeight="Bold" Margin="0,0,0,6"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="Recargo 6 Cuotas (%):" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBox Width="100" Text="{Binding Config.Recargo6Cuotas, UpdateSourceTrigger=PropertyChanged, StringFormat='N1'}" Padding="6,4"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Tope Mensual de Retiros de Dueño ($):" FontSize="12" FontWeight="SemiBold" Margin="0,8,0,4"/>
+                        <TextBox Text="{Binding Config.TopeMensualRetiroDueño, UpdateSourceTrigger=PropertyChanged, StringFormat='N2'}" FontSize="14" Padding="8,6"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 3: TICKETS & IMPRESIÓN -->
+            <TabItem Header="🖨 Tickets &amp; Impresión">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="700" HorizontalAlignment="Left">
+                        <TextBlock Text="CONFIGURACIÓN DE TICKETS TÉRMICOS" FontSize="14" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Impresora Térmica Instalada en Windows:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding ImpresorasDisponibles}" SelectedItem="{Binding ImpresoraSeleccionada}"
+                                  FontSize="13" Padding="8,6" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Ancho de Papel Térmico:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                            <RadioButton Content="80 mm (Estándar Mostrador)" IsChecked="True" Margin="0,0,16,0" FontWeight="SemiBold"/>
+                            <RadioButton Content="58 mm (Compacto)" FontWeight="SemiBold"/>
+                        </StackPanel>
+
+                        <Button Content="📄 Generar e Imprimir Ticket de Prueba" Command="{Binding ProbarTicketCommand}"
+                                Padding="16,8" FontWeight="Bold" Cursor="Hand" HorizontalAlignment="Left" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="💡 Nota: Todas las ventas generan automáticamente una copia de respaldo en la carpeta ./Tickets/" FontSize="12" Foreground="#64748B"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 4: APARIENCIA & TEMA -->
+            <TabItem Header="🎨 Apariencia &amp; Tema">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="700" HorizontalAlignment="Left">
+                        <TextBlock Text="SELECCIÓN DEL TEMA VISUAL FLUENT" FontSize="14" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,12"/>
+                        <TextBlock Text="Elija el contraste que prefiera para trabajar en mostrador:" FontSize="12" Foreground="#64748B" Margin="0,0,0,16"/>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,20">
+                            <!-- Modo Claro -->
+                            <Button Command="{Binding CambiarTemaCommand}" CommandParameter="Light"
+                                    Width="180" Height="100" Margin="0,0,16,0" Padding="10" Cursor="Hand" Background="White" BorderBrush="#CBD5E1" BorderThickness="2">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="☀️" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                    <TextBlock Text="Modo Claro" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" Foreground="#0F172A"/>
+                                    <TextBlock Text="Fondo luminoso" FontSize="11" Foreground="#64748B" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- Modo Oscuro -->
+                            <Button Command="{Binding CambiarTemaCommand}" CommandParameter="Dark"
+                                    Width="180" Height="100" Padding="10" Cursor="Hand" Background="#0F172A" BorderBrush="#334155" BorderThickness="2">
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="🌙" FontSize="26" HorizontalAlignment="Center" Margin="0,0,0,6"/>
+                                    <TextBlock Text="Modo Oscuro" FontWeight="Bold" FontSize="14" HorizontalAlignment="Center" Foreground="White"/>
+                                    <TextBlock Text="Alto contraste" FontSize="11" Foreground="#94A3B8" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 5: PLAN MENSUAL & LICENCIA -->
+            <TabItem Header="🔑 Plan Mensual &amp; Licencia">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="700" HorizontalAlignment="Left">
+                        <TextBlock Text="ESTADO DE LA SUSCRIPCIÓN" FontSize="14" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,12"/>
+
+                        <!-- Estado Actual Card -->
+                        <Border Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding EstadoLicencia.PlanNombre}" FontSize="15" FontWeight="Bold" Foreground="#0F172A"/>
+                                    <Border Grid.Column="1" Background="#2563EB" CornerRadius="6" Padding="8,4">
+                                        <TextBlock Text="{Binding EstadoLicencia.DiasRestantes, StringFormat='{}{0} DÍAS RESTANTES'}" Foreground="White" FontWeight="Bold" FontSize="11"/>
+                                    </Border>
+                                </Grid>
+                                <TextBlock Text="{Binding EstadoLicencia.Mensaje}" FontSize="12" Foreground="#475569" Margin="0,0,0,6"/>
+                                <TextBlock Text="{Binding EstadoLicencia.CodigoInstalacion, StringFormat='ID de Máquina: {0}'}" FontFamily="Consolas" FontSize="12" Foreground="#64748B"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Input Clave de Activación -->
+                        <TextBlock Text="Activar o Renovar Plan Mensual:" FontSize="13" FontWeight="Bold" Margin="0,0,0,6"/>
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox Text="{Binding ClaveActivacionInput, UpdateSourceTrigger=PropertyChanged}"
+                                     FontSize="14" FontFamily="Consolas" Padding="8,6" Margin="0,0,10,0"/>
+                            <Button Grid.Column="1" Content="✔ Activar Clave" Command="{Binding ActivarLicenciaCommand}"
+                                    Background="#16A34A" Foreground="White" FontWeight="Bold" Padding="16,8" Cursor="Hand"/>
+                        </Grid>
+
+                        <TextBlock Text="{Binding MensajeActivacion}" FontWeight="Bold" Foreground="#2563EB" FontSize="12"/>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 6: ACTUALIZACIONES -->
+            <TabItem Header="🚀 Actualizaciones">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="700" HorizontalAlignment="Left">
+                        <TextBlock Text="ACTUALIZADOR OFICIAL EN 1 CLIC" FontSize="14" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,12"/>
+
+                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="{Binding ActualizacionInfo.VersionActual, StringFormat='Versión Instalada: v{0}'}" FontSize="14" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,6"/>
+                                <TextBlock Text="{Binding MensajeActualizacion}" FontSize="13" Foreground="#475569" Margin="0,0,0,12"/>
+
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="🔄 Buscar Nueva Versión" Command="{Binding BuscarActualizacionesCommand}"
+                                            Padding="14,8" FontWeight="SemiBold" Margin="0,0,10,0" Cursor="Hand"/>
+
+                                    <Button Content="⬇ Descargar e Instalar Ahora" Command="{Binding DescargarEInstalarActualizacionCommand}"
+                                            Visibility="{Binding ActualizacionInfo.HayActualizacion, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                            Background="#16A34A" Foreground="White" FontWeight="Bold" Padding="16,8" Cursor="Hand"/>
+                                </StackPanel>
+
+                                <!-- Barra de Progreso -->
+                                <ProgressBar Value="{Binding ProgresoDescarga}" Height="10" Margin="0,12,0,0"
+                                             Visibility="{Binding EstaDescargandoActualizacion, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 7: COPIAS DE SEGURIDAD -->
+            <TabItem Header="🛡 Copias de Seguridad">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel HorizontalAlignment="Stretch">
+                        <Grid Margin="0,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="RESPALDO SEGURO DE LA BASE DE DATOS (SQLITE)" FontSize="14" FontWeight="Bold" Foreground="#1E293B"/>
+                                <TextBlock Text="Las copias son atómicas y protegen todas sus ventas, artículos y clientes" FontSize="12" Foreground="#64748B"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="💾 Crear Copia de Seguridad Ahora" Command="{Binding CrearBackupAhoraCommand}"
+                                    Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="16,8" Cursor="Hand"/>
+                        </Grid>
+
+                        <TextBlock Text="{Binding MensajeBackup}" FontWeight="Bold" Foreground="#16A34A" FontSize="12" Margin="0,0,0,12"/>
+
+                        <!-- Historial -->
+                        <TextBlock Text="Copias de Seguridad Disponibles:" FontSize="13" FontWeight="Bold" Foreground="#1E293B" Margin="0,8,0,8"/>
+                        <DataGrid ItemsSource="{Binding HistorialBackups}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  HeadersVisibility="Column"
+                                  GridLinesVisibility="Horizontal"
+                                  Height="240"
+                                  RowHeight="36"
+                                  FontSize="12">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Archivo de Copia" Binding="{Binding NombreArchivo}" Width="*"/>
+                                <DataGridTextColumn Header="Fecha / Hora" Binding="{Binding FechaCreacion, StringFormat='dd/MM/yyyy HH:mm'}" Width="150"/>
+                                <DataGridTextColumn Header="Tamaño" Binding="{Binding TamañoFormateado}" Width="100"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <!-- Barra Inferior de Estado -->
+        <TextBlock Grid.Row="2" Text="{Binding MensajeGuardado}" Foreground="#16A34A" FontWeight="Bold" FontSize="13" Margin="0,10,0,0"/>
+    </Grid>
+</UserControl>

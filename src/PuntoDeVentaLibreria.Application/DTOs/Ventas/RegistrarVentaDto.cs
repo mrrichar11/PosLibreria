@@ -17,5 +17,11 @@ public class VentaRealizadaDto
     public Guid VentaId { get; set; }
     public string NumeroComprobante { get; set; } = string.Empty;
     public decimal TotalCobrado { get; set; }
+    public decimal SubtotalBruto { get; set; }
+    public decimal DescuentoMonto { get; set; }
+    public decimal RecargoMonto { get; set; }
+    public string MetodoPago { get; set; } = "Efectivo";
+    public string? ClienteNombre { get; set; }
     public DateTime Fecha { get; set; }
+    public List<ItemCarritoDto> Lineas { get; set; } = new();
 }
