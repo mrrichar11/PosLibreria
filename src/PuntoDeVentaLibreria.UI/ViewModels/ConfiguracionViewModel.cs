@@ -173,6 +173,8 @@ public partial class ConfiguracionViewModel : ObservableObject
         catch { }
 
         await CargarHistorialBackupsAsync();
+        ActualizacionInfo.VersionActual = _updateService.ObtenerVersionActual();
+        OnPropertyChanged(nameof(ActualizacionInfo));
         OnPropertyChanged(nameof(EsPapel80Mm));
         OnPropertyChanged(nameof(EsPapel58Mm));
     }
@@ -234,6 +236,15 @@ public partial class ConfiguracionViewModel : ObservableObject
         {
             MensajeActualizacion = $"Tiene instalada la versión más reciente (v{res.VersionActual}).";
         }
+    }
+
+    [RelayCommand]
+    private void AbrirVentanaActualizacion()
+    {
+        if (ActualizacionInfo == null || !ActualizacionInfo.HayActualizacion) return;
+        var modal = new Views.ActualizacionModalWindow(ActualizacionInfo, _updateService);
+        modal.Owner = System.Windows.Application.Current.MainWindow;
+        modal.ShowDialog();
     }
 
     [RelayCommand]

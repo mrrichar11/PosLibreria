@@ -36,7 +36,7 @@ public class ConfiguracionNegocioDto
     public bool MostrarVistaPreviaTicket { get; set; } = true;
 
     public string GitHubRepoOwner { get; set; } = "mrrichar11";
-    public string GitHubRepoName { get; set; } = "puntoVentaLibreriaMR";
+    public string GitHubRepoName { get; set; } = "PosLibreria";
 }
 
 public class EstadoRetirosDueñoDto

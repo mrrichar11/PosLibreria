@@ -39,13 +39,16 @@ public partial class MainViewModel : ObservableObject
     private bool _hayActualizacionDisponible;
 
     [ObservableProperty]
-    private string _nuevaVersionTexto = "v1.0.1";
+    private string _nuevaVersionTexto = string.Empty;
+
+    [ObservableProperty]
+    private PuntoDeVentaLibreria.Application.DTOs.Sistema.ActualizacionDto? _actualizacionDisponible;
 
     [ObservableProperty]
     private string _statusBarIzquierdaTexto = "Librería & Regalería · Base SQLite Activa";
 
     [ObservableProperty]
-    private string _statusBarDerechaTexto = "MR SYS v1.0.0 · ONLINE";
+    private string _statusBarDerechaTexto = "MR SYS ONLINE";
 
     public MainViewModel(
         IConfiguracionService configuracionService,
@@ -57,6 +60,8 @@ public partial class MainViewModel : ObservableObject
         _cajaService = cajaService ?? throw new ArgumentNullException(nameof(cajaService));
         _licenseService = licenseService ?? throw new ArgumentNullException(nameof(licenseService));
         _updateService = updateService ?? throw new ArgumentNullException(nameof(updateService));
+
+        StatusBarDerechaTexto = $"MR SYS v{_updateService.ObtenerVersionActual()} · ONLINE";
     }
 
     public void EstablecerSesion(PuntoDeVentaLibreria.Application.DTOs.Seguridad.SesionUsuarioDto sesion)
@@ -128,6 +133,16 @@ public partial class MainViewModel : ObservableObject
         catch { }
     }
 
+    [RelayCommand]
+    private void AbrirActualizacionModal()
+    {
+        if (ActualizacionDisponible == null) return;
+
+        var modal = new Views.ActualizacionModalWindow(ActualizacionDisponible, _updateService);
+        modal.Owner = System.Windows.Application.Current.MainWindow;
+        modal.ShowDialog();
+    }
+
     private async Task VerificarActualizacionesEnSegundoPlanoAsync()
     {
         try
@@ -136,6 +151,7 @@ public partial class MainViewModel : ObservableObject
             var res = await _updateService.VerificarActualizacionesAsync(config.GitHubRepoOwner, config.GitHubRepoName);
             if (res.HayActualizacion)
             {
+                ActualizacionDisponible = res;
                 HayActualizacionDisponible = true;
                 NuevaVersionTexto = res.VersionDisponible;
             }

@@ -26,6 +26,13 @@ public class ConfiguracionService : IConfiguracionService
             await _context.SaveChangesAsync(cancellationToken);
         }
 
+        if (string.IsNullOrWhiteSpace(config.GitHubRepoName) || config.GitHubRepoName == "puntoVentaLibreriaMR")
+        {
+            config.GitHubRepoName = "PosLibreria";
+            config.GitHubRepoOwner = string.IsNullOrWhiteSpace(config.GitHubRepoOwner) ? "mrrichar11" : config.GitHubRepoOwner;
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+
         return new ConfiguracionNegocioDto
         {
             Id = config.Id,

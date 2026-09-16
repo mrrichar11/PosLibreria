@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\PuntoDeVentaLibreria.Domain\PuntoDeVentaLibreria.Domain.csproj" />
@@ -19,10 +19,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <ApplicationIcon>Assets\mr_sys_icon.ico</ApplicationIcon>
-    <AssemblyTitle>MR SYS Librería &amp; Regalería</AssemblyTitle>
-    <Product>MR SYS Retail - Librería &amp; Regalería</Product>
+    <AssemblyTitle>MR SYS LibrerÃ­a &amp; RegalerÃ­a</AssemblyTitle>
+    <Product>MR SYS Retail - LibrerÃ­a &amp; RegalerÃ­a</Product>
     <Company>MR SYS</Company>
-    <Copyright>© 2026 MR SYS. Todos los derechos reservados.</Copyright>
+    <Copyright>Â© 2026 MR SYS. Todos los derechos reservados.</Copyright>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
     <FileVersion>1.0.0.0</FileVersion>
     <Version>1.0.0</Version>
@@ -33,3 +33,4 @@
   </ItemGroup>
 
 </Project>
+

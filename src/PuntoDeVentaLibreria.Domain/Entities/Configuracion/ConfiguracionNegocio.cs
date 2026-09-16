@@ -42,5 +42,5 @@ public class ConfiguracionNegocio : BaseEntity
 
     // Actualizaciones Oficiales Silenciosas
     public string GitHubRepoOwner { get; set; } = "mrrichar11";
-    public string GitHubRepoName { get; set; } = "puntoVentaLibreriaMR";
+    public string GitHubRepoName { get; set; } = "PosLibreria";
 }

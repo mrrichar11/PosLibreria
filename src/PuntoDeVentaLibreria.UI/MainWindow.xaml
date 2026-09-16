@@ -43,11 +43,23 @@
 
                 <!-- Estado del Turno, Licencia y Actualización -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- Badge Actualización si hay -->
-                    <Border Margin="0,0,8,0" Padding="8,4" CornerRadius="6" Background="#FEF08A"
+                    <!-- Botón Interactivo de Actualización si hay -->
+                    <Button Margin="0,0,8,0" Padding="10,4" Cursor="Hand"
+                            Command="{Binding AbrirActualizacionModalCommand}"
+                            ToolTip="Haga clic para ver las novedades e instalar la actualización oficial"
                             Visibility="{Binding HayActualizacionDisponible, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <TextBlock Text="{Binding NuevaVersionTexto, StringFormat='🚀 v{0} disponible'}" FontWeight="Bold" Foreground="#854D0E" FontSize="11"/>
-                    </Border>
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border Background="#FEF08A" BorderBrush="#FACC15" BorderThickness="1" CornerRadius="6" Padding="{TemplateBinding Padding}">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="🚀 v" FontWeight="Bold" Foreground="#854D0E" FontSize="11"/>
+                                        <TextBlock Text="{Binding NuevaVersionTexto}" FontWeight="Bold" Foreground="#854D0E" FontSize="11"/>
+                                        <TextBlock Text=" disponible (Clic aquí)" FontWeight="SemiBold" Foreground="#A16207" FontSize="11" Margin="4,0,0,0"/>
+                                    </StackPanel>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
 
                     <!-- Badge Estado Caja -->
                     <Border Margin="0,0,8,0" Padding="10,4" CornerRadius="6" Background="{Binding ColorFondoEstadoCaja}">

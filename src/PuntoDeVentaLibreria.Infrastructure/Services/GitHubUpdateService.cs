@@ -144,21 +144,143 @@ public class GitHubUpdateService : IUpdateService
 
     public void IniciarInstalacion(string rutaZipDescargado)
     {
-        var appDir = AppDomain.CurrentDomain.BaseDirectory;
-        var batchPath = Path.Combine(Path.GetTempPath(), "apply_update_libreria.bat");
+        var appDir = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\', '/');
+        var tempPath = Path.GetTempPath();
+        var ps1Path = Path.Combine(tempPath, "apply_update_libreria.ps1");
+        var batPath = Path.Combine(tempPath, "launch_update_libreria.bat");
 
-        var script = $@"@echo off
-timeout /t 2 /nobreak >nul
-powershell -Command ""Expand-Archive -Path '{rutaZipDescargado}' -DestinationPath '{appDir}' -Force""
-start """" ""{Path.Combine(appDir, "PuntoDeVentaLibreria.UI.exe")}""
+        var psScript = $@"# Script de actualizacion automatica segura para MR SYS Libreria
+$ErrorActionPreference = 'Continue'
+$logFile = Join-Path $env:TEMP 'mr_sys_update.log'
+$zipPath = '{rutaZipDescargado.Replace("'", "''")}'
+$appDir = '{appDir.Replace("'", "''")}'
+
+function Log($msg) {{
+    $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+    ""[$ts] $msg"" | Out-File -FilePath $logFile -Append -Encoding utf8
+    Write-Host ""[$ts] $msg""
+}}
+
+Log '==================================================='
+Log 'INICIANDO PROCESO DE ACTUALIZACION OFICIAL MR SYS'
+Log ""Archivo ZIP: $zipPath""
+Log ""Directorio Destino: $appDir""
+
+# 1. Esperar cierre seguro del proceso principal
+Log 'Esperando a que la aplicacion se cierre completamente...'
+$timeoutSec = 15
+$timer = [System.Diagnostics.Stopwatch]::StartNew()
+while ($timer.Elapsed.TotalSeconds -lt $timeoutSec) {{
+    $procs = Get-Process -Name 'PuntoDeVentaLibreria.UI' -ErrorAction SilentlyContinue
+    if (-not $procs) {{ break }}
+    Start-Sleep -Milliseconds 400
+}}
+
+# Cierre forzado si quedo algun hilo bloqueante
+$remaining = Get-Process -Name 'PuntoDeVentaLibreria.UI' -ErrorAction SilentlyContinue
+if ($remaining) {{
+    Log 'Terminando procesos remanentes...'
+    Stop-Process -Name 'PuntoDeVentaLibreria.UI' -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
+}}
+
+# 2. Respaldo preventivo de la base de datos de la libreria
+$backupFolder = Join-Path $appDir 'backups_db\pre_update'
+if (-not (Test-Path $backupFolder)) {{
+    New-Item -ItemType Directory -Path $backupFolder -Force | Out-Null
+}}
+
+$dbFiles = Get-ChildItem -Path $appDir -Filter 'punto_venta_libreria*.db*' -ErrorAction SilentlyContinue
+if ($dbFiles) {{
+    $ts = Get-Date -Format 'yyyyMMdd_HHmmss'
+    foreach ($f in $dbFiles) {{
+        $backupDest = Join-Path $backupFolder ""$($f.BaseName)_$ts$($f.Extension)""
+        Copy-Item -Path $f.FullName -Destination $backupDest -Force
+        Log ""Base de datos respaldada preventivamente en: $backupDest""
+    }}
+}}
+
+# 3. Descomprimir en carpeta temporal aislada
+$extractTempDir = Join-Path $env:TEMP 'MR_SYS_Libreria_Extracted'
+if (Test-Path $extractTempDir) {{
+    Remove-Item -Path $extractTempDir -Recurse -Force -ErrorAction SilentlyContinue
+}}
+New-Item -ItemType Directory -Path $extractTempDir -Force | Out-Null
+
+Log 'Descomprimiendo archivos de actualizacion...'
+try {{
+    Expand-Archive -Path $zipPath -DestinationPath $extractTempDir -Force
+    Log 'Descompresion finalizada con exito.'
+}} catch {{
+    Log ""ERROR al descomprimir: $($_.Exception.Message)""
+}}
+
+# 4. PROTECCION ABSOLUTA: Eliminar cualquier archivo .db que venga dentro del ZIP
+$extractedDbs = Get-ChildItem -Path $extractTempDir -Recurse -Include '*.db', '*.db-wal', '*.db-shm' -ErrorAction SilentlyContinue
+foreach ($edb in $extractedDbs) {{
+    Remove-Item -Path $edb.FullName -Force -ErrorAction SilentlyContinue
+    Log ""Seguridad: descartado archivo $($edb.Name) del paquete para salvaguardar base de datos local.""
+}}
+
+# 5. Detectar directorio fuente (por si el ZIP empaqueto una subcarpeta raiz)
+$sourceDir = $extractTempDir
+$exeInRoot = Join-Path $sourceDir 'PuntoDeVentaLibreria.UI.exe'
+if (-not (Test-Path $exeInRoot)) {{
+    $foundExe = Get-ChildItem -Path $extractTempDir -Filter 'PuntoDeVentaLibreria.UI.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($foundExe) {{
+        $sourceDir = $foundExe.DirectoryName
+        Log ""Subcarpeta detectada en ZIP: $sourceDir""
+    }}
+}}
+
+# 6. Copiar los archivos actualizados hacia el directorio de la aplicacion
+Log ""Copiando archivos nuevos a $appDir...""
+Get-ChildItem -Path $sourceDir -Recurse | ForEach-Object {{
+    if ($_.Extension -match '^\.db.*$') {{ return }}
+    $rel = $_.FullName.Substring($sourceDir.Length).TrimStart('\', '/')
+    $dest = Join-Path $appDir $rel
+    if ($_.PSIsContainer) {{
+        if (-not (Test-Path $dest)) {{
+            New-Item -ItemType Directory -Path $dest -Force | Out-Null
+        }}
+    }} else {{
+        $parent = Split-Path $dest -Parent
+        if (-not (Test-Path $parent)) {{
+            New-Item -ItemType Directory -Path $parent -Force | Out-Null
+        }}
+        Copy-Item -Path $_.FullName -Destination $dest -Force
+    }}
+}}
+Log 'Copia de archivos completada exitosamente.'
+
+# 7. Limpieza de temporales
+Remove-Item -Path $extractTempDir -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
+
+# 8. Relanzar el sistema
+$finalExe = Join-Path $appDir 'PuntoDeVentaLibreria.UI.exe'
+if (Test-Path $finalExe) {{
+    Log ""Reiniciando aplicacion: $finalExe""
+    Start-Process -FilePath $finalExe
+}} else {{
+    Log ""AVISO: No se encontro el ejecutable exacto en $finalExe""
+}}
+Log 'ACTUALIZACION FINALIZADA SATISFACTORIAMENTE.'
+";
+
+        File.WriteAllText(ps1Path, psScript, System.Text.Encoding.UTF8);
+
+        var batScript = $@"@echo off
+timeout /t 1 /nobreak >nul
+powershell -NoProfile -ExecutionPolicy Bypass -File ""{ps1Path}""
 del ""%~f0""
 ";
-        File.WriteAllText(batchPath, script);
+        File.WriteAllText(batPath, batScript, System.Text.Encoding.ASCII);
 
         var psi = new ProcessStartInfo
         {
             FileName = "cmd.exe",
-            Arguments = $"/c \"{batchPath}\"",
+            Arguments = $"/c \"{batPath}\"",
             CreateNoWindow = true,
             UseShellExecute = false
         };
