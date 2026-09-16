@@ -505,4 +505,31 @@ public class GestionNegocioTests
         int checkDigitEsperado = (suma % 10 == 0) ? 0 : 10 - (suma % 10);
         (codigoBarras[12] - '0').Should().Be(checkDigitEsperado);
     }
+
+    [Theory]
+    [InlineData("65", 65)]
+    [InlineData("65.0", 65)]
+    [InlineData("65,0", 65)]
+    [InlineData("65.5", 65.5)]
+    [InlineData("65,5", 65.5)]
+    [InlineData("1000", 1000)]
+    [InlineData("1650.00", 1650)]
+    [InlineData("1650,00", 1650)]
+    [InlineData("1.650,00", 1650)]
+    public void CalculoMargen_ParseoMontos_EvitaMultiplicarPorDiezPorSeparadores(string input, decimal esperado)
+    {
+        var ok = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(input, out var res);
+        ok.Should().BeTrue();
+        res.Should().Be(esperado);
+
+        // Verificación de que 1000 con 65% de margen genera 1650 (y no 7500 como 650%)
+        if (input.StartsWith("65"))
+        {
+            var venta = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.CalcularPrecioVenta(1000m, res);
+            if (esperado == 65m)
+            {
+                venta.Should().Be(1650m);
+            }
+        }
+    }
 }

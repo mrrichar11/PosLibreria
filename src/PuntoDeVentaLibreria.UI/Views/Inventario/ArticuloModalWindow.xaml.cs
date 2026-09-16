@@ -32,6 +32,19 @@ public partial class ArticuloModalWindow : Window
             Articulo.ColorBoton = "#3B82F6";
         }
 
+        // Inicializar campos de precio en UI de forma robusta e invariable
+        _isCalculating = true;
+        try
+        {
+            TxtCosto.Text = Articulo.PrecioCosto > 0 ? Articulo.PrecioCosto.ToString("0.##", CultureInfo.InvariantCulture) : "0";
+            TxtMargen.Text = Articulo.PorcentajeGanancia > 0 ? Articulo.PorcentajeGanancia.ToString("0.#", CultureInfo.InvariantCulture) : "40";
+            TxtVenta.Text = Articulo.PrecioVenta > 0 ? Articulo.PrecioVenta.ToString("0.##", CultureInfo.InvariantCulture) : "0";
+        }
+        finally
+        {
+            _isCalculating = false;
+        }
+
         SincronizarTipoUI();
         CargarArticulosDisponibles();
         CargarConfiguracionNegocioAsync();
@@ -54,13 +67,21 @@ public partial class ArticuloModalWindow : Window
         }
         catch { }
 
-        BtnAplicarMargenConfig.Content = $"🎯 Aplicar Margen del Comercio ({_margenConfigurado:N0}%)";
+        BtnAplicarMargenConfig.Content = $"🎯 Aplicar Margen del Comercio ({_margenConfigurado:0.#}%)";
 
-        // Si es un artículo nuevo sin margen establecido
+        // Si es un artículo nuevo o no tiene margen configurado
         if (Articulo.PorcentajeGanancia <= 0)
         {
-            Articulo.PorcentajeGanancia = _margenConfigurado;
-            TxtMargen.Text = _margenConfigurado.ToString("N1");
+            _isCalculating = true;
+            try
+            {
+                Articulo.PorcentajeGanancia = _margenConfigurado;
+                TxtMargen.Text = _margenConfigurado.ToString("0.#", CultureInfo.InvariantCulture);
+            }
+            finally
+            {
+                _isCalculating = false;
+            }
             RecalcularPrecioVentaDesdeCostoYMargen();
         }
     }
@@ -153,13 +174,13 @@ public partial class ArticuloModalWindow : Window
         try
         {
             Articulo.PorcentajeGanancia = _margenConfigurado;
-            TxtMargen.Text = _margenConfigurado.ToString("N1");
-            RecalcularPrecioVentaDesdeCostoYMargen();
+            TxtMargen.Text = _margenConfigurado.ToString("0.#", CultureInfo.InvariantCulture);
         }
         finally
         {
             _isCalculating = false;
         }
+        RecalcularPrecioVentaDesdeCostoYMargen();
     }
 
     private void TxtCosto_TextChanged(object sender, TextChangedEventArgs e)
@@ -183,17 +204,20 @@ public partial class ArticuloModalWindow : Window
     private void RecalcularPrecioVentaDesdeCostoYMargen()
     {
         if (_isCalculating) return;
-        if (!TryParseMonto(TxtCosto?.Text ?? "", out var costo)) return;
-        if (!TryParseMonto(TxtMargen?.Text ?? "", out var margen)) return;
+        if (!PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(TxtCosto?.Text, out var costo)) return;
+        if (!PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(TxtMargen?.Text, out var margen)) return;
 
         _isCalculating = true;
         try
         {
-            var venta = Math.Round(costo * (1 + (margen / 100m)), 2);
+            var venta = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.CalcularPrecioVenta(costo, margen);
             Articulo.PrecioCosto = costo;
             Articulo.PorcentajeGanancia = margen;
             Articulo.PrecioVenta = venta;
-            TxtVenta.Text = venta.ToString("0.00", CultureInfo.InvariantCulture);
+            if (TxtVenta != null && !TxtVenta.IsFocused)
+            {
+                TxtVenta.Text = venta.ToString("0.00", CultureInfo.InvariantCulture);
+            }
         }
         finally
         {
@@ -204,17 +228,20 @@ public partial class ArticuloModalWindow : Window
     private void RecalcularMargenDesdeVenta()
     {
         if (_isCalculating) return;
-        if (!TryParseMonto(TxtCosto?.Text ?? "", out var costo) || costo <= 0) return;
-        if (!TryParseMonto(TxtVenta?.Text ?? "", out var venta)) return;
+        if (!PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(TxtCosto?.Text, out var costo) || costo <= 0) return;
+        if (!PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(TxtVenta?.Text, out var venta)) return;
 
         _isCalculating = true;
         try
         {
-            var margen = Math.Round(((venta - costo) / costo) * 100m, 1);
+            var margen = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.CalcularMargenPorcentaje(costo, venta);
             Articulo.PrecioCosto = costo;
             Articulo.PrecioVenta = venta;
             Articulo.PorcentajeGanancia = margen;
-            TxtMargen.Text = margen.ToString("0.0", CultureInfo.InvariantCulture);
+            if (TxtMargen != null && !TxtMargen.IsFocused)
+            {
+                TxtMargen.Text = margen.ToString("0.#", CultureInfo.InvariantCulture);
+            }
         }
         finally
         {
@@ -222,15 +249,9 @@ public partial class ArticuloModalWindow : Window
         }
     }
 
-    private static bool TryParseMonto(string input, out decimal result)
+    public static bool TryParseMonto(string input, out decimal result)
     {
-        result = 0;
-        if (string.IsNullOrWhiteSpace(input)) return false;
-        var limpio = input.Trim().Replace("$", "").Trim();
-        if (decimal.TryParse(limpio, NumberStyles.Any, CultureInfo.CurrentCulture, out result)) return true;
-        if (decimal.TryParse(limpio, NumberStyles.Any, CultureInfo.InvariantCulture, out result)) return true;
-        if (decimal.TryParse(limpio.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out result)) return true;
-        return false;
+        return PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(input, out result);
     }
 
     private void BtnAgregarComponente_Click(object sender, RoutedEventArgs e)
@@ -283,6 +304,11 @@ public partial class ArticuloModalWindow : Window
             TxtNombre.Focus();
             return;
         }
+
+        // Sincronizar montos finales desde los TextBox con TryParseMonto
+        if (TryParseMonto(TxtCosto.Text, out var c)) Articulo.PrecioCosto = c;
+        if (TryParseMonto(TxtMargen.Text, out var m)) Articulo.PorcentajeGanancia = m;
+        if (TryParseMonto(TxtVenta.Text, out var v)) Articulo.PrecioVenta = v;
 
         // Asegurar que si el SKU quedó vacío se autogenere uno único
         if (string.IsNullOrWhiteSpace(Articulo.SKU))

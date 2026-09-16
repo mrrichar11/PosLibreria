@@ -154,19 +154,16 @@
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Precio Costo ($):" FontSize="12" FontWeight="SemiBold" Margin="0,0,6,4"/>
                             <TextBox x:Name="TxtCosto" Grid.Row="1" Grid.Column="0" 
-                                     Text="{Binding PrecioCosto, UpdateSourceTrigger=PropertyChanged, StringFormat='N2'}" 
                                      TextChanged="TxtCosto_TextChanged"
                                      FontSize="14" FontWeight="Bold" Padding="8,6" Margin="0,0,6,0"/>
 
                             <TextBlock Grid.Row="0" Grid.Column="1" Text="% Margen Ganancia:" FontSize="12" FontWeight="SemiBold" Margin="6,0,6,4"/>
                             <TextBox x:Name="TxtMargen" Grid.Row="1" Grid.Column="1" 
-                                     Text="{Binding PorcentajeGanancia, UpdateSourceTrigger=PropertyChanged, StringFormat='N1'}" 
                                      TextChanged="TxtMargen_TextChanged"
                                      FontSize="14" FontWeight="Bold" Padding="8,6" Margin="6,0,6,0"/>
 
                             <TextBlock Grid.Row="0" Grid.Column="2" Text="Precio Venta Sugerido ($):" FontSize="12" FontWeight="SemiBold" Foreground="#0284C7" Margin="6,0,0,4"/>
                             <TextBox x:Name="TxtVenta" Grid.Row="1" Grid.Column="2" 
-                                     Text="{Binding PrecioVenta, UpdateSourceTrigger=PropertyChanged, StringFormat='N2'}" 
                                      TextChanged="TxtVenta_TextChanged"
                                      FontSize="16" FontWeight="Black" Foreground="#0369A1" Padding="8,6" Margin="6,0,0,0"/>
                         </Grid>
