@@ -310,4 +310,52 @@ public class InventarioService : IInventarioService
                 StockActualDisponible = c.ComponenteArticulo?.StockActual ?? 0
             }))
     };
+
+    public async Task<string> GenerarSkuSugeridoAsync(CancellationToken ct = default)
+    {
+        var total = await _context.Articulos.CountAsync(ct);
+        int secuencia = total + 1;
+        while (true)
+        {
+            var sku = $"ART-{secuencia:D5}";
+            var existe = await _context.Articulos.AnyAsync(a => a.SKU == sku, ct);
+            if (!existe)
+            {
+                return sku;
+            }
+            secuencia++;
+        }
+    }
+
+    public async Task<string> GenerarCodigoBarrasSugeridoAsync(CancellationToken ct = default)
+    {
+        // Prefijo 20: Estándar internacional para uso interno de tienda/retail
+        var total = await _context.Articulos.CountAsync(ct);
+        long baseNum = 200000000000L + (total + 1); // 12 dígitos
+        while (true)
+        {
+            var baseStr = baseNum.ToString("D12");
+            var checkDigit = CalcularDigitoVerificadorEan13(baseStr);
+            var codigoCompleto = $"{baseStr}{checkDigit}";
+
+            var existe = await _context.Articulos.AnyAsync(a => a.CodigoBarras == codigoCompleto, ct);
+            if (!existe)
+            {
+                return codigoCompleto;
+            }
+            baseNum++;
+        }
+    }
+
+    private static int CalcularDigitoVerificadorEan13(string primeros12Digitos)
+    {
+        int suma = 0;
+        for (int i = 0; i < 12; i++)
+        {
+            int d = primeros12Digitos[i] - '0';
+            suma += (i % 2 == 0) ? d : d * 3;
+        }
+        int resto = suma % 10;
+        return (resto == 0) ? 0 : 10 - resto;
+    }
 }

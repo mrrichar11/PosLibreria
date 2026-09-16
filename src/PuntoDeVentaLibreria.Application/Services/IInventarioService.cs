@@ -11,4 +11,6 @@ public interface IInventarioService
     Task<string> ExportarCatalogoCsvAsync(CancellationToken ct = default);
     Task<(int Creados, int Actualizados, int Errores)> ImportarCatalogoCsvAsync(string contenidoCsv, CancellationToken ct = default);
     Task<bool> EliminarArticuloAsync(Guid articuloId, CancellationToken ct = default);
+    Task<string> GenerarSkuSugeridoAsync(CancellationToken ct = default);
+    Task<string> GenerarCodigoBarrasSugeridoAsync(CancellationToken ct = default);
 }

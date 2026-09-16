@@ -479,4 +479,30 @@ public class GestionNegocioTests
         ticketTexto.Should().Contain("Saldo a Cta. Cte. (Fiado):");
         ticketTexto.Should().Contain("30");
     }
+
+    [Fact]
+    public async Task InventarioService_GenerarSkuYCodigoBarrasSugerido_GeneraValoresUnicosYValidos()
+    {
+        using var context = CrearContextoEnMemoria();
+        var service = new InventarioService(context);
+
+        var sku = await service.GenerarSkuSugeridoAsync();
+        sku.Should().NotBeNullOrWhiteSpace();
+        sku.Should().StartWith("ART-");
+
+        var codigoBarras = await service.GenerarCodigoBarrasSugeridoAsync();
+        codigoBarras.Should().NotBeNullOrWhiteSpace();
+        codigoBarras.Length.Should().Be(13); // EAN-13 standard
+        codigoBarras.Should().StartWith("20");
+
+        // Validar dígito verificador EAN-13
+        int suma = 0;
+        for (int i = 0; i < 12; i++)
+        {
+            int d = codigoBarras[i] - '0';
+            suma += (i % 2 == 0) ? d : d * 3;
+        }
+        int checkDigitEsperado = (suma % 10 == 0) ? 0 : 10 - (suma % 10);
+        (codigoBarras[12] - '0').Should().Be(checkDigitEsperado);
+    }
 }

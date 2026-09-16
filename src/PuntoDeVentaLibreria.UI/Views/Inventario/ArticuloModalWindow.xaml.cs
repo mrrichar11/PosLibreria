@@ -1,5 +1,7 @@
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using PuntoDeVentaLibreria.Application.DTOs.Inventario;
 using PuntoDeVentaLibreria.Application.Services;
 using PuntoDeVentaLibreria.Domain.Entities.Catalogo;
@@ -9,15 +11,20 @@ namespace PuntoDeVentaLibreria.UI.Views.Inventario;
 public partial class ArticuloModalWindow : Window
 {
     private readonly IInventarioService _inventarioService;
+    private readonly IConfiguracionService? _configuracionService;
     private IReadOnlyList<ArticuloDto> _articulosDisponibles = new List<ArticuloDto>();
+    private decimal _margenConfigurado = 40m;
+    private bool _isCalculating;
+
     public ArticuloDto Articulo { get; }
     public bool GuardadoExitoso { get; private set; }
 
-    public ArticuloModalWindow(ArticuloDto articulo, IInventarioService inventarioService)
+    public ArticuloModalWindow(ArticuloDto articulo, IInventarioService inventarioService, IConfiguracionService? configuracionService = null)
     {
         InitializeComponent();
         Articulo = articulo ?? throw new ArgumentNullException(nameof(articulo));
         _inventarioService = inventarioService ?? throw new ArgumentNullException(nameof(inventarioService));
+        _configuracionService = configuracionService;
         DataContext = Articulo;
 
         if (string.IsNullOrEmpty(Articulo.ColorBoton))
@@ -27,7 +34,35 @@ public partial class ArticuloModalWindow : Window
 
         SincronizarTipoUI();
         CargarArticulosDisponibles();
+        CargarConfiguracionNegocioAsync();
+
         TxtNombre.Focus();
+    }
+
+    private async void CargarConfiguracionNegocioAsync()
+    {
+        try
+        {
+            if (_configuracionService != null)
+            {
+                var cfg = await _configuracionService.ObtenerConfiguracionAsync();
+                if (cfg.MargenGananciaSugerido > 0)
+                {
+                    _margenConfigurado = cfg.MargenGananciaSugerido;
+                }
+            }
+        }
+        catch { }
+
+        BtnAplicarMargenConfig.Content = $"🎯 Aplicar Margen del Comercio ({_margenConfigurado:N0}%)";
+
+        // Si es un artículo nuevo sin margen establecido
+        if (Articulo.PorcentajeGanancia <= 0)
+        {
+            Articulo.PorcentajeGanancia = _margenConfigurado;
+            TxtMargen.Text = _margenConfigurado.ToString("N1");
+            RecalcularPrecioVentaDesdeCostoYMargen();
+        }
     }
 
     private void SincronizarTipoUI()
@@ -48,7 +83,6 @@ public partial class ArticuloModalWindow : Window
         try
         {
             _articulosDisponibles = await _inventarioService.BuscarArticulosAsync(string.Empty);
-            // Filtrar para no agregar el mismo artículo a sí mismo ni otros combos anidados
             var articulosFisicos = _articulosDisponibles
                 .Where(a => a.Id != Articulo.Id && a.Tipo != TipoArticulo.ComboKit)
                 .OrderBy(a => a.Nombre)
@@ -73,6 +107,130 @@ public partial class ArticuloModalWindow : Window
         if (BrdComponentesCombo == null || CmbTipo?.SelectedItem is not ComboBoxItem selected) return;
         var esCombo = selected.Tag?.ToString() == "ComboKit";
         BrdComponentesCombo.Visibility = esCombo ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private async void BtnGenerarCodigoBarras_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var nuevoCodigo = await _inventarioService.GenerarCodigoBarrasSugeridoAsync();
+            Articulo.CodigoBarras = nuevoCodigo;
+            TxtCodigoBarras.Text = nuevoCodigo;
+            TxtCodigoBarras.SelectAll();
+        }
+        catch { }
+    }
+
+    private async void BtnGenerarSku_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var nuevoSku = await _inventarioService.GenerarSkuSugeridoAsync();
+            Articulo.SKU = nuevoSku;
+            TxtSKU.Text = nuevoSku;
+            TxtSKU.SelectAll();
+        }
+        catch { }
+    }
+
+    private void TxtCodigoBarras_GotFocus(object sender, RoutedEventArgs e)
+    {
+        TxtCodigoBarras.SelectAll();
+    }
+
+    private void TxtCodigoBarras_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            TxtSKU.Focus();
+            e.Handled = true;
+        }
+    }
+
+    private void BtnAplicarMargenConfig_Click(object sender, RoutedEventArgs e)
+    {
+        _isCalculating = true;
+        try
+        {
+            Articulo.PorcentajeGanancia = _margenConfigurado;
+            TxtMargen.Text = _margenConfigurado.ToString("N1");
+            RecalcularPrecioVentaDesdeCostoYMargen();
+        }
+        finally
+        {
+            _isCalculating = false;
+        }
+    }
+
+    private void TxtCosto_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_isCalculating) return;
+        RecalcularPrecioVentaDesdeCostoYMargen();
+    }
+
+    private void TxtMargen_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_isCalculating) return;
+        RecalcularPrecioVentaDesdeCostoYMargen();
+    }
+
+    private void TxtVenta_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_isCalculating) return;
+        RecalcularMargenDesdeVenta();
+    }
+
+    private void RecalcularPrecioVentaDesdeCostoYMargen()
+    {
+        if (_isCalculating) return;
+        if (!TryParseMonto(TxtCosto?.Text ?? "", out var costo)) return;
+        if (!TryParseMonto(TxtMargen?.Text ?? "", out var margen)) return;
+
+        _isCalculating = true;
+        try
+        {
+            var venta = Math.Round(costo * (1 + (margen / 100m)), 2);
+            Articulo.PrecioCosto = costo;
+            Articulo.PorcentajeGanancia = margen;
+            Articulo.PrecioVenta = venta;
+            TxtVenta.Text = venta.ToString("0.00", CultureInfo.InvariantCulture);
+        }
+        finally
+        {
+            _isCalculating = false;
+        }
+    }
+
+    private void RecalcularMargenDesdeVenta()
+    {
+        if (_isCalculating) return;
+        if (!TryParseMonto(TxtCosto?.Text ?? "", out var costo) || costo <= 0) return;
+        if (!TryParseMonto(TxtVenta?.Text ?? "", out var venta)) return;
+
+        _isCalculating = true;
+        try
+        {
+            var margen = Math.Round(((venta - costo) / costo) * 100m, 1);
+            Articulo.PrecioCosto = costo;
+            Articulo.PrecioVenta = venta;
+            Articulo.PorcentajeGanancia = margen;
+            TxtMargen.Text = margen.ToString("0.0", CultureInfo.InvariantCulture);
+        }
+        finally
+        {
+            _isCalculating = false;
+        }
+    }
+
+    private static bool TryParseMonto(string input, out decimal result)
+    {
+        result = 0;
+        if (string.IsNullOrWhiteSpace(input)) return false;
+        var limpio = input.Trim().Replace("$", "").Trim();
+        if (decimal.TryParse(limpio, NumberStyles.Any, CultureInfo.CurrentCulture, out result)) return true;
+        if (decimal.TryParse(limpio, NumberStyles.Any, CultureInfo.InvariantCulture, out result)) return true;
+        if (decimal.TryParse(limpio.Replace(',', '.'), NumberStyles.Any, CultureInfo.InvariantCulture, out result)) return true;
+        return false;
     }
 
     private void BtnAgregarComponente_Click(object sender, RoutedEventArgs e)
@@ -126,6 +284,18 @@ public partial class ArticuloModalWindow : Window
             return;
         }
 
+        // Asegurar que si el SKU quedó vacío se autogenere uno único
+        if (string.IsNullOrWhiteSpace(Articulo.SKU))
+        {
+            Articulo.SKU = await _inventarioService.GenerarSkuSugeridoAsync();
+        }
+
+        // Asegurar que si el código de barras quedó vacío se autogenere uno válido
+        if (string.IsNullOrWhiteSpace(Articulo.CodigoBarras))
+        {
+            Articulo.CodigoBarras = await _inventarioService.GenerarCodigoBarrasSugeridoAsync();
+        }
+
         if (CmbTipo.SelectedItem is ComboBoxItem selectedTipo && Enum.TryParse<TipoArticulo>(selectedTipo.Tag?.ToString(), out var tipoEnum))
         {
             Articulo.Tipo = tipoEnum;
@@ -148,7 +318,7 @@ public partial class ArticuloModalWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al guardar artículo: {ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"Error al guardar el artículo: {ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

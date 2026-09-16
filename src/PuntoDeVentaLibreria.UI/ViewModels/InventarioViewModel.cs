@@ -9,6 +9,7 @@ namespace PuntoDeVentaLibreria.UI.ViewModels;
 public partial class InventarioViewModel : ObservableObject
 {
     private readonly IInventarioService _inventarioService;
+    private readonly IConfiguracionService _configuracionService;
 
     [ObservableProperty]
     private string _criterioBusqueda = string.Empty;
@@ -29,9 +30,10 @@ public partial class InventarioViewModel : ObservableObject
 
     public Func<ArticuloDto, Task<bool>>? SolicitarEditorArticulo { get; set; }
 
-    public InventarioViewModel(IInventarioService inventarioService)
+    public InventarioViewModel(IInventarioService inventarioService, IConfiguracionService configuracionService)
     {
         _inventarioService = inventarioService ?? throw new ArgumentNullException(nameof(inventarioService));
+        _configuracionService = configuracionService ?? throw new ArgumentNullException(nameof(configuracionService));
     }
 
     public async Task CargarDatosAsync()
@@ -65,13 +67,22 @@ public partial class InventarioViewModel : ObservableObject
     [RelayCommand]
     private async Task NuevoArticuloAsync()
     {
+        var config = await _configuracionService.ObtenerConfiguracionAsync();
+        var margen = config.MargenGananciaSugerido > 0 ? config.MargenGananciaSugerido : 40m;
+        var sku = await _inventarioService.GenerarSkuSugeridoAsync();
+        var codigoBarras = await _inventarioService.GenerarCodigoBarrasSugeridoAsync();
+
+        var costo = 1000m;
+        var venta = Math.Round(costo * (1 + (margen / 100m)), 2);
+
         var nuevo = new ArticuloDto
         {
             Nombre = string.Empty,
-            SKU = $"LIB-{DateTime.Now:fffss}",
-            PrecioCosto = 1000m,
-            PorcentajeGanancia = 65m,
-            PrecioVenta = 1650m,
+            SKU = sku,
+            CodigoBarras = codigoBarras,
+            PrecioCosto = costo,
+            PorcentajeGanancia = margen,
+            PrecioVenta = venta,
             StockActual = 10,
             StockMinimo = 5,
             Ubicacion = "Estante A"
