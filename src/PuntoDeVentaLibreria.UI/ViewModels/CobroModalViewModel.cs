@@ -92,12 +92,41 @@ public partial class CobroModalViewModel : ObservableObject
     {
         if (value != null)
         {
-            NombreCliente = value.NombreCompleto;
+            if (NombreCliente != value.NombreCompleto)
+            {
+                NombreCliente = value.NombreCompleto;
+            }
             MensajeValidacion = string.Empty;
         }
-        else
+        else if (string.IsNullOrWhiteSpace(NombreCliente))
         {
             NombreCliente = "Consumidor Final";
+        }
+    }
+
+    partial void OnNombreClienteChanged(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            ClienteSeleccionado = null;
+            return;
+        }
+
+        if (ClienteSeleccionado != null && !string.Equals(ClienteSeleccionado.NombreCompleto, value, StringComparison.OrdinalIgnoreCase))
+        {
+            _clienteSeleccionado = ClientesDisponibles.FirstOrDefault(c => string.Equals(c.NombreCompleto, value, StringComparison.OrdinalIgnoreCase));
+            OnPropertyChanged(nameof(ClienteSeleccionado));
+            OnPropertyChanged(nameof(TieneClienteSeleccionado));
+        }
+        else if (ClienteSeleccionado == null)
+        {
+            var match = ClientesDisponibles.FirstOrDefault(c => string.Equals(c.NombreCompleto, value, StringComparison.OrdinalIgnoreCase));
+            if (match != null)
+            {
+                _clienteSeleccionado = match;
+                OnPropertyChanged(nameof(ClienteSeleccionado));
+                OnPropertyChanged(nameof(TieneClienteSeleccionado));
+            }
         }
     }
 

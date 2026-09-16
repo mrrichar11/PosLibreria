@@ -9,7 +9,9 @@ using PuntoDeVentaLibreria.UI.ViewModels;
 using PuntoDeVentaLibreria.UI.Views.Caja;
 using PuntoDeVentaLibreria.UI.Views.Clientes;
 using PuntoDeVentaLibreria.UI.Views.Configuracion;
+using PuntoDeVentaLibreria.UI.Views.Dashboard;
 using PuntoDeVentaLibreria.UI.Views.Inventario;
+using PuntoDeVentaLibreria.UI.Views.Login;
 using PuntoDeVentaLibreria.UI.Views.Pos;
 
 namespace PuntoDeVentaLibreria.UI;
@@ -53,21 +55,27 @@ public partial class App : System.Windows.Application
                 services.AddScoped<IUpdateService, GitHubUpdateService>();
                 services.AddScoped<IBackupService, BackupService>();
                 services.AddScoped<ITicketPrinterService, TicketPrinterService>();
+                services.AddScoped<IReporteService, ReporteService>();
+                services.AddScoped<IAuthService, AuthService>();
 
                 // ViewModels
                 services.AddSingleton<MainViewModel>();
                 services.AddSingleton<PosViewModel>();
+                services.AddSingleton<DashboardViewModel>();
                 services.AddSingleton<InventarioViewModel>();
                 services.AddSingleton<CajaViewModel>();
                 services.AddSingleton<ClientesViewModel>();
                 services.AddSingleton<ConfiguracionViewModel>();
+                services.AddTransient<LoginViewModel>();
 
                 // Vistas Principales (UserControls y Ventana)
                 services.AddSingleton<PosView>();
+                services.AddSingleton<DashboardView>();
                 services.AddSingleton<InventarioView>();
                 services.AddSingleton<CajaView>();
                 services.AddSingleton<ClientesView>();
                 services.AddSingleton<ConfiguracionView>();
+                services.AddTransient<LoginWindow>();
                 services.AddSingleton<MainWindow>();
             })
             .Build();
@@ -82,9 +90,42 @@ public partial class App : System.Windows.Application
             await DataSeeder.SeedAsync(dbContext);
         }
 
-        // Mostrar ventana principal
-        var mainWindow = _host.Services.GetRequiredService<MainWindow>();
-        mainWindow.Show();
+        // Iniciar flujo con ventana de Login obligatoria
+        IniciarFlujoLogin();
+    }
+
+    private void IniciarFlujoLogin()
+    {
+        var loginWindow = _host!.Services.GetRequiredService<LoginWindow>();
+        var loginResult = loginWindow.ShowDialog();
+
+        if (loginResult == true && loginWindow.ViewModel.SesionAutenticada != null)
+        {
+            var sesion = loginWindow.ViewModel.SesionAutenticada;
+
+            var mainVm = _host.Services.GetRequiredService<MainViewModel>();
+            mainVm.EstablecerSesion(sesion);
+
+            var posVm = _host.Services.GetRequiredService<PosViewModel>();
+            posVm.UsuarioActual = sesion.NombreCompleto;
+
+            var mainWindow = _host.Services.GetRequiredService<MainWindow>();
+            mainWindow.OnCerrarSesionSolicitado -= HandleCerrarSesion;
+            mainWindow.OnCerrarSesionSolicitado += HandleCerrarSesion;
+
+            mainWindow.Show();
+        }
+        else
+        {
+            Shutdown();
+        }
+    }
+
+    private void HandleCerrarSesion()
+    {
+        var mainWindow = _host!.Services.GetRequiredService<MainWindow>();
+        mainWindow.Hide();
+        IniciarFlujoLogin();
     }
 
     protected override async void OnExit(ExitEventArgs e)

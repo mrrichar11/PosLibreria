@@ -4,6 +4,7 @@ using PuntoDeVentaLibreria.UI.ViewModels;
 using PuntoDeVentaLibreria.UI.Views.Caja;
 using PuntoDeVentaLibreria.UI.Views.Clientes;
 using PuntoDeVentaLibreria.UI.Views.Configuracion;
+using PuntoDeVentaLibreria.UI.Views.Dashboard;
 using PuntoDeVentaLibreria.UI.Views.Inventario;
 using PuntoDeVentaLibreria.UI.Views.Pos;
 
@@ -13,14 +14,18 @@ public partial class MainWindow : Window
 {
     private readonly MainViewModel _mainViewModel;
     private readonly PosView _posView;
+    private readonly DashboardView _dashboardView;
     private readonly InventarioView _inventarioView;
     private readonly CajaView _cajaView;
     private readonly ClientesView _clientesView;
     private readonly ConfiguracionView _configuracionView;
 
+    public event Action? OnCerrarSesionSolicitado;
+
     public MainWindow(
         MainViewModel mainViewModel,
         PosView posView,
+        DashboardView dashboardView,
         InventarioView inventarioView,
         CajaView cajaView,
         ClientesView clientesView,
@@ -30,6 +35,7 @@ public partial class MainWindow : Window
 
         _mainViewModel = mainViewModel ?? throw new ArgumentNullException(nameof(mainViewModel));
         _posView = posView ?? throw new ArgumentNullException(nameof(posView));
+        _dashboardView = dashboardView ?? throw new ArgumentNullException(nameof(dashboardView));
         _inventarioView = inventarioView ?? throw new ArgumentNullException(nameof(inventarioView));
         _cajaView = cajaView ?? throw new ArgumentNullException(nameof(cajaView));
         _clientesView = clientesView ?? throw new ArgumentNullException(nameof(clientesView));
@@ -67,6 +73,9 @@ public partial class MainWindow : Window
 
         BtnNavPos.Background = normalBg;
         BtnNavPos.Foreground = normalFg;
+
+        BtnNavDashboard.Background = normalBg;
+        BtnNavDashboard.Foreground = normalFg;
 
         BtnNavInventario.Background = normalBg;
         BtnNavInventario.Foreground = normalFg;
@@ -145,6 +154,19 @@ public partial class MainWindow : Window
         }
     }
 
+    private void NavDashboard_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            ActivarBoton(BtnNavDashboard);
+            MainContentControl.Content = _dashboardView;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al cargar Dashboard: {ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void NavConfiguracion_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -155,6 +177,20 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show($"Error al cargar Configuración: {ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void CerrarSesion_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = MessageBox.Show(
+            "¿Desea cerrar la sesión actual y cambiar de usuario?",
+            "Cerrar Sesión / Cambiar Cajero",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+
+        if (confirm == MessageBoxResult.Yes)
+        {
+            OnCerrarSesionSolicitado?.Invoke();
         }
     }
 }

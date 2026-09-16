@@ -33,6 +33,9 @@ public partial class MainViewModel : ObservableObject
     private string _usuarioActivoTexto = "Cajero: Mostrador Principal";
 
     [ObservableProperty]
+    private PuntoDeVentaLibreria.Application.DTOs.Seguridad.SesionUsuarioDto? _sesionActual;
+
+    [ObservableProperty]
     private bool _hayActualizacionDisponible;
 
     [ObservableProperty]
@@ -54,6 +57,12 @@ public partial class MainViewModel : ObservableObject
         _cajaService = cajaService ?? throw new ArgumentNullException(nameof(cajaService));
         _licenseService = licenseService ?? throw new ArgumentNullException(nameof(licenseService));
         _updateService = updateService ?? throw new ArgumentNullException(nameof(updateService));
+    }
+
+    public void EstablecerSesion(PuntoDeVentaLibreria.Application.DTOs.Seguridad.SesionUsuarioDto sesion)
+    {
+        SesionActual = sesion;
+        UsuarioActivoTexto = $"👤 {sesion.NombreCompleto} ({sesion.Rol})";
     }
 
     public async Task ActualizarInformacionAsync()

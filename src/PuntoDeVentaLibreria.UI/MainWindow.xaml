@@ -96,6 +96,11 @@
                             Background="#2563EB" Foreground="White" FontWeight="Bold"
                             Padding="12,10" Margin="0,0,0,6" FontSize="13" Cursor="Hand" Click="NavPos_Click"/>
 
+                    <Button x:Name="BtnNavDashboard" Content="📊 Dashboard &amp; Reportes"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Background="Transparent" BorderBrush="#E2E8F0" BorderThickness="1"
+                            Padding="12,10" Margin="0,0,0,6" FontSize="13" Cursor="Hand" Click="NavDashboard_Click"/>
+
                     <Button x:Name="BtnNavInventario" Content="📦 Stock / Útiles"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             Background="Transparent" BorderBrush="#E2E8F0" BorderThickness="1"
@@ -111,12 +116,17 @@
                             Background="Transparent" BorderBrush="#E2E8F0" BorderThickness="1"
                             Padding="12,10" Margin="0,0,0,6" FontSize="13" Cursor="Hand" Click="NavClientes_Click"/>
 
-                    <Separator Margin="0,8,0,8"/>
-
                     <Button x:Name="BtnNavConfiguracion" Content="⚙ Configuración"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                             Background="Transparent" BorderBrush="#E2E8F0" BorderThickness="1"
-                            Padding="12,10" FontSize="13" Cursor="Hand" Click="NavConfiguracion_Click"/>
+                            Padding="12,10" Margin="0,0,0,6" FontSize="13" Cursor="Hand" Click="NavConfiguracion_Click"/>
+
+                    <Separator Margin="0,8,0,8"/>
+
+                    <Button x:Name="BtnCerrarSesion" Content="🚪 Cambiar Usuario / Salir"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                            Background="#FEF2F2" BorderBrush="#FCA5A5" BorderThickness="1" Foreground="#991B1B"
+                            Padding="12,10" FontSize="12" FontWeight="SemiBold" Cursor="Hand" Click="CerrarSesion_Click"/>
                 </StackPanel>
             </Border>
 

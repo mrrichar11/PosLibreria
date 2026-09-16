@@ -1,0 +1,173 @@
+<UserControl x:Class="PuntoDeVentaLibreria.UI.Views.Dashboard.DashboardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             mc:Ignorable="d" 
+             d:DesignHeight="700" d:DesignWidth="1100"
+             FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Cabecera y Filtros de Tiempo -->
+        <Grid Grid.Row="0" Margin="0,0,0,16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <TextBlock Text="DASHBOARD &amp; ANALÍTICAS DE LIBRERÍA" FontSize="20" FontWeight="Bold" Foreground="#0F172A"/>
+                <TextBlock Text="{Binding Datos.PeriodoTexto, StringFormat='Reporte financiero de ventas, costos y utilidades: {0}'}" 
+                           FontSize="12" Foreground="#64748B" Margin="0,2,0,0"/>
+            </StackPanel>
+
+            <!-- Botonera de Períodos -->
+            <Border Grid.Column="1" Background="#F1F5F9" CornerRadius="8" Padding="4">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Hoy" Command="{Binding FiltrarHoyCommand}"
+                            Padding="14,6" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
+                    <Button Content="7 Días" Command="{Binding FiltrarSemanaCommand}"
+                            Padding="14,6" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
+                    <Button Content="Este Mes" Command="{Binding FiltrarMesCommand}"
+                            Padding="14,6" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
+                    <Button Content="Todo" Command="{Binding FiltrarHistoricoCommand}"
+                            Padding="14,6" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Tarjetas KPI Principales (4 Métricas) -->
+        <Grid Grid.Row="1" Margin="0,0,0,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- KPI 1: Facturación Bruta -->
+            <Border Grid.Column="0" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,10,0">
+                <StackPanel>
+                    <TextBlock Text="FACTURACIÓN TOTAL" FontSize="11" FontWeight="Bold" Foreground="#64748B"/>
+                    <TextBlock Text="{Binding Datos.FacturacionTotal, StringFormat='${0:N2}'}" FontSize="24" FontWeight="Black" Foreground="#0F172A" Margin="0,6,0,4"/>
+                    <TextBlock Text="{Binding Datos.CantidadVentas, StringFormat='{}{0} ventas registradas'}" FontSize="11" Foreground="#10B981" FontWeight="SemiBold"/>
+                </StackPanel>
+            </Border>
+
+            <!-- KPI 2: Costo de Mercadería (CMV) -->
+            <Border Grid.Column="1" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,10,0">
+                <StackPanel>
+                    <TextBlock Text="COSTO MERCADERÍA (CMV)" FontSize="11" FontWeight="Bold" Foreground="#64748B"/>
+                    <TextBlock Text="{Binding Datos.CostoTotalEstimado, StringFormat='${0:N2}'}" FontSize="24" FontWeight="Black" Foreground="#475569" Margin="0,6,0,4"/>
+                    <TextBlock Text="{Binding Datos.CantidadArticulosVendidos, StringFormat='{}{0:N0} unidades vendidas'}" FontSize="11" Foreground="#64748B"/>
+                </StackPanel>
+            </Border>
+
+            <!-- KPI 3: Ganancia Neta Estimada -->
+            <Border Grid.Column="2" Background="White" BorderBrush="#BBF7D0" BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,10,0">
+                <StackPanel>
+                    <TextBlock Text="UTILIDAD ESTIMADA" FontSize="11" FontWeight="Bold" Foreground="#15803D"/>
+                    <TextBlock Text="{Binding Datos.GananciaNetaEstimada, StringFormat='${0:N2}'}" FontSize="24" FontWeight="Black" Foreground="#16A34A" Margin="0,6,0,4"/>
+                    <TextBlock Text="{Binding Datos.MargenPorcentualPromedio, StringFormat='Margen neto: {0}%'}" FontSize="11" Foreground="#15803D" FontWeight="Bold"/>
+                </StackPanel>
+            </Border>
+
+            <!-- KPI 4: Ticket Promedio -->
+            <Border Grid.Column="3" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="16">
+                <StackPanel>
+                    <TextBlock Text="TICKET PROMEDIO" FontSize="11" FontWeight="Bold" Foreground="#64748B"/>
+                    <TextBlock Text="{Binding Datos.TicketPromedio, StringFormat='${0:N2}'}" FontSize="24" FontWeight="Black" Foreground="#2563EB" Margin="0,6,0,4"/>
+                    <TextBlock Text="Gasto medio por cliente" FontSize="11" Foreground="#64748B"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Contenido Detallado (2 Columnas: Medios de Pago y Top Productos) -->
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="38*"/>
+                <ColumnDefinition Width="62*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- COLUMNA IZQUIERDA: Medios de Pago -->
+            <Border Grid.Column="0" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="18" Margin="0,0,14,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Margin="0,0,0,14">
+                        <TextBlock Text="MEDIOS DE PAGO" FontSize="14" FontWeight="Bold" Foreground="#1E293B"/>
+                        <TextBlock Text="Distribución y porcentajes de cobro" FontSize="11" Foreground="#64748B"/>
+                    </StackPanel>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding MetodosPago}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                        <StackPanel>
+                                            <Grid Margin="0,0,0,6">
+                                                <TextBlock Text="{Binding MedioPago}" FontWeight="Bold" FontSize="13" Foreground="#1E293B"/>
+                                                <TextBlock Text="{Binding Total, StringFormat='${0:N2}'}" HorizontalAlignment="Right" FontWeight="Black" FontSize="13" Foreground="#0F172A"/>
+                                            </Grid>
+                                            
+                                            <!-- Barra de Porcentaje -->
+                                            <ProgressBar Value="{Binding PorcentajeTotal}" Maximum="100" Height="8" Background="#E2E8F0" Foreground="#2563EB" Margin="0,0,0,6"/>
+
+                                            <DockPanel>
+                                                <TextBlock Text="{Binding CantidadOperaciones, StringFormat='{}{0} transacciones'}" FontSize="11" Foreground="#64748B"/>
+                                                <TextBlock Text="{Binding PorcentajeTotal, StringFormat='{}{0:N1}%'}" HorizontalAlignment="Right" FontWeight="Bold" FontSize="11" Foreground="#2563EB"/>
+                                            </DockPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+
+            <!-- COLUMNA DERECHA: Top 10 Artículos Más Vendidos -->
+            <Border Grid.Column="1" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="18">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Margin="0,0,0,14">
+                        <TextBlock Text="TOP 10 ARTÍCULOS &amp; SERVICIOS MÁS VENDIDOS" FontSize="14" FontWeight="Bold" Foreground="#1E293B"/>
+                        <TextBlock Text="Útiles escolares, fotocopias, libros y regalería con mayor rotación" FontSize="11" Foreground="#64748B"/>
+                    </StackPanel>
+
+                    <DataGrid Grid.Row="1" ItemsSource="{Binding TopArticulos}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              IsReadOnly="True"
+                              HeadersVisibility="Column"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="#F1F5F9"
+                              RowHeight="38"
+                              FontSize="12"
+                              Background="White"
+                              BorderThickness="0">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Artículo / Servicio" Binding="{Binding Descripcion}" Width="*" FontWeight="SemiBold"/>
+                            <DataGridTextColumn Header="Unidades" Binding="{Binding CantidadVendida, StringFormat='N0'}" Width="90"/>
+                            <DataGridTextColumn Header="Facturado" Binding="{Binding TotalFacturado, StringFormat='${0:N2}'}" Width="120" FontWeight="Bold"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
