@@ -91,9 +91,12 @@ public class ConfiguracionService : IConfiguracionService
         var ahora = DateTime.UtcNow;
         var primerDiaMes = new DateTime(ahora.Year, ahora.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
-        var totalRetirado = await _context.MovimientosCaja
+        var montos = await _context.MovimientosCaja
             .Where(m => m.Tipo == TipoMovimientoCaja.RetiroDueño && m.FechaCreacion >= primerDiaMes)
-            .SumAsync(m => (decimal?)m.Monto, cancellationToken) ?? 0m;
+            .Select(m => m.Monto)
+            .ToListAsync(cancellationToken);
+
+        var totalRetirado = montos.Sum();
 
         return new EstadoRetirosDueñoDto
         {

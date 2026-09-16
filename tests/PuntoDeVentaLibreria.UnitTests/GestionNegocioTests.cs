@@ -83,4 +83,40 @@ public class GestionNegocioTests
         movCaja!.Monto.Should().Be(15000m);
         movCaja.MetodoPago.Should().Be("Efectivo");
     }
+
+    [Fact]
+    public async Task ConfiguracionService_ObtenerEstadoRetirosDueñoMes_CalculaTotalCorrectamente()
+    {
+        using var context = CrearContextoEnMemoria();
+        var service = new ConfiguracionService(context);
+
+        var turno = new TurnoCaja { MontoInicialEfectivo = 10000m, UsuarioApertura = "cajero" };
+        context.TurnosCaja.Add(turno);
+
+        // Agregar 2 retiros de dueño en el mes corriente
+        context.MovimientosCaja.Add(new MovimientoCaja
+        {
+            TurnoCajaId = turno.Id,
+            Tipo = TipoMovimientoCaja.RetiroDueño,
+            Monto = 5000m,
+            Concepto = "Retiro parcial de ganancias",
+            UsuarioNombre = "admin",
+            MetodoPago = "Efectivo"
+        });
+
+        context.MovimientosCaja.Add(new MovimientoCaja
+        {
+            TurnoCajaId = turno.Id,
+            Tipo = TipoMovimientoCaja.RetiroDueño,
+            Monto = 7500m,
+            Concepto = "Retiro semanal",
+            UsuarioNombre = "admin",
+            MetodoPago = "Efectivo"
+        });
+
+        await context.SaveChangesAsync();
+
+        var estado = await service.ObtenerEstadoRetirosDueñoMesAsync();
+        estado.TotalRetiradoMes.Should().Be(12500m);
+    }
 }
