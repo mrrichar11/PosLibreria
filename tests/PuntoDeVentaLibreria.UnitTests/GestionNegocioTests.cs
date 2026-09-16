@@ -4,6 +4,8 @@ using PuntoDeVentaLibreria.Application.DTOs.Caja;
 using PuntoDeVentaLibreria.Application.DTOs.Clientes;
 using PuntoDeVentaLibreria.Application.DTOs.Configuracion;
 using PuntoDeVentaLibreria.Application.DTOs.Inventario;
+using PuntoDeVentaLibreria.Application.DTOs.Ventas;
+using PuntoDeVentaLibreria.Domain.Entities.Clientes;
 using PuntoDeVentaLibreria.Domain.Entities.Finanzas;
 using PuntoDeVentaLibreria.Infrastructure.Data;
 using PuntoDeVentaLibreria.Infrastructure.Services;
@@ -404,5 +406,77 @@ public class GestionNegocioTests
         reporte.CantidadArticulosVendidos.Should().Be(2);
         reporte.TopArticulos.Should().HaveCount(1);
         reporte.TopArticulos[0].Descripcion.Should().Be("Kit Lapiceras Parker");
+    }
+
+    [Fact]
+    public async Task VentaService_VentaFiadaConEntregaInicial_RegistraIngresoYSaldoDeudorCorrectamente()
+    {
+        using var context = CrearContextoEnMemoria();
+        var ventaService = new VentaService(context);
+        var printer = new TicketPrinterService();
+
+        var turno = new TurnoCaja { MontoInicialEfectivo = 10000m, UsuarioApertura = "cajero" };
+        context.TurnosCaja.Add(turno);
+
+        var cliente = new Cliente
+        {
+            NombreCompleto = "Colegio San Martín - Primaria",
+            PermiteFiado = true,
+            LimiteCredito = 100000m,
+            SaldoDeudorActual = 0m
+        };
+        context.Clientes.Add(cliente);
+        await context.SaveChangesAsync();
+
+        var ventaDto = new RegistrarVentaDto
+        {
+            TurnoCajaId = turno.Id,
+            ClienteId = cliente.Id,
+            ClienteNombre = cliente.NombreCompleto,
+            VendedoraNombre = "Laura",
+            MetodoPago = "CtaCte",
+            TieneEntregaInicial = true,
+            MontoEntregaInicial = 20000m,
+            MetodoPagoEntrega = "Transferencia",
+            ReferenciaEntrega = "Alias colegio.pagos",
+            Items = new List<ItemCarritoDto>
+            {
+                new() { Descripcion = "Resma Hojas A4 x500", Cantidad = 10, PrecioUnitario = 5000m, PrecioCosto = 3000m, EsVentaManual = true }
+            }
+        };
+
+        var resultado = await ventaService.ProcesarVentaAsync(ventaDto);
+
+        // 1. Verificación de montos de la venta
+        resultado.TotalCobrado.Should().Be(50000m);
+        resultado.TieneEntregaInicial.Should().BeTrue();
+        resultado.MontoEntregaInicial.Should().Be(20000m);
+        resultado.MetodoPagoEntrega.Should().Be("Transferencia");
+        resultado.MontoFiado.Should().Be(30000m);
+
+        // 2. Verificación de que al cliente solo se le sumó el saldo restante fiado ($30.000, NO $50.000)
+        var clienteEnDb = await context.Clientes.FindAsync(cliente.Id);
+        clienteEnDb!.SaldoDeudorActual.Should().Be(30000m);
+
+        // 3. Verificación de movimientos de caja (el abono de $20.000 en transferencia ingresa como IngresoVenta)
+        var movEntrega = await context.MovimientosCaja.FirstOrDefaultAsync(m => m.MetodoPago == "Transferencia");
+        movEntrega.Should().NotBeNull();
+        movEntrega!.Monto.Should().Be(20000m);
+        movEntrega.Tipo.Should().Be(TipoMovimientoCaja.IngresoVenta);
+        movEntrega.Concepto.Should().Contain("Entrega inicial");
+
+        // 4. Verificación de que el ticket térmico desglosa el pago mixto
+        var configTicket = new PuntoDeVentaLibreria.Application.DTOs.Peripherals.ConfiguracionTicketDto
+        {
+            NombreComercio = "MR SYS Librería",
+            AnchoPapelMm = 80
+        };
+
+        var ticketTexto = await printer.GenerarTicketTextoAsync(resultado, configTicket);
+        ticketTexto.Should().Contain("FORMA DE PAGO: MIXTO / FIADO CON ENTREGA");
+        ticketTexto.Should().Contain("Entrega");
+        ticketTexto.Should().Contain("20");
+        ticketTexto.Should().Contain("Saldo a Cta. Cte. (Fiado):");
+        ticketTexto.Should().Contain("30");
     }
 }

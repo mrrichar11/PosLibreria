@@ -134,21 +134,31 @@ public class TicketPrinterService : ITicketPrinterService
         sb.AppendLine(sepDoble);
 
         // 5. Forma de Pago y Desglose
-        var medioTexto = FormatearMedioPago(venta.MetodoPago);
-        sb.AppendLine($"FORMA DE PAGO: {medioTexto}");
+        if (venta.TieneEntregaInicial && venta.MontoEntregaInicial > 0)
+        {
+            sb.AppendLine("FORMA DE PAGO: MIXTO / FIADO CON ENTREGA");
+            var medioEntregaTexto = FormatearMedioPago(venta.MetodoPagoEntrega);
+            sb.AppendLine(AlinearExtremos($"Entrega ({medioEntregaTexto}):", $"${venta.MontoEntregaInicial:N2}", ancho));
+            sb.AppendLine(AlinearExtremos("Saldo a Cta. Cte. (Fiado):", $"${venta.MontoFiado:N2}", ancho));
+        }
+        else
+        {
+            var medioTexto = FormatearMedioPago(venta.MetodoPago);
+            sb.AppendLine($"FORMA DE PAGO: {medioTexto}");
 
-        if (venta.MetodoPago == "Efectivo" && venta.MontoEntregado > 0)
-        {
-            sb.AppendLine(AlinearExtremos("Dinero Recibido:", $"${venta.MontoEntregado:N2}", ancho));
-            sb.AppendLine(AlinearExtremos("SU VUELTO:", $"${venta.Vuelto:N2}", ancho));
-        }
-        else if (venta.MetodoPago == "CtaCte")
-        {
-            sb.AppendLine(Centrar("*** CUENTA CORRIENTE (FIADO) ***", ancho));
-        }
-        else if (!string.IsNullOrWhiteSpace(venta.ReferenciaPago))
-        {
-            sb.AppendLine($"Ref/Comprobante: {venta.ReferenciaPago}");
+            if (venta.MetodoPago == "Efectivo" && venta.MontoEntregado > 0)
+            {
+                sb.AppendLine(AlinearExtremos("Dinero Recibido:", $"${venta.MontoEntregado:N2}", ancho));
+                sb.AppendLine(AlinearExtremos("SU VUELTO:", $"${venta.Vuelto:N2}", ancho));
+            }
+            else if (venta.MetodoPago == "CtaCte")
+            {
+                sb.AppendLine(Centrar("*** CUENTA CORRIENTE (FIADO) ***", ancho));
+            }
+            else if (!string.IsNullOrWhiteSpace(venta.ReferenciaPago))
+            {
+                sb.AppendLine($"Ref/Comprobante: {venta.ReferenciaPago}");
+            }
         }
 
         sb.AppendLine(sepSimple);

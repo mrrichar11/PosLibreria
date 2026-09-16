@@ -46,6 +46,7 @@ public partial class CobroModalViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TieneClienteSeleccionado))]
+    [NotifyPropertyChangedFor(nameof(NuevoSaldoDeudorEstimado))]
     private ClienteDto? _clienteSeleccionado;
 
     [ObservableProperty]
@@ -53,6 +54,26 @@ public partial class CobroModalViewModel : ObservableObject
 
     [ObservableProperty]
     private string _referenciaPago = string.Empty;
+
+    // Doble método de pago en Cta. Cte. (Entrega inicial)
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MontoFiadoRestante))]
+    [NotifyPropertyChangedFor(nameof(NuevoSaldoDeudorEstimado))]
+    private bool _tieneEntregaInicial;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MontoFiadoRestante))]
+    [NotifyPropertyChangedFor(nameof(NuevoSaldoDeudorEstimado))]
+    private decimal _montoEntregaInicial;
+
+    [ObservableProperty]
+    private string _metodoPagoEntrega = "Efectivo";
+
+    [ObservableProperty]
+    private string _referenciaEntrega = string.Empty;
+
+    public decimal MontoFiadoRestante => TieneEntregaInicial ? Math.Max(0, TotalFinal - MontoEntregaInicial) : TotalFinal;
+    public decimal NuevoSaldoDeudorEstimado => (ClienteSeleccionado?.SaldoDeudorActual ?? 0) + MontoFiadoRestante;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TieneErrorValidacion))]
@@ -258,10 +279,37 @@ public partial class CobroModalViewModel : ObservableObject
                 MensajeValidacion = $"El cliente '{ClienteSeleccionado.NombreCompleto}' no tiene habilitado el crédito/fiado.";
                 return;
             }
+
+            if (TieneEntregaInicial)
+            {
+                if (MontoEntregaInicial <= 0)
+                {
+                    MensajeValidacion = "Ingrese un monto numérico positivo para la entrega inicial, o destilde la opción.";
+                    return;
+                }
+
+                if (MontoEntregaInicial > TotalFinal)
+                {
+                    MensajeValidacion = $"La entrega inicial (${MontoEntregaInicial:N2}) no puede ser mayor al total a pagar (${TotalFinal:N2}).";
+                    return;
+                }
+            }
         }
 
         VentaConfirmada = true;
         OnCerrar?.Invoke();
+    }
+
+    [RelayCommand]
+    private void SeleccionarMetodoEntrega(string metodo)
+    {
+        MetodoPagoEntrega = metodo;
+    }
+
+    [RelayCommand]
+    private void AsignarMitadEntrega()
+    {
+        MontoEntregaInicial = Math.Round(TotalFinal / 2m, 2);
     }
 
     [RelayCommand]

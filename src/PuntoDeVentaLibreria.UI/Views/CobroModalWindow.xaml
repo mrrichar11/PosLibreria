@@ -7,7 +7,7 @@
         xmlns:converters="clr-namespace:PuntoDeVentaLibreria.UI.Converters"
         mc:Ignorable="d"
         Title="Finalizar Venta y Cobro" 
-        Height="680" Width="760"
+        Height="730" Width="780"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="#F8FAFC"
@@ -213,27 +213,75 @@
                         <StackPanel Visibility="{Binding EsCtaCte, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="Venta a Crédito / Fiado en Cuenta Corriente:" FontSize="13" FontWeight="Bold" Foreground="#B45309" Margin="0,0,0,8"/>
 
-                            <Border Visibility="{Binding TieneClienteSeleccionado, Converter={StaticResource BoolToVis}}"
-                                    Background="#FEF3C7" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
-                                <StackPanel>
-                                    <TextBlock Text="RESUMEN DE LA CUENTA CORRIENTE" FontWeight="Bold" Foreground="#92400E" FontSize="11" Margin="0,0,0,6"/>
-                                    <Grid Margin="0,0,0,4">
-                                        <TextBlock Text="Cliente:" Foreground="#78350F" FontWeight="SemiBold"/>
-                                        <TextBlock Text="{Binding ClienteSeleccionado.NombreCompleto}" HorizontalAlignment="Right" FontWeight="Bold" Foreground="#1E293B"/>
-                                    </Grid>
-                                    <Grid Margin="0,0,0,4">
-                                        <TextBlock Text="Deuda Actual:" Foreground="#78350F"/>
-                                        <TextBlock Text="{Binding ClienteSeleccionado.SaldoDeudorActual, StringFormat='${0:N2}'}" HorizontalAlignment="Right" FontWeight="Bold" Foreground="#B45309"/>
-                                    </Grid>
-                                    <Grid Margin="0,0,0,4">
-                                        <TextBlock Text="+ Compra a Fiar:" Foreground="#78350F"/>
-                                        <TextBlock Text="{Binding TotalFinal, StringFormat='${0:N2}'}" HorizontalAlignment="Right" FontWeight="Bold" Foreground="#2563EB"/>
-                                    </Grid>
-                                    <Separator Margin="0,6"/>
-                                    <TextBlock Text="✔ El saldo deudor del cliente se actualizará automáticamente al confirmar." 
-                                               FontSize="11" Foreground="#15803D" FontWeight="SemiBold"/>
-                                </StackPanel>
-                            </Border>
+                            <StackPanel Visibility="{Binding TieneClienteSeleccionado, Converter={StaticResource BoolToVis}}">
+                                <!-- Tarjeta de Entrega Inicial (Doble Medio de Pago) -->
+                                <Border Background="#F0FDF4" BorderBrush="#BBF7D0" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,10">
+                                    <StackPanel>
+                                        <CheckBox Content="💵 El cliente realiza una entrega / seña hoy (Doble Medio de Pago)" 
+                                                  IsChecked="{Binding TieneEntregaInicial}"
+                                                  FontWeight="Bold" FontSize="13" Foreground="#166534" Cursor="Hand"/>
+
+                                        <!-- Controles desplegables de la entrega -->
+                                        <StackPanel Visibility="{Binding TieneEntregaInicial, Converter={StaticResource BoolToVis}}" Margin="0,10,0,0">
+                                            <Grid Margin="0,0,0,8">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel>
+                                                    <TextBlock Text="Monto de la Entrega Inmediata ($):" FontSize="12" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,4"/>
+                                                    <TextBox Text="{Binding MontoEntregaInicial, UpdateSourceTrigger=PropertyChanged, StringFormat='N2'}" 
+                                                             FontSize="18" FontWeight="Bold" Padding="8,5" Background="White"/>
+                                                </StackPanel>
+                                                <Button Grid.Column="1" Content="50% Total" Command="{Binding AsignarMitadEntregaCommand}"
+                                                        VerticalAlignment="Bottom" Margin="8,0,0,0" Padding="12,7" FontWeight="Bold" FontSize="11"
+                                                        Background="#DCFCE7" Foreground="#15803D" BorderBrush="#86EFAC" BorderThickness="1" Cursor="Hand"
+                                                        ToolTip="Asignar la mitad exacta de la venta como entrega inicial"/>
+                                            </Grid>
+
+                                            <TextBlock Text="Medio de Pago de la Entrega:" FontSize="12" FontWeight="SemiBold" Foreground="#1E293B" Margin="0,0,0,4"/>
+                                            <ComboBox SelectedValue="{Binding MetodoPagoEntrega, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                                      SelectedValuePath="Tag" FontSize="13" Padding="8,6" Margin="0,0,0,8">
+                                                <ComboBoxItem Tag="Efectivo" IsSelected="True" Content="💵 Efectivo"/>
+                                                <ComboBoxItem Tag="Transferencia" Content="📱 Transferencia / QR"/>
+                                                <ComboBoxItem Tag="Debito" Content="💳 Tarjeta Débito"/>
+                                                <ComboBoxItem Tag="Credito" Content="💳 Tarjeta Crédito"/>
+                                            </ComboBox>
+
+                                            <TextBlock Text="Comprobante / Titular / Ref. Entrega (Opcional):" FontSize="11" Foreground="#64748B" Margin="0,0,0,2"/>
+                                            <TextBox Text="{Binding ReferenciaEntrega, UpdateSourceTrigger=PropertyChanged}" FontSize="12" Padding="6,4" Background="White"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- Resumen de Cuenta Corriente y Saldo Resultante -->
+                                <Border Background="#FEF3C7" BorderBrush="#FCD34D" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,12">
+                                    <StackPanel>
+                                        <TextBlock Text="RESUMEN FINANCIERO DE LA OPERACIÓN" FontWeight="Bold" Foreground="#92400E" FontSize="11" Margin="0,0,0,6"/>
+                                        <Grid Margin="0,0,0,4">
+                                            <TextBlock Text="Cliente:" Foreground="#78350F" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding ClienteSeleccionado.NombreCompleto}" HorizontalAlignment="Right" FontWeight="Bold" Foreground="#1E293B"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,4">
+                                            <TextBlock Text="Total de la Compra:" Foreground="#78350F"/>
+                                            <TextBlock Text="{Binding TotalFinal, StringFormat='${0:N2}'}" HorizontalAlignment="Right" FontWeight="Bold" Foreground="#1E293B"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,4" Visibility="{Binding TieneEntregaInicial, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="{Binding MetodoPagoEntrega, StringFormat='(-) Entrega Inmediata ({0}):'}" Foreground="#15803D" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding MontoEntregaInicial, StringFormat='-${0:N2}'}" HorizontalAlignment="Right" FontWeight="Bold" Foreground="#16A34A"/>
+                                        </Grid>
+                                        <Grid Margin="0,0,0,4">
+                                            <TextBlock Text="(=) A anotar en Cuenta Fiada:" Foreground="#92400E" FontWeight="Bold"/>
+                                            <TextBlock Text="{Binding MontoFiadoRestante, StringFormat='${0:N2}'}" HorizontalAlignment="Right" FontWeight="Black" Foreground="#2563EB"/>
+                                        </Grid>
+                                        <Separator Margin="0,6"/>
+                                        <Grid Margin="0,0,0,2">
+                                            <TextBlock Text="Nuevo Saldo Deudor del Cliente:" Foreground="#78350F" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding NuevoSaldoDeudorEstimado, StringFormat='${0:N2}'}" HorizontalAlignment="Right" FontWeight="Black" Foreground="#DC2626"/>
+                                        </Grid>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
 
                             <Border Visibility="{Binding TieneClienteSeleccionado, Converter={StaticResource InverseBoolToVis}}"
                                     Background="#FEE2E2" BorderBrush="#FCA5A5" BorderThickness="1" CornerRadius="8" Padding="14,10">

@@ -465,6 +465,10 @@ public partial class PosViewModel : ObservableObject
                 RecargoCuotasMonto = cobroVm.RecargoCuotasMonto,
                 MontoEntregado = cobroVm.MontoEntregado,
                 Vuelto = cobroVm.Vuelto,
+                TieneEntregaInicial = cobroVm.TieneEntregaInicial,
+                MontoEntregaInicial = cobroVm.MontoEntregaInicial,
+                MetodoPagoEntrega = cobroVm.MetodoPagoEntrega,
+                ReferenciaEntrega = cobroVm.ReferenciaEntrega,
                 Items = Items.Select(i => new ItemCarritoDto
                 {
                     ArticuloId = i.ArticuloId,

@@ -140,47 +140,104 @@ public class VentaService : IVentaService
             if (cliente != null)
             {
                 venta.ClienteId = cliente.Id;
-                // Si la venta es con Cuenta Corriente / Fiado, sumarle el saldo deudor
-                if (dto.MetodoPago == "CtaCte")
-                {
-                    cliente.SaldoDeudorActual += totalVenta;
-                }
             }
         }
 
-        // Registrar Pago
-        venta.Pagos.Add(new PagoVenta
-        {
-            VentaId = venta.Id,
-            MetodoPago = dto.MetodoPago,
-            Monto = totalVenta,
-            ReferenciaOperacion = dto.ReferenciaPago
-        });
-
-        // Generar concepto detallado para trazabilidad de caja y movimientos
         var clienteInfo = !string.IsNullOrWhiteSpace(dto.ClienteNombre) ? dto.ClienteNombre : (cliente?.NombreCompleto ?? "Consumidor Final");
         var detalleRef = !string.IsNullOrWhiteSpace(dto.ReferenciaPago) ? $" - Ref/Titular: {dto.ReferenciaPago}" : string.Empty;
 
-        string concepto = dto.MetodoPago switch
-        {
-            "CtaCte" => $"Venta fiada Cta. Cte. {numeroComprobante} - Cliente: {clienteInfo}",
-            "Transferencia" => $"Cobro venta {numeroComprobante} (Transferencia{detalleRef})",
-            "Debito" => $"Cobro venta {numeroComprobante} (Débito{detalleRef})",
-            "Credito" => $"Cobro venta {numeroComprobante} (Crédito {dto.CantidadCuotas}c{detalleRef})",
-            _ => $"Cobro venta {numeroComprobante} (Efectivo - {clienteInfo})"
-        };
+        bool esFiadoConEntrega = dto.MetodoPago == "CtaCte" && dto.TieneEntregaInicial && dto.MontoEntregaInicial > 0;
+        decimal montoEntrega = esFiadoConEntrega ? Math.Min(dto.MontoEntregaInicial, totalVenta) : 0m;
+        decimal montoFiado = esFiadoConEntrega ? (totalVenta - montoEntrega) : (dto.MetodoPago == "CtaCte" ? totalVenta : 0m);
+        string metodoEntrega = string.IsNullOrWhiteSpace(dto.MetodoPagoEntrega) ? "Efectivo" : dto.MetodoPagoEntrega;
 
-        // Registrar en Movimientos de Caja
-        _context.MovimientosCaja.Add(new MovimientoCaja
+        if (cliente != null && dto.MetodoPago == "CtaCte")
         {
-            TurnoCajaId = turno.Id,
-            Tipo = dto.MetodoPago == "CtaCte" ? TipoMovimientoCaja.CobroCuentaCorriente : TipoMovimientoCaja.IngresoVenta,
-            Monto = totalVenta,
-            MetodoPago = dto.MetodoPago,
-            Concepto = concepto,
-            UsuarioNombre = dto.VendedoraNombre,
-            VentaId = venta.Id
-        });
+            // Solo sumar al saldo deudor la porción que realmente queda fiada
+            cliente.SaldoDeudorActual += montoFiado;
+        }
+
+        if (esFiadoConEntrega)
+        {
+            // 1. Asentar entrega inmediata
+            if (montoEntrega > 0)
+            {
+                venta.Pagos.Add(new PagoVenta
+                {
+                    VentaId = venta.Id,
+                    MetodoPago = metodoEntrega,
+                    Monto = montoEntrega,
+                    ReferenciaOperacion = dto.ReferenciaEntrega
+                });
+
+                _context.MovimientosCaja.Add(new MovimientoCaja
+                {
+                    TurnoCajaId = turno.Id,
+                    Tipo = TipoMovimientoCaja.IngresoVenta,
+                    Monto = montoEntrega,
+                    MetodoPago = metodoEntrega,
+                    Concepto = $"Entrega inicial venta fiada {numeroComprobante} ({metodoEntrega}) - Cliente: {clienteInfo}",
+                    UsuarioNombre = dto.VendedoraNombre,
+                    VentaId = venta.Id,
+                    ClienteId = cliente?.Id
+                });
+            }
+
+            // 2. Asentar saldo fiado en cuenta corriente
+            if (montoFiado > 0)
+            {
+                venta.Pagos.Add(new PagoVenta
+                {
+                    VentaId = venta.Id,
+                    MetodoPago = "CtaCte",
+                    Monto = montoFiado
+                });
+
+                _context.MovimientosCaja.Add(new MovimientoCaja
+                {
+                    TurnoCajaId = turno.Id,
+                    Tipo = TipoMovimientoCaja.CobroCuentaCorriente,
+                    Monto = montoFiado,
+                    MetodoPago = "CtaCte",
+                    Concepto = $"Venta fiada Cta. Cte. {numeroComprobante} (Saldo fiado) - Cliente: {clienteInfo}",
+                    UsuarioNombre = dto.VendedoraNombre,
+                    VentaId = venta.Id,
+                    ClienteId = cliente?.Id
+                });
+            }
+        }
+        else
+        {
+            // Flujo de pago único estándar
+            venta.Pagos.Add(new PagoVenta
+            {
+                VentaId = venta.Id,
+                MetodoPago = dto.MetodoPago,
+                Monto = totalVenta,
+                ReferenciaOperacion = dto.ReferenciaPago
+            });
+
+            string concepto = dto.MetodoPago switch
+            {
+                "CtaCte" => $"Venta fiada Cta. Cte. {numeroComprobante} - Cliente: {clienteInfo}",
+                "Transferencia" => $"Cobro venta {numeroComprobante} (Transferencia{detalleRef})",
+                "Debito" => $"Cobro venta {numeroComprobante} (Débito{detalleRef})",
+                "Credito" => $"Cobro venta {numeroComprobante} (Crédito {dto.CantidadCuotas}c{detalleRef})",
+                _ => $"Cobro venta {numeroComprobante} (Efectivo - {clienteInfo})"
+            };
+
+            _context.MovimientosCaja.Add(new MovimientoCaja
+            {
+                TurnoCajaId = turno.Id,
+                Tipo = dto.MetodoPago == "CtaCte" ? TipoMovimientoCaja.CobroCuentaCorriente : TipoMovimientoCaja.IngresoVenta,
+                Monto = totalVenta,
+                MetodoPago = dto.MetodoPago,
+                Concepto = concepto,
+                UsuarioNombre = dto.VendedoraNombre,
+                VentaId = venta.Id,
+                ClienteId = cliente?.Id
+            });
+        }
 
         _context.Ventas.Add(venta);
         await _context.SaveChangesAsync(ct);
@@ -200,7 +257,11 @@ public class VentaService : IVentaService
             VendedoraNombre = dto.VendedoraNombre,
             ReferenciaPago = dto.ReferenciaPago,
             Fecha = venta.FechaVenta,
-            Lineas = dto.Items
+            Lineas = dto.Items,
+            TieneEntregaInicial = esFiadoConEntrega,
+            MontoEntregaInicial = montoEntrega,
+            MetodoPagoEntrega = metodoEntrega,
+            MontoFiado = montoFiado
         };
     }
 }
