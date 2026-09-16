@@ -46,8 +46,10 @@ public partial class PosViewModel : ObservableObject
 
     public Guid? TurnoActivoId { get; private set; }
 
-    // Delegado para invocar la ventana modal de cobro desde la View
+    // Delegados para interacción modal con la View
     public Func<CobroModalViewModel, Task<bool>>? SolicitarCobroDialogo { get; set; }
+    public Func<IReadOnlyList<ArticuloDto>, string, Task<ArticuloDto?>>? SolicitarSeleccionArticulo { get; set; }
+    public Func<Task<(string descripcion, decimal precio, decimal cantidad)?>>? SolicitarVentaManualDialogo { get; set; }
 
     public PosViewModel(IInventarioService inventarioService, IVentaService ventaService, ICajaService cajaService)
     {
@@ -99,21 +101,45 @@ public partial class PosViewModel : ObservableObject
 
         // 1. Buscar por código de barras exacto
         var art = await _inventarioService.BuscarPorCodigoBarrasAsync(query);
-
-        // 2. Si no encuentra, buscar por SKU o coincidencia de texto
-        if (art == null)
+        if (art != null)
         {
-            var coincidencias = await _inventarioService.BuscarArticulosAsync(query);
-            art = coincidencias.FirstOrDefault();
+            AgregarArticuloAlTicket(art);
+            return;
         }
 
-        if (art == null)
+        // 2. Si no encuentra por código de barras exacto, buscar coincidencias por SKU, nombre o descripción
+        var coincidencias = await _inventarioService.BuscarArticulosAsync(query);
+
+        if (coincidencias == null || coincidencias.Count == 0)
         {
             MensajeEstado = $"No se encontró ningún artículo para: '{query}'";
             return;
         }
 
-        AgregarArticuloAlTicket(art);
+        // Si hay una sola coincidencia y su SKU coincide exactamente con el texto buscado
+        if (coincidencias.Count == 1 && string.Equals(coincidencias[0].SKU, query, StringComparison.OrdinalIgnoreCase))
+        {
+            AgregarArticuloAlTicket(coincidencias[0]);
+            return;
+        }
+
+        // Si hay múltiples resultados o la búsqueda fue por texto/descripción, abrir selector para el cajero
+        if (SolicitarSeleccionArticulo != null)
+        {
+            var seleccionado = await SolicitarSeleccionArticulo(coincidencias, query);
+            if (seleccionado != null)
+            {
+                AgregarArticuloAlTicket(seleccionado);
+            }
+            else
+            {
+                MensajeEstado = "Búsqueda cancelada por el usuario.";
+            }
+        }
+        else
+        {
+            AgregarArticuloAlTicket(coincidencias[0]);
+        }
     }
 
     [RelayCommand]
@@ -194,15 +220,41 @@ public partial class PosViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void AgregarVentaManual(string? descripcion)
+    private async Task AgregarVentaManualAsync(string? descripcion)
     {
-        var desc = string.IsNullOrWhiteSpace(descripcion) ? "Venta Rápida / Mostrador" : descripcion;
+        if (SolicitarVentaManualDialogo != null)
+        {
+            var res = await SolicitarVentaManualDialogo();
+            if (res.HasValue)
+            {
+                var (desc, precio, cant) = res.Value;
+                var nuevoManual = new PosItemModel
+                {
+                    ArticuloId = null,
+                    SKU = "MANUAL",
+                    CodigoBarras = null,
+                    Descripcion = desc,
+                    PrecioUnitario = precio,
+                    PrecioCosto = 0m,
+                    Cantidad = cant,
+                    EsVentaManual = true
+                };
+
+                nuevoManual.PropertyChanged += (s, e) => RecalcularTotales();
+                Items.Add(nuevoManual);
+                RecalcularTotales();
+                MensajeEstado = $"Venta manual agregada: {desc} x{cant} (${precio:N2})";
+            }
+            return;
+        }
+
+        var descDef = string.IsNullOrWhiteSpace(descripcion) ? "Venta Rápida / Mostrador" : descripcion;
         var nuevo = new PosItemModel
         {
             ArticuloId = null,
             SKU = "MANUAL",
             CodigoBarras = null,
-            Descripcion = desc,
+            Descripcion = descDef,
             PrecioUnitario = 100m,
             PrecioCosto = 0m,
             Cantidad = 1,
@@ -211,6 +263,7 @@ public partial class PosViewModel : ObservableObject
 
         nuevo.PropertyChanged += (s, e) => RecalcularTotales();
         Items.Add(nuevo);
+        RecalcularTotales();
         MensajeEstado = "Artículo manual agregado. Ajuste precio y cantidad.";
     }
 

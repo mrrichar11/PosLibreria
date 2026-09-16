@@ -31,6 +31,34 @@ public partial class PosView : UserControl
             return Task.FromResult(dialogResult == true);
         };
 
+        ViewModel.SolicitarSeleccionArticulo = (opciones, query) =>
+        {
+            var modal = new SeleccionarArticuloModalWindow(opciones, query)
+            {
+                Owner = Window.GetWindow(this)
+            };
+
+            var dialogResult = modal.ShowDialog();
+            TxtCodigoBarras.Focus();
+            return Task.FromResult(dialogResult == true ? modal.ArticuloSeleccionado : null);
+        };
+
+        ViewModel.SolicitarVentaManualDialogo = () =>
+        {
+            var modal = new VentaManualModalWindow
+            {
+                Owner = Window.GetWindow(this)
+            };
+
+            var dialogResult = modal.ShowDialog();
+            TxtCodigoBarras.Focus();
+            if (dialogResult == true && modal.Confirmado)
+            {
+                return Task.FromResult<(string descripcion, decimal precio, decimal cantidad)?>((modal.Descripcion, modal.PrecioUnitario, modal.Cantidad));
+            }
+            return Task.FromResult<(string descripcion, decimal precio, decimal cantidad)?>(null);
+        };
+
         Loaded += async (s, e) =>
         {
             await ViewModel.InicializarAsync();
@@ -64,7 +92,7 @@ public partial class PosView : UserControl
             {
                 if (ViewModel.AgregarVentaManualCommand.CanExecute(null))
                 {
-                    ViewModel.AgregarVentaManualCommand.Execute(null);
+                    await ViewModel.AgregarVentaManualCommand.ExecuteAsync(null);
                     e.Handled = true;
                 }
             }

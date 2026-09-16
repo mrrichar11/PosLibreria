@@ -22,6 +22,20 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        this.DispatcherUnhandledException += (s, ev) =>
+        {
+            MessageBox.Show($"Ocurrió un error en la interfaz:\n\n{ev.Exception.Message}\n\n{ev.Exception.StackTrace}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            ev.Handled = true;
+        };
+
+        AppDomain.CurrentDomain.UnhandledException += (s, ev) =>
+        {
+            if (ev.ExceptionObject is Exception ex)
+            {
+                MessageBox.Show($"Error crítico:\n\n{ex.Message}\n\n{ex.StackTrace}", "MR SYS Error Crítico", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        };
+
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices((context, services) =>
             {

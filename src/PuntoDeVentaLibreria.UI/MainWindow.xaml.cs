@@ -96,34 +96,65 @@ public partial class MainWindow : Window
 
     private void NavPos_Click(object sender, RoutedEventArgs e)
     {
-        MostrarVistaPos();
+        try
+        {
+            MostrarVistaPos();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al cargar Punto de Venta: {ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
-    private async void NavInventario_Click(object sender, RoutedEventArgs e)
+    private void NavInventario_Click(object sender, RoutedEventArgs e)
     {
-        ActivarBoton(BtnNavInventario);
-        MainContentControl.Content = _inventarioView;
-        await _inventarioView.ViewModel.CargarDatosAsync();
+        try
+        {
+            ActivarBoton(BtnNavInventario);
+            MainContentControl.Content = _inventarioView;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al cargar Inventario: {ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
-    private async void NavCaja_Click(object sender, RoutedEventArgs e)
+    private void NavCaja_Click(object sender, RoutedEventArgs e)
     {
-        ActivarBoton(BtnNavCaja);
-        MainContentControl.Content = _cajaView;
-        await _cajaView.ViewModel.CargarDatosAsync();
+        try
+        {
+            ActivarBoton(BtnNavCaja);
+            MainContentControl.Content = _cajaView;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al cargar Caja: {ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
-    private async void NavClientes_Click(object sender, RoutedEventArgs e)
+    private void NavClientes_Click(object sender, RoutedEventArgs e)
     {
-        ActivarBoton(BtnNavClientes);
-        MainContentControl.Content = _clientesView;
-        await _clientesView.ViewModel.CargarDatosAsync();
+        try
+        {
+            ActivarBoton(BtnNavClientes);
+            MainContentControl.Content = _clientesView;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al cargar Clientes: {ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
-    private async void NavConfiguracion_Click(object sender, RoutedEventArgs e)
+    private void NavConfiguracion_Click(object sender, RoutedEventArgs e)
     {
-        ActivarBoton(BtnNavConfiguracion);
-        MainContentControl.Content = _configuracionView;
-        await _configuracionView.ViewModel.CargarDatosAsync();
+        try
+        {
+            ActivarBoton(BtnNavConfiguracion);
+            MainContentControl.Content = _configuracionView;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al cargar Configuración: {ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 }

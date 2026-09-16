@@ -1,0 +1,91 @@
+<Window x:Class="PuntoDeVentaLibreria.UI.Views.Pos.SeleccionarArticuloModalWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Resultados de Búsqueda de Artículos" 
+        Height="480" Width="720"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F8FAFC"
+        FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Cabecera -->
+        <Border Grid.Row="0" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="SELECCIONAR ARTÍCULO PARA EL TICKET" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
+                <TextBlock x:Name="TxtInfoResultados" Text="Se encontraron varios artículos coincidentes. Seleccione el que desea agregar:" FontSize="12" Foreground="#64748B"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Grilla de Opciones -->
+        <Border Grid.Row="1" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8">
+            <DataGrid x:Name="DgOpciones"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      HorizontalGridLinesBrush="#F1F5F9"
+                      RowHeight="42"
+                      FontSize="13"
+                      Background="White"
+                      BorderThickness="0"
+                      SelectionMode="Single"
+                      MouseDoubleClick="DgOpciones_MouseDoubleClick">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Código / SKU" Binding="{Binding SKU}" Width="120" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Descripción del Artículo / Útil" Binding="{Binding Nombre}" Width="*" IsReadOnly="True">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Ubicación" Binding="{Binding Ubicacion}" Width="100" IsReadOnly="True"/>
+                    <DataGridTextColumn Header="Stock" Binding="{Binding StockActual, StringFormat='N0'}" Width="80" IsReadOnly="True">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="HorizontalAlignment" Value="Center"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Precio Venta" Binding="{Binding PrecioVenta, StringFormat='${0:N2}'}" Width="110" IsReadOnly="True">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Foreground" Value="#0369A1"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- Botones de Acción -->
+        <Grid Grid.Row="2" Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock Text="Doble clic o presione [ENTER] para agregar al ticket" VerticalAlignment="Center" Foreground="#64748B" FontSize="12"/>
+
+            <Button Grid.Column="1" Content="Cancelar [ESC]" Click="BtnCancelar_Click" Padding="16,8" FontSize="13" Margin="0,0,10,0" Cursor="Hand"/>
+            <Button Grid.Column="2" Content="➕ Agregar al Ticket [ENTER]" Click="BtnAgregar_Click" Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="18,8" FontSize="13" Cursor="Hand"/>
+        </Grid>
+    </Grid>
+</Window>

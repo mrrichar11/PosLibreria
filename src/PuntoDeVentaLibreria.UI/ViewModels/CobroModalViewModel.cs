@@ -60,12 +60,16 @@ public partial class CobroModalViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void AgregarBillete(decimal monto)
+    private void AgregarBillete(object? montoParam)
     {
-        if (MontoEntregado < TotalFinal)
-            MontoEntregado = monto;
-        else
-            MontoEntregado += monto;
+        if (montoParam == null) return;
+        if (decimal.TryParse(montoParam.ToString(), out var monto))
+        {
+            if (MontoEntregado < TotalFinal)
+                MontoEntregado = monto;
+            else
+                MontoEntregado += monto;
+        }
     }
 
     [RelayCommand]
