@@ -41,9 +41,10 @@ public partial class App : System.Windows.Application
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices((context, services) =>
             {
-                // Base de datos SQLite local
+                // Base de datos SQLite local en el directorio base de la aplicación
+                var dbPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "punto_venta_libreria.db");
                 services.AddDbContext<AppDbContext>(options =>
-                    options.UseSqlite("Data Source=punto_venta_libreria.db"));
+                    options.UseSqlite($"Data Source={dbPath}"));
 
                 // Servicios de Dominio e Infraestructura
                 services.AddScoped<IInventarioService, InventarioService>();
