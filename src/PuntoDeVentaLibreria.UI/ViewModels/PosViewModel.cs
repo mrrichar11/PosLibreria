@@ -42,8 +42,14 @@ public partial class PosViewModel : ObservableObject
     [ObservableProperty]
     private decimal _cantidadArticulos;
 
+    private int _contadorEspera = 1;
+
     public ObservableCollection<PosItemModel> Items { get; } = new();
     public ObservableCollection<ArticuloDto> BotonesRapidos { get; } = new();
+    public ObservableCollection<VentaEnEsperaDto> VentasEnEspera { get; } = new();
+
+    public bool HayVentasEnEspera => VentasEnEspera.Count > 0;
+    public bool HayItemsEnCarrito => Items.Count > 0;
 
     public Guid? TurnoActivoId { get; private set; }
 
@@ -51,6 +57,7 @@ public partial class PosViewModel : ObservableObject
     public Func<CobroModalViewModel, Task<bool>>? SolicitarCobroDialogo { get; set; }
     public Func<IReadOnlyList<ArticuloDto>, string, Task<ArticuloDto?>>? SolicitarSeleccionArticulo { get; set; }
     public Func<Task<(string descripcion, decimal precio, decimal cantidad)?>>? SolicitarVentaManualDialogo { get; set; }
+    public Func<string, string, Task<bool>>? SolicitarConfirmacionDialogo { get; set; }
 
     public PosViewModel(
         IInventarioService inventarioService,
@@ -220,9 +227,140 @@ public partial class PosViewModel : ObservableObject
     [RelayCommand]
     private void LimpiarTicket()
     {
+        if (Items.Count == 0) return;
         Items.Clear();
         RecalcularTotales();
         MensajeEstado = "Ticket cancelado / limpio.";
+    }
+
+    [RelayCommand]
+    private async Task LimpiarTicketConConfirmacionAsync()
+    {
+        if (Items.Count == 0)
+        {
+            MensajeEstado = "El carrito ya está vacío.";
+            return;
+        }
+
+        if (SolicitarConfirmacionDialogo != null)
+        {
+            var confirmar = await SolicitarConfirmacionDialogo(
+                "¿Desea cancelar y vaciar el ticket actual?",
+                "Vaciar Carrito [F12]");
+            if (!confirmar) return;
+        }
+
+        Items.Clear();
+        RecalcularTotales();
+        MensajeEstado = "Ticket cancelado y vaciado.";
+    }
+
+    [RelayCommand]
+    private void PausarVentaActual()
+    {
+        if (Items.Count == 0)
+        {
+            if (VentasEnEspera.Count > 0)
+            {
+                ReanudarVentaEnEspera(VentasEnEspera[0]);
+                return;
+            }
+
+            MensajeEstado = "El carrito está vacío. No hay artículos para poner en espera.";
+            return;
+        }
+
+        var listaClonada = Items.Select(i => new PosItemModel
+        {
+            ArticuloId = i.ArticuloId,
+            SKU = i.SKU,
+            CodigoBarras = i.CodigoBarras,
+            Descripcion = i.Descripcion,
+            PrecioUnitario = i.PrecioUnitario,
+            PrecioCosto = i.PrecioCosto,
+            Cantidad = i.Cantidad,
+            EsCombo = i.EsCombo,
+            EsServicio = i.EsServicio,
+            EsVentaManual = i.EsVentaManual
+        }).ToList();
+
+        var ticketNum = _contadorEspera++;
+        var espera = new VentaEnEsperaDto
+        {
+            NumeroTicket = ticketNum,
+            FechaHora = DateTime.Now,
+            Items = listaClonada,
+            TotalVenta = TotalVenta,
+            CantidadArticulos = CantidadArticulos
+        };
+
+        VentasEnEspera.Add(espera);
+        Items.Clear();
+        RecalcularTotales();
+        OnPropertyChanged(nameof(HayVentasEnEspera));
+        MensajeEstado = $"🟡 Venta puesta en espera (Ticket #{ticketNum} por ${espera.TotalVenta:N2}). Pantalla libre para nueva venta.";
+    }
+
+    [RelayCommand]
+    private void ReanudarVentaEnEspera(VentaEnEsperaDto? espera)
+    {
+        if (espera == null) return;
+
+        // Si el carrito actual tiene artículos, auto-pausarlo en espera para no perderlo
+        if (Items.Count > 0)
+        {
+            var actualPausado = new VentaEnEsperaDto
+            {
+                NumeroTicket = _contadorEspera++,
+                FechaHora = DateTime.Now,
+                Items = Items.Select(i => new PosItemModel
+                {
+                    ArticuloId = i.ArticuloId,
+                    SKU = i.SKU,
+                    CodigoBarras = i.CodigoBarras,
+                    Descripcion = i.Descripcion,
+                    PrecioUnitario = i.PrecioUnitario,
+                    PrecioCosto = i.PrecioCosto,
+                    Cantidad = i.Cantidad,
+                    EsCombo = i.EsCombo,
+                    EsServicio = i.EsServicio,
+                    EsVentaManual = i.EsVentaManual
+                }).ToList(),
+                TotalVenta = TotalVenta,
+                CantidadArticulos = CantidadArticulos
+            };
+            VentasEnEspera.Add(actualPausado);
+        }
+
+        Items.Clear();
+        foreach (var item in espera.Items)
+        {
+            item.PropertyChanged += (s, e) => RecalcularTotales();
+            Items.Add(item);
+        }
+
+        VentasEnEspera.Remove(espera);
+        RecalcularTotales();
+        OnPropertyChanged(nameof(HayVentasEnEspera));
+        MensajeEstado = $"🟢 Reanudada venta en espera #{espera.NumeroTicket} (${espera.TotalVenta:N2}).";
+    }
+
+    [RelayCommand]
+    private async Task DescartarVentaEnEsperaAsync(VentaEnEsperaDto? espera)
+    {
+        if (espera == null) return;
+
+        if (SolicitarConfirmacionDialogo != null)
+        {
+            var confirmar = await SolicitarConfirmacionDialogo(
+                $"¿Desea descartar y eliminar el ticket en espera #{espera.NumeroTicket} (${espera.TotalVenta:N2})?",
+                "Descartar Venta en Espera");
+            if (!confirmar) return;
+        }
+
+        VentasEnEspera.Remove(espera);
+        OnPropertyChanged(nameof(HayVentasEnEspera));
+        MensajeEstado = $"Ticket en espera #{espera.NumeroTicket} descartado.";
     }
 
     [RelayCommand]
@@ -349,5 +487,7 @@ public partial class PosViewModel : ObservableObject
         TotalDescuentos = 0; // Descuentos por cupón o globales
         TotalVenta = SubtotalBruto - TotalDescuentos;
         CantidadArticulos = Items.Sum(i => i.Cantidad);
+        OnPropertyChanged(nameof(HayItemsEnCarrito));
+        OnPropertyChanged(nameof(HayVentasEnEspera));
     }
 }

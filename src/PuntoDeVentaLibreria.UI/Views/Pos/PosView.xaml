@@ -8,6 +8,10 @@
              d:DesignHeight="700" d:DesignWidth="1100"
              FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
 
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </UserControl.Resources>
+
     <!-- CUERPO PRINCIPAL DEL TPV (2 Columnas) -->
     <Grid Margin="12">
         <Grid.ColumnDefinitions>
@@ -18,15 +22,16 @@
         <!-- COLUMNA IZQUIERDA: LECTOR, TICKET Y COBRO (65%) -->
         <Grid Grid.Column="0" Margin="0,0,12,0">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/> <!-- 0: Barra Escáner -->
+                <RowDefinition Height="Auto"/> <!-- 1: Barra Ventas en Espera -->
+                <RowDefinition Height="*"/>    <!-- 2: Grilla del Ticket -->
+                <RowDefinition Height="Auto"/> <!-- 3: Barra de Estado -->
+                <RowDefinition Height="Auto"/> <!-- 4: Tarjeta Total Gigante -->
+                <RowDefinition Height="Auto"/> <!-- 5: Botonera de Acción -->
             </Grid.RowDefinitions>
 
-            <!-- BARRA DE LECTURA ÓPTICA PERPETUA -->
-            <Border Grid.Row="0" Background="White" CornerRadius="10" BorderBrush="#CBD5E1" BorderThickness="1.5" Padding="14,10" Margin="0,0,0,12">
+            <!-- BARRA DE LECTURA ÓPTICA PERPETUA [F1] -->
+            <Border Grid.Row="0" Background="White" CornerRadius="10" BorderBrush="#CBD5E1" BorderThickness="1.5" Padding="14,10" Margin="0,0,0,8">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -36,7 +41,7 @@
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
                         <TextBlock Text="📷" FontSize="20" VerticalAlignment="Center" Margin="0,0,6,0"/>
-                        <TextBlock Text="ESCANEAR [ENTER]:" FontSize="12" FontWeight="Bold" Foreground="#475569" VerticalAlignment="Center"/>
+                        <TextBlock Text="[F1] ESCANEAR / BUSCAR:" FontSize="12" FontWeight="Bold" Foreground="#475569" VerticalAlignment="Center"/>
                     </StackPanel>
 
                     <TextBox x:Name="TxtCodigoBarras" Grid.Column="1"
@@ -45,15 +50,55 @@
                              BorderThickness="1" BorderBrush="#94A3B8"
                              VerticalAlignment="Center"/>
 
-                    <Button Grid.Column="2" Content="Buscar / Enter" Command="{Binding EscanearCodigoCommand}"
+                    <Button Grid.Column="2" Content="Buscar [Enter]" Command="{Binding EscanearCodigoCommand}"
                             Margin="10,0,0,0" Padding="14,6" FontWeight="Bold" Cursor="Hand"
                             Background="#2563EB" Foreground="White"/>
                 </Grid>
             </Border>
 
+            <!-- BANDEJA DE TICKETS EN ESPERA (MULTI-TICKET) -->
+            <Border Grid.Row="1" Background="#FEF3C7" BorderBrush="#FCD34D" BorderThickness="1.5" CornerRadius="8" Padding="10,8" Margin="0,0,0,8"
+                    Visibility="{Binding HayVentasEnEspera, Converter={StaticResource BoolToVis}}">
+                <DockPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <TextBlock Text="⏸️" FontSize="15" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                        <TextBlock Text="VENTAS EN ESPERA:" FontWeight="Black" FontSize="11" Foreground="#92400E" VerticalAlignment="Center"/>
+                    </StackPanel>
+
+                    <ItemsControl ItemsSource="{Binding VentasEnEspera}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="#FFFBEB" BorderBrush="#F59E0B" BorderThickness="1" CornerRadius="6" Padding="8,4" Margin="0,0,6,4">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <!-- Botón para Reanudar -->
+                                        <Button Content="{Binding ResumenTexto}"
+                                                Command="{Binding DataContext.ReanudarVentaEnEsperaCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"
+                                                Background="Transparent" BorderThickness="0" FontWeight="Bold" FontSize="11" Foreground="#B45309"
+                                                Cursor="Hand" ToolTip="Haga clic para retomar este ticket"/>
+                                        <!-- Botón para Descartar con confirmación -->
+                                        <Button Content="✕" 
+                                                Command="{Binding DataContext.DescartarVentaEnEsperaCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding}"
+                                                Background="Transparent" BorderThickness="0" Foreground="#DC2626" FontWeight="Black" FontSize="11"
+                                                Margin="6,0,0,0" Padding="3,0" Cursor="Hand" ToolTip="Descartar este ticket en espera"/>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DockPanel>
+            </Border>
+
             <!-- GRILLA DEL TICKET EN CURSO -->
-            <Border Grid.Row="1" Background="White" CornerRadius="10" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,10">
-                <DataGrid ItemsSource="{Binding Items}"
+            <Border Grid.Row="2" Background="White" CornerRadius="10" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,8">
+                <DataGrid x:Name="GridCarrito"
+                          ItemsSource="{Binding Items}"
                           AutoGenerateColumns="False"
                           CanUserAddRows="False"
                           CanUserDeleteRows="False"
@@ -126,7 +171,7 @@
             </Border>
 
             <!-- BARRA DE ESTADO / MENSAJES -->
-            <Border Grid.Row="2" Background="#E2E8F0" CornerRadius="6" Padding="12,6" Margin="0,0,0,10">
+            <Border Grid.Row="3" Background="#E2E8F0" CornerRadius="6" Padding="12,6" Margin="0,0,0,8">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -139,7 +184,7 @@
             </Border>
 
             <!-- TARJETA DE TOTALES GIGANTE -->
-            <Border Grid.Row="3" Background="#0F172A" CornerRadius="12" Padding="20,14" Margin="0,0,0,10">
+            <Border Grid.Row="4" Background="#0F172A" CornerRadius="12" Padding="20,14" Margin="0,0,0,8">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -158,25 +203,38 @@
                 </Grid>
             </Border>
 
-            <!-- BOTONES DE ACCIÓN RÁPIDA / TECLADO -->
-            <Grid Grid.Row="4">
+            <!-- BOTONES DE ACCIÓN RÁPIDA / TECLADO [F2, F3, F4, F12] -->
+            <Grid Grid.Row="5">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="2*"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
+                <!-- [F2] COBRAR TICKET -->
                 <Button Grid.Column="0" Content="💰 [F2] COBRAR TICKET" Command="{Binding AbrirCobroCommand}"
-                        Background="#16A34A" Foreground="White" FontSize="16" FontWeight="Bold"
-                        Padding="20,12" Margin="0,0,8,0" Cursor="Hand"/>
+                        Background="#16A34A" Foreground="White" FontSize="15" FontWeight="Black"
+                        Padding="16,12" Margin="0,0,8,0" Cursor="Hand"
+                        ToolTip="Finalizar venta y abrir ventana de cobro [F2] o [Espacio]"/>
 
-                <Button Grid.Column="1" Content="📝 [F4] Venta Manual" Command="{Binding AgregarVentaManualCommand}"
-                        Background="#3B82F6" Foreground="White" FontSize="13" FontWeight="SemiBold"
-                        Padding="16,12" Margin="0,0,8,0" Cursor="Hand"/>
+                <!-- [F3] VENTA MANUAL -->
+                <Button Grid.Column="1" Content="📝 [F3] Manual" Command="{Binding AgregarVentaManualCommand}"
+                        Background="#2563EB" Foreground="White" FontSize="13" FontWeight="Bold"
+                        Padding="14,12" Margin="0,0,8,0" Cursor="Hand"
+                        ToolTip="Agregar artículo o servicio manual con monto editable [F3]"/>
 
-                <Button Grid.Column="2" Content="🗑 [F5] Limpiar" Command="{Binding LimpiarTicketCommand}"
-                        Background="#DC2626" Foreground="White" FontSize="13" FontWeight="SemiBold"
-                        Padding="16,12" Cursor="Hand"/>
+                <!-- [F4] EN ESPERA / MULTI-TICKET -->
+                <Button Grid.Column="2" Content="⏸️ [F4] En Espera" Command="{Binding PausarVentaActualCommand}"
+                        Background="#D97706" Foreground="White" FontSize="13" FontWeight="Bold"
+                        Padding="14,12" Margin="0,0,8,0" Cursor="Hand"
+                        ToolTip="Poner venta en espera para atender a otro cliente [F4]"/>
+
+                <!-- [F12] VACIAR TICKET -->
+                <Button Grid.Column="3" Content="🗑 [F12] Vaciar" Command="{Binding LimpiarTicketConConfirmacionCommand}"
+                        Background="#DC2626" Foreground="White" FontSize="13" FontWeight="Bold"
+                        Padding="14,12" Cursor="Hand"
+                        ToolTip="Cancelar y vaciar todos los artículos del ticket actual [F12]"/>
             </Grid>
         </Grid>
 

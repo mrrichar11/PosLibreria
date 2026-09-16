@@ -59,6 +59,13 @@ public partial class PosView : UserControl
             return Task.FromResult<(string descripcion, decimal precio, decimal cantidad)?>(null);
         };
 
+        ViewModel.SolicitarConfirmacionDialogo = (mensaje, titulo) =>
+        {
+            var ventana = Window.GetWindow(this);
+            var res = MessageBox.Show(ventana, mensaje, titulo, MessageBoxButton.YesNo, MessageBoxImage.Question);
+            return Task.FromResult(res == MessageBoxResult.Yes);
+        };
+
         Loaded += async (s, e) =>
         {
             await ViewModel.InicializarAsync();
@@ -78,9 +85,15 @@ public partial class PosView : UserControl
             }
         };
 
-        KeyDown += async (s, e) =>
+        PreviewKeyDown += async (s, e) =>
         {
-            if (e.Key == Key.F2)
+            if (e.Key == Key.F1)
+            {
+                TxtCodigoBarras.Focus();
+                TxtCodigoBarras.SelectAll();
+                e.Handled = true;
+            }
+            else if (e.Key == Key.F2)
             {
                 if (ViewModel.AbrirCobroCommand.CanExecute(null))
                 {
@@ -88,7 +101,7 @@ public partial class PosView : UserControl
                     e.Handled = true;
                 }
             }
-            else if (e.Key == Key.F4)
+            else if (e.Key == Key.F3)
             {
                 if (ViewModel.AgregarVentaManualCommand.CanExecute(null))
                 {
@@ -96,15 +109,34 @@ public partial class PosView : UserControl
                     e.Handled = true;
                 }
             }
-            else if (e.Key == Key.F5)
+            else if (e.Key == Key.F4)
             {
-                if (ViewModel.LimpiarTicketCommand.CanExecute(null))
+                if (ViewModel.PausarVentaActualCommand.CanExecute(null))
                 {
-                    ViewModel.LimpiarTicketCommand.Execute(null);
+                    ViewModel.PausarVentaActualCommand.Execute(null);
                     e.Handled = true;
                 }
             }
-            else if (e.Key == Key.F12 || e.Key == Key.Escape)
+            else if (e.Key == Key.F12)
+            {
+                if (ViewModel.LimpiarTicketConConfirmacionCommand.CanExecute(null))
+                {
+                    await ViewModel.LimpiarTicketConConfirmacionCommand.ExecuteAsync(null);
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.Delete)
+            {
+                if (GridCarrito.IsFocused || GridCarrito.IsKeyboardFocusWithin)
+                {
+                    if (GridCarrito.SelectedItem is PosItemModel item)
+                    {
+                        ViewModel.EliminarItemCommand.Execute(item);
+                        e.Handled = true;
+                    }
+                }
+            }
+            else if (e.Key == Key.Escape)
             {
                 TxtCodigoBarras.Focus();
                 TxtCodigoBarras.SelectAll();
