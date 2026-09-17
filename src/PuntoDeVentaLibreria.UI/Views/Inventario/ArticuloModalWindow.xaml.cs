@@ -25,12 +25,13 @@ public partial class ArticuloModalWindow : Window
 
     public ArticuloModalWindow(ArticuloDto articulo, IInventarioService inventarioService, IConfiguracionService? configuracionService = null, IProveedorService? proveedorService = null)
     {
-        InitializeComponent();
         Articulo = articulo ?? throw new ArgumentNullException(nameof(articulo));
         _inventarioService = inventarioService ?? throw new ArgumentNullException(nameof(inventarioService));
         _configuracionService = configuracionService;
         _proveedorService = proveedorService;
         DataContext = Articulo;
+
+        InitializeComponent();
 
         if (string.IsNullOrEmpty(Articulo.ColorBoton))
         {
@@ -239,6 +240,7 @@ public partial class ArticuloModalWindow : Window
 
     private void CmbIva_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (Articulo == null) return;
         if (CmbIva?.SelectedItem is ComboBoxItem item && decimal.TryParse(item.Tag?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var iva))
         {
             Articulo.IvaPorcentaje = iva;
@@ -262,7 +264,7 @@ public partial class ArticuloModalWindow : Window
             lista.AddRange(proveedores);
 
             CmbProveedor.ItemsSource = lista;
-            if (Articulo.ProveedorId.HasValue)
+            if (Articulo != null && Articulo.ProveedorId.HasValue)
             {
                 var seleccionado = lista.FirstOrDefault(p => p.Id == Articulo.ProveedorId.Value);
                 CmbProveedor.SelectedItem = seleccionado ?? lista[0];
@@ -277,6 +279,7 @@ public partial class ArticuloModalWindow : Window
 
     private void CmbProveedor_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (Articulo == null) return;
         if (CmbProveedor.SelectedItem is ProveedorDto p)
         {
             if (p.Id == Guid.Empty)

@@ -80,8 +80,14 @@ public static class DatabaseInitializer
                 Notas TEXT NULL,
                 FechaCreacion TEXT NOT NULL,
                 FechaModificacion TEXT NULL,
-                EstaActivo INTEGER NOT NULL DEFAULT 1
+                Activo INTEGER NOT NULL DEFAULT 1
             );", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Proveedores ADD COLUMN Activo INTEGER NOT NULL DEFAULT 1;", cancellationToken);
         }
         catch { }
 
