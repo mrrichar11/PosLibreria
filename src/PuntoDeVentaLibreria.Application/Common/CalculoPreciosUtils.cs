@@ -38,6 +38,12 @@ public static class CalculoPreciosUtils
         return Math.Round(costo * (1m + (margenPorcentaje / 100m)), 2);
     }
 
+    public static decimal CalcularPrecioVenta(decimal costo, decimal margenPorcentaje, decimal ivaPorcentaje)
+    {
+        var costoConIva = costo * (1m + (ivaPorcentaje / 100m));
+        return Math.Round(costoConIva * (1m + (margenPorcentaje / 100m)), 2);
+    }
+
     public static decimal CalcularMargenPorcentaje(decimal costo, decimal precioVenta)
     {
         if (costo <= 0) return 0;

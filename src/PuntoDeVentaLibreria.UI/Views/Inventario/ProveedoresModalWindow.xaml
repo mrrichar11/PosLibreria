@@ -1,0 +1,124 @@
+<Window x:Class="PuntoDeVentaLibreria.UI.Views.Inventario.ProveedoresModalWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Gestión de Proveedores de Librería" 
+        Height="620" Width="880"
+        WindowStartupLocation="CenterOwner"
+        Background="#F8FAFC"
+        FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Cabecera -->
+        <Border Grid.Row="0" Margin="0,0,0,16">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Left">
+                    <TextBlock Text="PROVEEDORES Y DISTRIBUIDORES" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
+                    <TextBlock Text="Administre los proveedores para actualizar precios y controlar catálogos mayoristas" FontSize="12" Foreground="#64748B"/>
+                </StackPanel>
+                <Button DockPanel.Dock="Right" Content="➕ Nuevo Proveedor" Click="BtnNuevo_Click"
+                        Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="14,6" VerticalAlignment="Center" Cursor="Hand"/>
+            </DockPanel>
+        </Border>
+
+        <!-- Contenido Dividido en 2 Columnas -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="1.2*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Lista de Proveedores -->
+            <Border Grid.Column="0" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Margin="0,0,12,0">
+                <DataGrid x:Name="GridProveedores" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                          HeadersVisibility="Column" GridLinesVisibility="Horizontal" SelectionMode="Single"
+                          SelectionChanged="GridProveedores_SelectionChanged" FontSize="12" RowHeight="38"
+                          Background="White" BorderThickness="0">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Nombre / Distribuidor" Binding="{Binding Nombre}" Width="*" FontWeight="Bold"/>
+                        <DataGridTextColumn Header="Teléfono / Contacto" Binding="{Binding Telefono}" Width="130"/>
+                        <DataGridTextColumn Header="Días de Visita" Binding="{Binding DiasVisitaOEntrega}" Width="110"/>
+                        <DataGridTextColumn Header="Artículos" Binding="{Binding CantidadArticulos}" Width="70" FontWeight="SemiBold"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+            </Border>
+
+            <!-- Formulario de Edición / Creación -->
+            <Border Grid.Column="1" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="16">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <TextBlock x:Name="TxtTituloForm" Text="DATOS DEL PROVEEDOR" FontSize="13" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,12"/>
+
+                        <TextBlock Text="Nombre Comercial (ej. El Once, Rivadavia):" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                        <TextBox x:Name="TxtNombre" FontSize="13" Padding="6,4" Margin="0,0,0,10"/>
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                <TextBlock Text="Razón Social:" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                <TextBox x:Name="TxtRazonSocial" FontSize="13" Padding="6,4"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                <TextBlock Text="CUIT:" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                <TextBox x:Name="TxtCuit" FontSize="13" Padding="6,4"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Margin="0,0,0,10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                <TextBlock Text="Contacto / Vendedor:" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                <TextBox x:Name="TxtContacto" FontSize="13" Padding="6,4"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="6,0,0,0">
+                                <TextBlock Text="Teléfono / WhatsApp:" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                <TextBox x:Name="TxtTelefono" FontSize="13" Padding="6,4"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="Email Comercial:" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                        <TextBox x:Name="TxtEmail" FontSize="13" Padding="6,4" Margin="0,0,0,10"/>
+
+                        <TextBlock Text="Días de Visita o Entrega de Pedidos:" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                        <TextBox x:Name="TxtDiasVisita" FontSize="13" Padding="6,4" Margin="0,0,0,10"/>
+
+                        <TextBlock Text="Dirección / Localidad:" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                        <TextBox x:Name="TxtDireccion" FontSize="13" Padding="6,4" Margin="0,0,0,10"/>
+
+                        <TextBlock Text="Notas Internas / Condiciones de Pago:" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                        <TextBox x:Name="TxtNotas" AcceptsReturn="True" Height="60" FontSize="12" Padding="6,4" Margin="0,0,0,16"/>
+
+                        <!-- Botonera Formulario -->
+                        <DockPanel LastChildFill="False">
+                            <Button x:Name="BtnEliminar" DockPanel.Dock="Left" Content="🗑️ Eliminar" Click="BtnEliminar_Click"
+                                    Background="#FEE2E2" Foreground="#DC2626" BorderBrush="#FCA5A5" BorderThickness="1"
+                                    Padding="10,6" FontSize="12" FontWeight="SemiBold" Cursor="Hand" Visibility="Collapsed"/>
+
+                            <Button DockPanel.Dock="Right" Content="💾 Guardar" Click="BtnGuardar_Click"
+                                    Background="#16A34A" Foreground="White" FontWeight="Bold" Padding="16,6" FontSize="13" Cursor="Hand"/>
+                        </DockPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+
+        <!-- Pie -->
+        <DockPanel Grid.Row="2" Margin="0,14,0,0">
+            <Button Content="Cerrar" Click="BtnCerrar_Click" Padding="16,6" FontSize="12" Cursor="Hand"/>
+        </DockPanel>
+    </Grid>
+</Window>

@@ -1,4 +1,6 @@
+using ExcelDataReader;
 using Microsoft.EntityFrameworkCore;
+using PuntoDeVentaLibreria.Application.Common;
 using PuntoDeVentaLibreria.Application.DTOs.Inventario;
 using PuntoDeVentaLibreria.Application.Services;
 using PuntoDeVentaLibreria.Domain.Entities.Catalogo;
@@ -23,6 +25,7 @@ public class InventarioService : IInventarioService
                 .AsNoTracking()
                 .Include(a => a.Categoria)
                 .Include(a => a.Marca)
+                .Include(a => a.Proveedor)
                 .Where(a => a.Activo)
                 .OrderBy(a => a.Nombre)
                 .Take(50)
@@ -33,12 +36,17 @@ public class InventarioService : IInventarioService
 
         var limpio = criterio.Trim().ToUpper();
 
-        // 1. Coincidencia exacta de Código de Barras o SKU (prioridad escáner)
+        // 1. Coincidencia exacta de Código de Barras, SKU, Código de Proveedor o Código Secundario (prioridad escáner)
         var exacto = await _context.Articulos
             .AsNoTracking()
             .Include(a => a.Categoria)
             .Include(a => a.Marca)
-            .FirstOrDefaultAsync(a => a.Activo && (a.CodigoBarras == limpio || a.SKU == limpio), ct);
+            .Include(a => a.Proveedor)
+            .FirstOrDefaultAsync(a => a.Activo && (
+                a.CodigoBarras == limpio ||
+                a.SKU == limpio ||
+                a.CodigoProveedor == limpio ||
+                (a.CodigosBarrasSecundarios != null && a.CodigosBarrasSecundarios.Contains(limpio))), ct);
 
         if (exacto != null)
         {
@@ -51,6 +59,7 @@ public class InventarioService : IInventarioService
             .AsNoTracking()
             .Include(a => a.Categoria)
             .Include(a => a.Marca)
+            .Include(a => a.Proveedor)
             .Where(a => a.Activo);
 
         foreach (var token in tokens)
@@ -59,8 +68,11 @@ public class InventarioService : IInventarioService
                 a.Nombre.ToUpper().Contains(token) ||
                 a.SKU.ToUpper().Contains(token) ||
                 (a.CodigoBarras != null && a.CodigoBarras.Contains(token)) ||
+                (a.CodigoProveedor != null && a.CodigoProveedor.Contains(token)) ||
+                (a.CodigosBarrasSecundarios != null && a.CodigosBarrasSecundarios.Contains(token)) ||
                 (a.Marca != null && a.Marca.Nombre.ToUpper().Contains(token)) ||
-                (a.Categoria != null && a.Categoria.Nombre.ToUpper().Contains(token)));
+                (a.Categoria != null && a.Categoria.Nombre.ToUpper().Contains(token)) ||
+                (a.Proveedor != null && a.Proveedor.Nombre.ToUpper().Contains(token)));
         }
 
         var lista = await query.Take(50).ToListAsync(ct);
@@ -76,9 +88,14 @@ public class InventarioService : IInventarioService
             .AsNoTracking()
             .Include(a => a.Categoria)
             .Include(a => a.Marca)
+            .Include(a => a.Proveedor)
             .Include(a => a.ItemsDelCombo)
                 .ThenInclude(c => c.ComponenteArticulo)
-            .FirstOrDefaultAsync(a => a.Activo && (a.CodigoBarras == limpio || a.SKU == limpio), ct);
+            .FirstOrDefaultAsync(a => a.Activo && (
+                a.CodigoBarras == limpio ||
+                a.SKU == limpio ||
+                a.CodigoProveedor == limpio ||
+                (a.CodigosBarrasSecundarios != null && a.CodigosBarrasSecundarios.Contains(limpio))), ct);
 
         return art != null ? MapToDto(art) : null;
     }
@@ -89,6 +106,7 @@ public class InventarioService : IInventarioService
             .AsNoTracking()
             .Include(a => a.Categoria)
             .Include(a => a.Marca)
+            .Include(a => a.Proveedor)
             .Where(a => a.Activo && a.EsBotonRapido)
             .OrderBy(a => a.Nombre)
             .ToListAsync(ct);
@@ -113,10 +131,14 @@ public class InventarioService : IInventarioService
         entidad.Nombre = dto.Nombre.Trim();
         entidad.SKU = dto.SKU.Trim();
         entidad.CodigoBarras = string.IsNullOrWhiteSpace(dto.CodigoBarras) ? null : dto.CodigoBarras.Trim();
+        entidad.CodigosBarrasSecundarios = string.IsNullOrWhiteSpace(dto.CodigosBarrasSecundarios) ? null : dto.CodigosBarrasSecundarios.Trim();
+        entidad.CodigoProveedor = string.IsNullOrWhiteSpace(dto.CodigoProveedor) ? null : dto.CodigoProveedor.Trim();
         entidad.CategoriaId = dto.CategoriaId;
         entidad.MarcaId = dto.MarcaId;
+        entidad.ProveedorId = dto.ProveedorId;
         entidad.Tipo = dto.Tipo;
         entidad.PrecioCosto = dto.PrecioCosto;
+        entidad.IvaPorcentaje = dto.IvaPorcentaje;
         entidad.PorcentajeGanancia = dto.PorcentajeGanancia;
         entidad.PrecioVenta = dto.PrecioVenta;
         entidad.StockActual = dto.StockActual;
@@ -155,6 +177,7 @@ public class InventarioService : IInventarioService
             .AsNoTracking()
             .Include(a => a.Categoria)
             .Include(a => a.Marca)
+            .Include(a => a.Proveedor)
             .Where(a => a.Activo)
             .OrderBy(a => a.Nombre)
             .ToListAsync(ct);
@@ -279,19 +302,395 @@ public class InventarioService : IInventarioService
         return true;
     }
 
+    public async Task<string> GenerarSkuSugeridoAsync(CancellationToken ct = default)
+    {
+        var total = await _context.Articulos.CountAsync(ct);
+        int secuencia = total + 1;
+        while (true)
+        {
+            var sku = $"ART-{secuencia:D5}";
+            var existe = await _context.Articulos.AnyAsync(a => a.SKU == sku, ct);
+            if (!existe)
+            {
+                return sku;
+            }
+            secuencia++;
+        }
+    }
+
+    public async Task<string> GenerarCodigoBarrasSugeridoAsync(CancellationToken ct = default)
+    {
+        var total = await _context.Articulos.CountAsync(ct);
+        long baseNum = 200000000000L + (total + 1);
+        while (true)
+        {
+            var baseStr = baseNum.ToString("D12");
+            var checkDigit = CalcularDigitoVerificadorEan13(baseStr);
+            var codigoCompleto = $"{baseStr}{checkDigit}";
+
+            var existe = await _context.Articulos.AnyAsync(a => a.CodigoBarras == codigoCompleto, ct);
+            if (!existe)
+            {
+                return codigoCompleto;
+            }
+            baseNum++;
+        }
+    }
+
+    // =========================================================================
+    // MIGRACIÓN E IMPORTACIÓN MASIVA (ej. Lista de Precios ALMA LIBRE)
+    // =========================================================================
+
+    public async Task<IReadOnlyList<ItemPrevisualizacionAlmaLibreDto>> PrevisualizarCatalogoAlmaLibreAsync(Stream archivoExcelStream, CancellationToken ct = default)
+    {
+        var (_, rows) = LeerExcelSimple(archivoExcelStream);
+        var resultado = new List<ItemPrevisualizacionAlmaLibreDto>();
+
+        var skusExistentes = (await _context.Articulos.AsNoTracking().Select(a => a.SKU).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var barrasExistentes = (await _context.Articulos.AsNoTracking().Where(a => a.CodigoBarras != null).Select(a => a.CodigoBarras!).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var row in rows)
+        {
+            var sku = ObtenerValorColumna(row, "codigo", "sku");
+            var codProv = ObtenerValorColumna(row, "codprov", "codigoproveedor");
+            var codBarra = ObtenerValorColumna(row, "codbarra", "codigodebarra", "codigobarra", "barra");
+            var descrip = ObtenerValorColumna(row, "descrip", "descripcion", "nombre", "articulo");
+            var rubro = ObtenerValorColumna(row, "rubro", "categoria");
+
+            if (string.IsNullOrWhiteSpace(descrip) && string.IsNullOrWhiteSpace(sku)) continue;
+
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "costo", "preciocosto"), out var costo);
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "pciva", "iva"), out var pciva);
+            if (pciva <= 0) pciva = 21.0m; // Default IVA Argentina librerías
+
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "pcgan", "ganancia%", "utilidad", "margen"), out var pcgan);
+            if (pcgan <= 0) pcgan = 60.0m;
+
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "precio", "precioventa", "pvp"), out var precio);
+            if (precio <= 0 && costo > 0)
+            {
+                precio = CalculoPreciosUtils.CalcularPrecioVenta(costo, pcgan, pciva);
+            }
+
+            var existe = (!string.IsNullOrWhiteSpace(sku) && skusExistentes.Contains(sku)) ||
+                         (!string.IsNullOrWhiteSpace(codBarra) && barrasExistentes.Contains(codBarra));
+
+            resultado.Add(new ItemPrevisualizacionAlmaLibreDto
+            {
+                SKU = !string.IsNullOrWhiteSpace(sku) ? sku : (!string.IsNullOrWhiteSpace(codBarra) ? codBarra : "SIN-SKU"),
+                CodigoProveedor = string.IsNullOrWhiteSpace(codProv) ? null : codProv,
+                CodigoBarras = string.IsNullOrWhiteSpace(codBarra) ? null : codBarra,
+                Nombre = !string.IsNullOrWhiteSpace(descrip) ? descrip : "Sin Descripción",
+                CategoriaRubro = string.IsNullOrWhiteSpace(rubro) ? null : rubro,
+                PrecioCosto = costo,
+                IvaPorcentaje = pciva,
+                PorcentajeGanancia = pcgan,
+                PrecioVenta = precio,
+                YaExisteEnSistema = existe
+            });
+        }
+
+        return resultado;
+    }
+
+    public async Task<MigracionResultadoDto> ImportarCatalogoAlmaLibreAsync(Stream archivoExcelStream, Guid? proveedorId = null, CancellationToken ct = default)
+    {
+        var (_, rows) = LeerExcelSimple(archivoExcelStream);
+        var resultado = new MigracionResultadoDto { TotalFilasProcesadas = rows.Count };
+
+        // Precargar categorías para mapear rápidamente
+        var categorias = await _context.Categorias.ToListAsync(ct);
+        var dictCategorias = categorias.ToDictionary(c => c.Nombre.Trim().ToUpperInvariant(), c => c.Id);
+
+        // Precargar artículos existentes por SKU y Barras
+        var articulosExistentes = await _context.Articulos.ToListAsync(ct);
+        var dictPorSku = articulosExistentes.Where(a => !string.IsNullOrEmpty(a.SKU))
+            .ToDictionary(a => a.SKU.Trim().ToUpperInvariant(), a => a);
+        var dictPorBarra = articulosExistentes.Where(a => !string.IsNullOrEmpty(a.CodigoBarras))
+            .ToDictionary(a => a.CodigoBarras!.Trim().ToUpperInvariant(), a => a);
+
+        int secuenciaSku = articulosExistentes.Count + 1;
+
+        foreach (var row in rows)
+        {
+            try
+            {
+                var sku = ObtenerValorColumna(row, "codigo", "sku")?.Trim();
+                var codProv = ObtenerValorColumna(row, "codprov", "codigoproveedor")?.Trim();
+                var codBarra = ObtenerValorColumna(row, "codbarra", "codigodebarra", "codigobarra", "barra")?.Trim();
+                var descrip = ObtenerValorColumna(row, "descrip", "descripcion", "nombre", "articulo")?.Trim();
+                var rubro = ObtenerValorColumna(row, "rubro", "categoria")?.Trim();
+
+                if (string.IsNullOrWhiteSpace(descrip))
+                {
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(sku))
+                {
+                    sku = !string.IsNullOrWhiteSpace(codBarra) ? codBarra : $"ART-{secuenciaSku++:D5}";
+                }
+
+                CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "costo", "preciocosto"), out var costo);
+                CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "pciva", "iva"), out var pciva);
+                if (pciva <= 0) pciva = 21.0m;
+
+                CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "pcgan", "ganancia%", "utilidad", "margen"), out var pcgan);
+                if (pcgan <= 0) pcgan = 60.0m;
+
+                CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "precio", "precioventa", "pvp"), out var precio);
+                if (precio <= 0 && costo > 0)
+                {
+                    precio = CalculoPreciosUtils.CalcularPrecioVenta(costo, pcgan, pciva);
+                }
+
+                // Resolver Categoría
+                Guid? catId = null;
+                if (!string.IsNullOrWhiteSpace(rubro))
+                {
+                    var rubroUpper = rubro.ToUpperInvariant();
+                    if (dictCategorias.TryGetValue(rubroUpper, out var existingCatId))
+                    {
+                        catId = existingCatId;
+                    }
+                    else
+                    {
+                        var nuevaCat = new Categoria { Id = Guid.NewGuid(), Nombre = rubro };
+                        _context.Categorias.Add(nuevaCat);
+                        dictCategorias[rubroUpper] = nuevaCat.Id;
+                        catId = nuevaCat.Id;
+                    }
+                }
+
+                // Buscar si ya existe por SKU o Código de Barra
+                Articulo? articulo = null;
+                if (dictPorSku.TryGetValue(sku.ToUpperInvariant(), out var porSku))
+                {
+                    articulo = porSku;
+                }
+                else if (!string.IsNullOrWhiteSpace(codBarra) && dictPorBarra.TryGetValue(codBarra.ToUpperInvariant(), out var porBarra))
+                {
+                    articulo = porBarra;
+                }
+
+                if (articulo != null)
+                {
+                    // Actualizar existente
+                    articulo.Nombre = descrip;
+                    if (!string.IsNullOrWhiteSpace(codBarra)) articulo.CodigoBarras = codBarra;
+                    if (!string.IsNullOrWhiteSpace(codProv)) articulo.CodigoProveedor = codProv;
+                    if (catId.HasValue) articulo.CategoriaId = catId;
+                    if (proveedorId.HasValue) articulo.ProveedorId = proveedorId;
+
+                    articulo.PrecioCosto = costo;
+                    articulo.IvaPorcentaje = pciva;
+                    articulo.PorcentajeGanancia = pcgan;
+                    articulo.PrecioVenta = precio;
+                    articulo.Activo = true;
+
+                    resultado.ArticulosActualizados++;
+                }
+                else
+                {
+                    // Crear nuevo
+                    var nuevo = new Articulo
+                    {
+                        Id = Guid.NewGuid(),
+                        SKU = sku,
+                        CodigoBarras = string.IsNullOrWhiteSpace(codBarra) ? null : codBarra,
+                        CodigoProveedor = string.IsNullOrWhiteSpace(codProv) ? null : codProv,
+                        Nombre = descrip,
+                        CategoriaId = catId,
+                        ProveedorId = proveedorId,
+                        PrecioCosto = costo,
+                        IvaPorcentaje = pciva,
+                        PorcentajeGanancia = pcgan,
+                        PrecioVenta = precio,
+                        StockActual = 0,
+                        StockMinimo = 5,
+                        Activo = true
+                    };
+
+                    _context.Articulos.Add(nuevo);
+                    dictPorSku[sku.ToUpperInvariant()] = nuevo;
+                    if (!string.IsNullOrWhiteSpace(codBarra))
+                    {
+                        dictPorBarra[codBarra.ToUpperInvariant()] = nuevo;
+                    }
+                    resultado.ArticulosCreados++;
+                }
+            }
+            catch (Exception ex)
+            {
+                resultado.Errores++;
+                if (resultado.MensajesErrores.Count < 20)
+                {
+                    resultado.MensajesErrores.Add($"Error en fila: {ex.Message}");
+                }
+            }
+        }
+
+        await _context.SaveChangesAsync(ct);
+        return resultado;
+    }
+
+    // =========================================================================
+    // ACTUALIZACIÓN MASIVA DE PRECIOS POR LISTA DE MAYORISTA (ej. El Once)
+    // =========================================================================
+
+    public async Task<ResumenPrevisualizacionAumentoDto> PrevisualizarActualizacionPreciosProveedorAsync(Stream archivoExcelStream, Guid? proveedorId = null, CancellationToken ct = default)
+    {
+        var (_, rows) = LeerExcelSimple(archivoExcelStream);
+        var resumen = new ResumenPrevisualizacionAumentoDto();
+
+        var query = _context.Articulos
+            .AsNoTracking()
+            .Include(a => a.Proveedor)
+            .Where(a => a.Activo);
+
+        if (proveedorId.HasValue)
+        {
+            query = query.Where(a => a.ProveedorId == proveedorId);
+        }
+
+        var articulos = await query.ToListAsync(ct);
+
+        // Indexar catálogo para coincidencia veloz O(1)
+        var dictPorCodProv = articulos
+            .Where(a => !string.IsNullOrWhiteSpace(a.CodigoProveedor))
+            .ToDictionary(a => a.CodigoProveedor!.Trim().ToUpperInvariant(), a => a);
+
+        var dictPorBarraPrincipal = articulos
+            .Where(a => !string.IsNullOrWhiteSpace(a.CodigoBarras))
+            .ToDictionary(a => a.CodigoBarras!.Trim().ToUpperInvariant(), a => a);
+
+        int noEncontrados = 0;
+
+        foreach (var row in rows)
+        {
+            var codProvExcel = ObtenerValorColumna(row, "codigo", "codprov", "codigoproducto", "codigoproveedor")?.Trim();
+            var codBarraExcel = ObtenerValorColumna(row, "codigodebarra", "codigobarra", "codbarra", "barra", "barcode")?.Trim();
+
+            // Costo S/IVA y C/IVA del proveedor
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "s/iva", "siva", "costo", "siniva"), out var costoSiva);
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "c/iva", "civa", "coniva"), out var costoCiva);
+
+            decimal costoNuevo = costoSiva > 0 ? costoSiva : (costoCiva > 0 ? Math.Round(costoCiva / 1.21m, 2) : 0m);
+            if (costoNuevo <= 0) continue;
+
+            // Coincidencia:
+            // 1. Por Código Proveedor (el más exacto para El Once)
+            // 2. Por Código de Barra principal
+            // 3. Por Códigos Secundarios
+            Articulo? art = null;
+            if (!string.IsNullOrWhiteSpace(codProvExcel) && dictPorCodProv.TryGetValue(codProvExcel.ToUpperInvariant(), out var encontradoProv))
+            {
+                art = encontradoProv;
+            }
+            else if (!string.IsNullOrWhiteSpace(codBarraExcel) && dictPorBarraPrincipal.TryGetValue(codBarraExcel.ToUpperInvariant(), out var encontradoBarra))
+            {
+                art = encontradoBarra;
+            }
+            else if (!string.IsNullOrWhiteSpace(codBarraExcel))
+            {
+                art = articulos.FirstOrDefault(a => a.CodigosBarrasSecundarios != null && a.CodigosBarrasSecundarios.Contains(codBarraExcel));
+            }
+
+            if (art == null)
+            {
+                noEncontrados++;
+                continue;
+            }
+
+            resumen.CoincidenciasEncontradas++;
+
+            // Calcular nuevo precio de venta manteniendo el margen del local y su IVA
+            var ventaNueva = CalculoPreciosUtils.CalcularPrecioVenta(costoNuevo, art.PorcentajeGanancia, art.IvaPorcentaje);
+
+            bool hayCambio = Math.Abs(art.PrecioCosto - costoNuevo) > 0.01m || Math.Abs(art.PrecioVenta - ventaNueva) > 0.01m;
+            if (hayCambio)
+            {
+                resumen.CoincidenciasConCambioDePrecio++;
+            }
+
+            resumen.ItemsParaActualizar.Add(new ArticuloAumentoPrecioItemDto
+            {
+                ArticuloId = art.Id,
+                SKU = art.SKU,
+                Nombre = art.Nombre,
+                CodigoProveedor = art.CodigoProveedor,
+                CodigoBarras = art.CodigoBarras,
+                CostoAnterior = art.PrecioCosto,
+                CostoNuevo = costoNuevo,
+                VentaAnterior = art.PrecioVenta,
+                VentaNueva = ventaNueva,
+                PorcentajeGanancia = art.PorcentajeGanancia,
+                IvaPorcentaje = art.IvaPorcentaje,
+                Aplicar = hayCambio
+            });
+        }
+
+        resumen.NoEncontradosEnCatalogo = noEncontrados;
+        return resumen;
+    }
+
+    public async Task<ActualizacionPreciosResultadoDto> AplicarActualizacionPreciosAsync(IEnumerable<ArticuloAumentoPrecioItemDto> items, CancellationToken ct = default)
+    {
+        var itemsSeleccionados = items.Where(i => i.Aplicar).ToList();
+        if (!itemsSeleccionados.Any())
+        {
+            return new ActualizacionPreciosResultadoDto
+            {
+                TotalActualizados = 0,
+                Mensaje = "No se seleccionó ningún artículo para actualizar."
+            };
+        }
+
+        var ids = itemsSeleccionados.Select(i => i.ArticuloId).ToList();
+        var articulos = await _context.Articulos.Where(a => ids.Contains(a.Id)).ToListAsync(ct);
+        var dictItems = itemsSeleccionados.ToDictionary(i => i.ArticuloId);
+
+        int actualizados = 0;
+        foreach (var a in articulos)
+        {
+            if (dictItems.TryGetValue(a.Id, out var item))
+            {
+                a.PrecioCosto = item.CostoNuevo;
+                a.PrecioVenta = item.VentaNueva;
+                actualizados++;
+            }
+        }
+
+        await _context.SaveChangesAsync(ct);
+        return new ActualizacionPreciosResultadoDto
+        {
+            TotalActualizados = actualizados,
+            Mensaje = $"Se actualizaron los precios de {actualizados} artículos exitosamente."
+        };
+    }
+
+    // =========================================================================
+    // UTILIDADES PRIVADAS
+    // =========================================================================
+
     private static ArticuloDto MapToDto(Articulo a) => new()
     {
         Id = a.Id,
         CodigoBarras = a.CodigoBarras,
+        CodigosBarrasSecundarios = a.CodigosBarrasSecundarios,
         SKU = a.SKU,
+        CodigoProveedor = a.CodigoProveedor,
         Nombre = a.Nombre,
         Descripcion = a.Descripcion,
         CategoriaId = a.CategoriaId,
         CategoriaNombre = a.Categoria?.Nombre ?? "",
         MarcaId = a.MarcaId,
         MarcaNombre = a.Marca?.Nombre ?? "",
+        ProveedorId = a.ProveedorId,
+        ProveedorNombre = a.Proveedor?.Nombre ?? "",
         Tipo = a.Tipo,
         PrecioCosto = a.PrecioCosto,
+        IvaPorcentaje = a.IvaPorcentaje,
         PorcentajeGanancia = a.PorcentajeGanancia,
         PrecioVenta = a.PrecioVenta,
         StockActual = a.StockActual,
@@ -311,40 +710,129 @@ public class InventarioService : IInventarioService
             }))
     };
 
-    public async Task<string> GenerarSkuSugeridoAsync(CancellationToken ct = default)
+    private static (List<string> Headers, List<Dictionary<string, string>> Rows) LeerExcelSimple(Stream stream)
     {
-        var total = await _context.Articulos.CountAsync(ct);
-        int secuencia = total + 1;
-        while (true)
+        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+        using var reader = ExcelReaderFactory.CreateReader(stream);
+
+        var headers = new List<string>();
+        var rows = new List<Dictionary<string, string>>();
+        bool headerFound = false;
+
+        while (reader.Read())
         {
-            var sku = $"ART-{secuencia:D5}";
-            var existe = await _context.Articulos.AnyAsync(a => a.SKU == sku, ct);
-            if (!existe)
+            if (!headerFound)
             {
-                return sku;
+                var candidateHeaders = new List<string>();
+                bool esCabecera = false;
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    var val = reader.GetValue(i)?.ToString()?.Trim() ?? "";
+                    candidateHeaders.Add(val);
+                    var norm = NormalizarTextoColumna(val);
+                    if (norm.Contains("cod") || norm.Contains("descrip") || norm.Contains("precio") || norm.Contains("costo") || norm.Contains("siva"))
+                    {
+                        esCabecera = true;
+                    }
+                }
+
+                if (esCabecera)
+                {
+                    headers = candidateHeaders;
+                    headerFound = true;
+                }
+                continue;
             }
-            secuencia++;
+
+            var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            bool rowHasData = false;
+            for (int i = 0; i < reader.FieldCount && i < headers.Count; i++)
+            {
+                var h = headers[i];
+                if (string.IsNullOrWhiteSpace(h)) continue;
+                var val = reader.GetValue(i)?.ToString()?.Trim() ?? "";
+                if (!string.IsNullOrWhiteSpace(val)) rowHasData = true;
+                row[h] = val;
+            }
+
+            if (rowHasData)
+            {
+                rows.Add(row);
+            }
         }
+
+        return (headers, rows);
     }
 
-    public async Task<string> GenerarCodigoBarrasSugeridoAsync(CancellationToken ct = default)
+    private static string NormalizarTextoColumna(string input)
     {
-        // Prefijo 20: Estándar internacional para uso interno de tienda/retail
-        var total = await _context.Articulos.CountAsync(ct);
-        long baseNum = 200000000000L + (total + 1); // 12 dígitos
-        while (true)
+        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+        var sb = new System.Text.StringBuilder();
+        foreach (var ch in input)
         {
-            var baseStr = baseNum.ToString("D12");
-            var checkDigit = CalcularDigitoVerificadorEan13(baseStr);
-            var codigoCompleto = $"{baseStr}{checkDigit}";
-
-            var existe = await _context.Articulos.AnyAsync(a => a.CodigoBarras == codigoCompleto, ct);
-            if (!existe)
-            {
-                return codigoCompleto;
-            }
-            baseNum++;
+            if (ch == 'ó' || ch == 'Ó' || ch == '\uFFFD' || (int)ch == 65533) sb.Append('o');
+            else if (ch == 'á' || ch == 'Á') sb.Append('a');
+            else if (ch == 'é' || ch == 'É') sb.Append('e');
+            else if (ch == 'í' || ch == 'Í') sb.Append('i');
+            else if (ch == 'ú' || ch == 'Ú') sb.Append('u');
+            else if (char.IsLetterOrDigit(ch)) sb.Append(char.ToLowerInvariant(ch));
         }
+        return sb.ToString();
+    }
+
+    private static string ObtenerValorColumna(Dictionary<string, string> row, params string[] nombresPosibles)
+    {
+        // 1. Coincidencia exacta normalizada
+        foreach (var p in nombresPosibles)
+        {
+            var normSearch = NormalizarTextoColumna(p);
+            foreach (var kvp in row)
+            {
+                var normKey = NormalizarTextoColumna(kvp.Key);
+                if (normKey.Equals(normSearch, StringComparison.OrdinalIgnoreCase))
+                {
+                    if (!string.IsNullOrWhiteSpace(kvp.Value))
+                        return kvp.Value;
+                }
+            }
+        }
+
+        // 2. Coincidencia semántica flexible (evitando colisión entre código de producto y código de barra)
+        foreach (var p in nombresPosibles)
+        {
+            var normSearch = NormalizarTextoColumna(p);
+            foreach (var kvp in row)
+            {
+                var normKey = NormalizarTextoColumna(kvp.Key);
+
+                if (normSearch == "codigo" || normSearch == "codprov" || normSearch == "codigoproducto")
+                {
+                    if (normKey.Contains("barra") || normKey.Contains("barcode")) continue;
+                    if (normKey == "codigo" || normKey == "cod" || normKey == "codprov" || (normKey.StartsWith("c") && normKey.EndsWith("digo")))
+                    {
+                        if (!string.IsNullOrWhiteSpace(kvp.Value))
+                            return kvp.Value;
+                    }
+                }
+                else if (normSearch.Contains("barra"))
+                {
+                    if (normKey.Contains("barra") || normKey.Contains("barcode"))
+                    {
+                        if (!string.IsNullOrWhiteSpace(kvp.Value))
+                            return kvp.Value;
+                    }
+                }
+                else
+                {
+                    if (normKey.Contains(normSearch, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (!string.IsNullOrWhiteSpace(kvp.Value))
+                            return kvp.Value;
+                    }
+                }
+            }
+        }
+        return string.Empty;
     }
 
     private static int CalcularDigitoVerificadorEan13(string primeros12Digitos)

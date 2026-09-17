@@ -53,33 +53,56 @@
 
         <!-- Barra de Búsqueda y Botonera -->
         <Border Grid.Row="1" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="10" Padding="12,10" Margin="0,0,0,14">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+            <StackPanel>
+                <!-- Fila 1: Búsqueda y Acciones Rápidas -->
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
 
-                <TextBox x:Name="TxtBuscar" Grid.Column="0" Text="{Binding CriterioBusqueda, UpdateSourceTrigger=PropertyChanged}"
-                         FontSize="14" Padding="10,6" BorderBrush="#CBD5E1" Margin="0,0,10,0"
-                         VerticalAlignment="Center"/>
+                    <TextBox x:Name="TxtBuscar" Grid.Column="0" Text="{Binding CriterioBusqueda, UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="14" Padding="10,6" BorderBrush="#CBD5E1" Margin="0,0,10,0"
+                             VerticalAlignment="Center"/>
 
-                <Button Grid.Column="1" Content="🔍 Buscar" Command="{Binding BuscarCommand}"
-                        Padding="16,8" FontWeight="SemiBold" Margin="0,0,10,0" Cursor="Hand"/>
+                    <Button Grid.Column="1" Content="🔍 Buscar" Command="{Binding BuscarCommand}"
+                            Padding="16,8" FontWeight="SemiBold" Margin="0,0,10,0" Cursor="Hand"/>
 
-                <Button Grid.Column="2" Content="📤 Exportar CSV" Command="{Binding ExportarCsvCommand}"
-                        Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" Padding="12,8" FontWeight="SemiBold" Margin="0,0,8,0" Cursor="Hand"
-                        ToolTip="Exportar todo el catálogo para abrir o editar en Excel"/>
+                    <Button Grid.Column="2" Content="➕ Nuevo Artículo / Útil" Command="{Binding NuevoArticuloCommand}"
+                            Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="18,8" Cursor="Hand"/>
+                </Grid>
 
-                <Button Grid.Column="3" Content="📥 Importar CSV" Command="{Binding ImportarCsvCommand}"
-                        Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" Padding="12,8" FontWeight="SemiBold" Margin="0,0,10,0" Cursor="Hand"
-                        ToolTip="Cargar o actualizar artículos masivamente desde archivo CSV"/>
+                <!-- Fila 2: Herramientas Masivas de Librería -->
+                <DockPanel LastChildFill="False">
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                        <Button Content="🚀 Migrar Catálogo (Alma Libre)" Click="BtnMigrarAlmaLibre_Click"
+                                Background="#ECFDF5" Foreground="#047857" BorderBrush="#A7F3D0" BorderThickness="1.5"
+                                Padding="12,6" FontWeight="Bold" FontSize="12" Margin="0,0,8,0" Cursor="Hand"
+                                ToolTip="Importe masivamente los 2.800+ artículos desde el Excel de Alma Libre"/>
 
-                <Button Grid.Column="4" Content="➕ Nuevo Artículo / Útil" Command="{Binding NuevoArticuloCommand}"
-                        Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="18,8" Cursor="Hand"/>
-            </Grid>
+                        <Button Content="📈 Actualizar Precios (El Once)" Click="BtnActualizarPrecios_Click"
+                                Background="#F5F3FF" Foreground="#6D28D9" BorderBrush="#DDD6FE" BorderThickness="1.5"
+                                Padding="12,6" FontWeight="Bold" FontSize="12" Margin="0,0,8,0" Cursor="Hand"
+                                ToolTip="Actualice costos y precios en lote según la lista de precios descargada del proveedor El Once"/>
+
+                        <Button Content="🏭 Proveedores" Click="BtnProveedores_Click"
+                                Background="#F8FAFC" Foreground="#334155" BorderBrush="#CBD5E1" BorderThickness="1"
+                                Padding="12,6" FontWeight="SemiBold" FontSize="12" Margin="0,0,8,0" Cursor="Hand"
+                                ToolTip="Administrar lista de proveedores y distribuidores de librería"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                        <Button Content="📤 Exportar CSV" Command="{Binding ExportarCsvCommand}"
+                                Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" Padding="10,6" FontSize="12" FontWeight="SemiBold" Margin="0,0,6,0" Cursor="Hand"
+                                ToolTip="Exportar todo el catálogo para abrir o editar en Excel"/>
+
+                        <Button Content="📥 Importar CSV" Command="{Binding ImportarCsvCommand}"
+                                Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" Padding="10,6" FontSize="12" FontWeight="SemiBold" Cursor="Hand"
+                                ToolTip="Cargar o actualizar artículos masivamente desde archivo CSV genérico"/>
+                    </StackPanel>
+                </DockPanel>
+            </StackPanel>
         </Border>
 
         <!-- Grilla de Artículos -->
@@ -97,8 +120,9 @@
                       Background="White"
                       BorderThickness="0">
                 <DataGrid.Columns>
-                    <DataGridTextColumn Header="Código / ISBN" Binding="{Binding CodigoBarras}" Width="130"/>
-                    <DataGridTextColumn Header="SKU" Binding="{Binding SKU}" Width="110"/>
+                    <DataGridTextColumn Header="Código / ISBN" Binding="{Binding CodigoBarras}" Width="120"/>
+                    <DataGridTextColumn Header="SKU" Binding="{Binding SKU}" Width="95"/>
+                    <DataGridTextColumn Header="Cód. Prov." Binding="{Binding CodigoProveedor}" Width="85"/>
                     <DataGridTextColumn Header="Descripción del Artículo / Útil" Binding="{Binding Nombre}" Width="*">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
@@ -107,9 +131,10 @@
                             </Style>
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
-                    <DataGridTextColumn Header="Ubicación" Binding="{Binding Ubicacion}" Width="100"/>
-                    <DataGridTextColumn Header="P. Costo" Binding="{Binding PrecioCosto, StringFormat='${0:N2}'}" Width="95"/>
-                    <DataGridTextColumn Header="P. Venta" Binding="{Binding PrecioVenta, StringFormat='${0:N2}'}" Width="105">
+                    <DataGridTextColumn Header="Proveedor" Binding="{Binding ProveedorNombre}" Width="105"/>
+                    <DataGridTextColumn Header="Ubicación" Binding="{Binding Ubicacion}" Width="95"/>
+                    <DataGridTextColumn Header="P. Costo" Binding="{Binding PrecioCosto, StringFormat='${0:N2}'}" Width="90"/>
+                    <DataGridTextColumn Header="P. Venta" Binding="{Binding PrecioVenta, StringFormat='${0:N2}'}" Width="100">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="FontWeight" Value="Bold"/>

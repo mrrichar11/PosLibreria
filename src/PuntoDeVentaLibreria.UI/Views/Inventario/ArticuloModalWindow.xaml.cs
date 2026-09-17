@@ -1,8 +1,10 @@
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using PuntoDeVentaLibreria.Application.DTOs.Inventario;
+using PuntoDeVentaLibreria.Application.DTOs.Proveedores;
 using PuntoDeVentaLibreria.Application.Services;
 using PuntoDeVentaLibreria.Domain.Entities.Catalogo;
 
@@ -12,24 +14,41 @@ public partial class ArticuloModalWindow : Window
 {
     private readonly IInventarioService _inventarioService;
     private readonly IConfiguracionService? _configuracionService;
+    private readonly IProveedorService? _proveedorService;
     private IReadOnlyList<ArticuloDto> _articulosDisponibles = new List<ArticuloDto>();
     private decimal _margenConfigurado = 40m;
     private bool _isCalculating;
 
+    public ObservableCollection<string> CodigosSecundariosLista { get; } = new();
     public ArticuloDto Articulo { get; }
     public bool GuardadoExitoso { get; private set; }
 
-    public ArticuloModalWindow(ArticuloDto articulo, IInventarioService inventarioService, IConfiguracionService? configuracionService = null)
+    public ArticuloModalWindow(ArticuloDto articulo, IInventarioService inventarioService, IConfiguracionService? configuracionService = null, IProveedorService? proveedorService = null)
     {
         InitializeComponent();
         Articulo = articulo ?? throw new ArgumentNullException(nameof(articulo));
         _inventarioService = inventarioService ?? throw new ArgumentNullException(nameof(inventarioService));
         _configuracionService = configuracionService;
+        _proveedorService = proveedorService;
         DataContext = Articulo;
 
         if (string.IsNullOrEmpty(Articulo.ColorBoton))
         {
             Articulo.ColorBoton = "#3B82F6";
+        }
+
+        // Cargar códigos secundarios existentes
+        if (!string.IsNullOrWhiteSpace(Articulo.CodigosBarrasSecundarios))
+        {
+            var cods = Articulo.CodigosBarrasSecundarios.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var c in cods)
+            {
+                var clean = c.Trim();
+                if (!string.IsNullOrWhiteSpace(clean) && !CodigosSecundariosLista.Contains(clean))
+                {
+                    CodigosSecundariosLista.Add(clean);
+                }
+            }
         }
 
         // Inicializar campos de precio en UI de forma robusta e invariable
@@ -39,6 +58,7 @@ public partial class ArticuloModalWindow : Window
             TxtCosto.Text = Articulo.PrecioCosto > 0 ? Articulo.PrecioCosto.ToString("0.##", CultureInfo.InvariantCulture) : "0";
             TxtMargen.Text = Articulo.PorcentajeGanancia > 0 ? Articulo.PorcentajeGanancia.ToString("0.#", CultureInfo.InvariantCulture) : "40";
             TxtVenta.Text = Articulo.PrecioVenta > 0 ? Articulo.PrecioVenta.ToString("0.##", CultureInfo.InvariantCulture) : "0";
+            SincronizarIvaUI();
         }
         finally
         {
@@ -47,6 +67,7 @@ public partial class ArticuloModalWindow : Window
 
         SincronizarTipoUI();
         CargarArticulosDisponibles();
+        CargarProveedoresAsync();
         CargarConfiguracionNegocioAsync();
 
         TxtNombre.Focus();
@@ -201,6 +222,120 @@ public partial class ArticuloModalWindow : Window
         RecalcularMargenDesdeVenta();
     }
 
+    private void SincronizarIvaUI()
+    {
+        if (CmbIva == null) return;
+        var ivaVal = Articulo.IvaPorcentaje.ToString("0.#", CultureInfo.InvariantCulture);
+        foreach (ComboBoxItem item in CmbIva.Items)
+        {
+            if (item.Tag is string tag && (tag == ivaVal || (tag == "21" && ivaVal == "21.0")))
+            {
+                CmbIva.SelectedItem = item;
+                return;
+            }
+        }
+        CmbIva.SelectedIndex = 0;
+    }
+
+    private void CmbIva_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CmbIva?.SelectedItem is ComboBoxItem item && decimal.TryParse(item.Tag?.ToString(), NumberStyles.Any, CultureInfo.InvariantCulture, out var iva))
+        {
+            Articulo.IvaPorcentaje = iva;
+            if (!_isCalculating)
+            {
+                RecalcularPrecioVentaDesdeCostoYMargen();
+            }
+        }
+    }
+
+    private async void CargarProveedoresAsync()
+    {
+        try
+        {
+            if (_proveedorService == null) return;
+            var proveedores = await _proveedorService.ObtenerTodosAsync();
+            var lista = new List<ProveedorDto>
+            {
+                new ProveedorDto { Id = Guid.Empty, Nombre = "(Sin Proveedor)" }
+            };
+            lista.AddRange(proveedores);
+
+            CmbProveedor.ItemsSource = lista;
+            if (Articulo.ProveedorId.HasValue)
+            {
+                var seleccionado = lista.FirstOrDefault(p => p.Id == Articulo.ProveedorId.Value);
+                CmbProveedor.SelectedItem = seleccionado ?? lista[0];
+            }
+            else
+            {
+                CmbProveedor.SelectedIndex = 0;
+            }
+        }
+        catch { }
+    }
+
+    private void CmbProveedor_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CmbProveedor.SelectedItem is ProveedorDto p)
+        {
+            if (p.Id == Guid.Empty)
+            {
+                Articulo.ProveedorId = null;
+                Articulo.ProveedorNombre = string.Empty;
+            }
+            else
+            {
+                Articulo.ProveedorId = p.Id;
+                Articulo.ProveedorNombre = p.Nombre;
+            }
+        }
+    }
+
+    private void BtnAgregarCodigoSecundario_Click(object sender, RoutedEventArgs e)
+    {
+        AgregarCodigoSecundario();
+    }
+
+    private void TxtNuevoCodigoSecundario_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            AgregarCodigoSecundario();
+            e.Handled = true;
+        }
+    }
+
+    private void AgregarCodigoSecundario()
+    {
+        var nuevo = TxtNuevoCodigoSecundario.Text.Trim();
+        if (string.IsNullOrWhiteSpace(nuevo)) return;
+
+        if (nuevo == Articulo.CodigoBarras)
+        {
+            MessageBox.Show("Este código ya es el código de barra principal del producto.", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (!CodigosSecundariosLista.Contains(nuevo))
+        {
+            CodigosSecundariosLista.Add(nuevo);
+            Articulo.CodigosBarrasSecundarios = string.Join(", ", CodigosSecundariosLista);
+        }
+
+        TxtNuevoCodigoSecundario.Clear();
+        TxtNuevoCodigoSecundario.Focus();
+    }
+
+    private void BtnQuitarCodigoSecundario_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Tag is string cod)
+        {
+            CodigosSecundariosLista.Remove(cod);
+            Articulo.CodigosBarrasSecundarios = CodigosSecundariosLista.Count > 0 ? string.Join(", ", CodigosSecundariosLista) : null;
+        }
+    }
+
     private void RecalcularPrecioVentaDesdeCostoYMargen()
     {
         if (_isCalculating) return;
@@ -210,7 +345,7 @@ public partial class ArticuloModalWindow : Window
         _isCalculating = true;
         try
         {
-            var venta = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.CalcularPrecioVenta(costo, margen);
+            var venta = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.CalcularPrecioVenta(costo, margen, Articulo.IvaPorcentaje);
             Articulo.PrecioCosto = costo;
             Articulo.PorcentajeGanancia = margen;
             Articulo.PrecioVenta = venta;
@@ -234,7 +369,8 @@ public partial class ArticuloModalWindow : Window
         _isCalculating = true;
         try
         {
-            var margen = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.CalcularMargenPorcentaje(costo, venta);
+            var costoConIva = costo * (1m + (Articulo.IvaPorcentaje / 100m));
+            var margen = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.CalcularMargenPorcentaje(costoConIva, venta);
             Articulo.PrecioCosto = costo;
             Articulo.PrecioVenta = venta;
             Articulo.PorcentajeGanancia = margen;
@@ -334,6 +470,8 @@ public partial class ArticuloModalWindow : Window
                 "MR SYS Confirmación", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (res != MessageBoxResult.Yes) return;
         }
+
+        Articulo.CodigosBarrasSecundarios = CodigosSecundariosLista.Count > 0 ? string.Join(", ", CodigosSecundariosLista) : null;
 
         try
         {

@@ -48,6 +48,7 @@ public partial class App : System.Windows.Application
 
                 // Servicios de Dominio e Infraestructura
                 services.AddScoped<IInventarioService, InventarioService>();
+                services.AddScoped<IProveedorService, ProveedorService>();
                 services.AddScoped<IVentaService, VentaService>();
                 services.AddScoped<ICajaService, CajaService>();
                 services.AddScoped<IConfiguracionService, ConfiguracionService>();

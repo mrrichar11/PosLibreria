@@ -64,6 +64,51 @@ public static class DatabaseInitializer
         }
         catch { }
 
+        // 2.1 Tablas y columnas añadidas para Proveedores y multi-código
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(@"CREATE TABLE IF NOT EXISTS Proveedores (
+                Id TEXT PRIMARY KEY,
+                Nombre TEXT NOT NULL,
+                RazonSocial TEXT NULL,
+                Cuit TEXT NULL,
+                Contacto TEXT NULL,
+                Telefono TEXT NULL,
+                Email TEXT NULL,
+                Direccion TEXT NULL,
+                DiasVisitaOEntrega TEXT NULL,
+                Notas TEXT NULL,
+                FechaCreacion TEXT NOT NULL,
+                FechaModificacion TEXT NULL,
+                EstaActivo INTEGER NOT NULL DEFAULT 1
+            );", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Articulos ADD COLUMN CodigosBarrasSecundarios TEXT NULL;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Articulos ADD COLUMN CodigoProveedor TEXT NULL;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Articulos ADD COLUMN ProveedorId TEXT NULL;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Articulos ADD COLUMN IvaPorcentaje REAL NOT NULL DEFAULT 21.0;", cancellationToken);
+        }
+        catch { }
+
         // 3. Optimización WAL para SQLite
         try
         {

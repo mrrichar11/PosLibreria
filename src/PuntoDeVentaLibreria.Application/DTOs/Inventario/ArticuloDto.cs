@@ -6,15 +6,20 @@ public class ArticuloDto
 {
     public Guid Id { get; set; }
     public string? CodigoBarras { get; set; }
+    public string? CodigosBarrasSecundarios { get; set; }
     public string SKU { get; set; } = string.Empty;
+    public string? CodigoProveedor { get; set; }
     public string Nombre { get; set; } = string.Empty;
     public string? Descripcion { get; set; }
     public Guid? CategoriaId { get; set; }
     public string CategoriaNombre { get; set; } = string.Empty;
     public Guid? MarcaId { get; set; }
     public string MarcaNombre { get; set; } = string.Empty;
+    public Guid? ProveedorId { get; set; }
+    public string ProveedorNombre { get; set; } = string.Empty;
     public TipoArticulo Tipo { get; set; }
     public decimal PrecioCosto { get; set; }
+    public decimal IvaPorcentaje { get; set; } = 21.0m;
     public decimal PorcentajeGanancia { get; set; }
     public decimal PrecioVenta { get; set; }
     public decimal StockActual { get; set; }

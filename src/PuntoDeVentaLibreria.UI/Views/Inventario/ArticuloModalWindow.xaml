@@ -50,6 +50,38 @@
                                  GotFocus="TxtCodigoBarras_GotFocus" KeyDown="TxtCodigoBarras_KeyDown"
                                  FontSize="14" Padding="8,6"/>
                         <TextBlock Text="💡 Puede pistolear con el lector para escanear el código físico." FontSize="10.5" Foreground="#64748B" Margin="0,2,0,0"/>
+
+                        <!-- Variantes de color / Códigos secundarios -->
+                        <Border Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="6" Padding="8" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="🏷️ Variantes de Color / Códigos Secundarios:" FontSize="11" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
+                                <DockPanel Margin="0,0,0,4">
+                                    <Button DockPanel.Dock="Right" Content="➕ Añadir" Click="BtnAgregarCodigoSecundario_Click"
+                                            Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="8,3" FontSize="11" Cursor="Hand" Margin="4,0,0,0"/>
+                                    <TextBox x:Name="TxtNuevoCodigoSecundario" KeyDown="TxtNuevoCodigoSecundario_KeyDown"
+                                             FontSize="12" Padding="6,3"/>
+                                </DockPanel>
+                                <ItemsControl ItemsSource="{Binding CodigosSecundariosLista, RelativeSource={RelativeSource AncestorType=Window}}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="#E0E7FF" BorderBrush="#C7D2FE" BorderThickness="1" CornerRadius="4" Padding="6,2" Margin="0,2,4,2">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding}" FontSize="11" FontWeight="SemiBold" Foreground="#3730A3" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                    <Button Content="✕" Click="BtnQuitarCodigoSecundario_Click" Tag="{Binding}"
+                                                            Background="Transparent" BorderThickness="0" Foreground="#DC2626" FontWeight="Bold" FontSize="10" Cursor="Hand"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Text="Mismo precio pero distinto código de barra (ej. cuadernos azul, rojo, amarillo)." FontSize="10" Foreground="#64748B" Margin="0,3,0,0"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- Código SKU Único con botón de regeneración -->
@@ -61,6 +93,25 @@
                         </DockPanel>
                         <TextBox x:Name="TxtSKU" Text="{Binding SKU, UpdateSourceTrigger=PropertyChanged}" FontSize="14" Padding="8,6"/>
                         <TextBlock Text="Identificador comercial único del producto o libro." FontSize="10.5" Foreground="#64748B" Margin="0,2,0,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Proveedor y Código de Proveedor -->
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="Proveedor Asignado:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="CmbProveedor" FontSize="13" Padding="8,6" DisplayMemberPath="Nombre" SelectedValuePath="Id"
+                                  SelectionChanged="CmbProveedor_SelectionChanged"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                        <TextBlock Text="Código en Catálogo Proveedor (ej. 31030 El Once):" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding CodigoProveedor, UpdateSourceTrigger=PropertyChanged}" FontSize="13" Padding="8,6"/>
                     </StackPanel>
                 </Grid>
 
@@ -147,9 +198,10 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.1*"/>
+                                <ColumnDefinition Width="1.1*"/>
                                 <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="1.2*"/>
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Precio Costo ($):" FontSize="12" FontWeight="SemiBold" Margin="0,0,6,4"/>
@@ -157,18 +209,26 @@
                                      TextChanged="TxtCosto_TextChanged"
                                      FontSize="14" FontWeight="Bold" Padding="8,6" Margin="0,0,6,0"/>
 
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="% Margen Ganancia:" FontSize="12" FontWeight="SemiBold" Margin="6,0,6,4"/>
-                            <TextBox x:Name="TxtMargen" Grid.Row="1" Grid.Column="1" 
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="Alícuota IVA:" FontSize="12" FontWeight="SemiBold" Margin="6,0,6,4"/>
+                            <ComboBox x:Name="CmbIva" Grid.Row="1" Grid.Column="1" FontSize="13" Padding="6,6" Margin="6,0,6,0"
+                                      SelectionChanged="CmbIva_SelectionChanged">
+                                <ComboBoxItem Content="21% (Útiles/Papelería)" Tag="21" IsSelected="True"/>
+                                <ComboBoxItem Content="10.5% (Reducido)" Tag="10.5"/>
+                                <ComboBoxItem Content="0% (Libros exentos)" Tag="0"/>
+                            </ComboBox>
+
+                            <TextBlock Grid.Row="0" Grid.Column="2" Text="% Margen:" FontSize="12" FontWeight="SemiBold" Margin="6,0,6,4"/>
+                            <TextBox x:Name="TxtMargen" Grid.Row="1" Grid.Column="2" 
                                      TextChanged="TxtMargen_TextChanged"
                                      FontSize="14" FontWeight="Bold" Padding="8,6" Margin="6,0,6,0"/>
 
-                            <TextBlock Grid.Row="0" Grid.Column="2" Text="Precio Venta Sugerido ($):" FontSize="12" FontWeight="SemiBold" Foreground="#0284C7" Margin="6,0,0,4"/>
-                            <TextBox x:Name="TxtVenta" Grid.Row="1" Grid.Column="2" 
+                            <TextBlock Grid.Row="0" Grid.Column="3" Text="Precio Venta ($):" FontSize="12" FontWeight="SemiBold" Foreground="#0284C7" Margin="6,0,0,4"/>
+                            <TextBox x:Name="TxtVenta" Grid.Row="1" Grid.Column="3" 
                                      TextChanged="TxtVenta_TextChanged"
                                      FontSize="16" FontWeight="Black" Foreground="#0369A1" Padding="8,6" Margin="6,0,0,0"/>
                         </Grid>
 
-                        <TextBlock Text="💡 Al ingresar el Costo, el sistema calcula automáticamente el Precio de Venta según el margen configurado. También puede escribir el Precio de Venta directamente y se recalculará el margen." 
+                        <TextBlock Text="💡 Al ingresar Costo o IVA, el sistema calcula automáticamente el Precio de Venta según el margen. También puede tipear el Precio de Venta final y se actualizará el margen." 
                                    FontSize="10.5" Foreground="#64748B" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
