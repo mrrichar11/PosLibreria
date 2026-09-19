@@ -34,22 +34,40 @@ public partial class CajaViewModel : ObservableObject
     [ObservableProperty]
     private decimal _totalRetiros;
 
+    [ObservableProperty]
+    private string _nombreTerminal = "Caja Principal";
+
+    [ObservableProperty]
+    private string _modoTerminal = "Compartida";
+
     public ObservableCollection<MovimientoCaja> Movimientos { get; } = new();
 
     public event Action? OnCajaModificada;
     public Func<TurnoCaja, Task<bool>>? SolicitarCierreCajaDialogo { get; set; }
     public Func<string, Task<bool>>? SolicitarGastoRetiroDialogo { get; set; }
 
-    public CajaViewModel(ICajaService cajaService)
+    private readonly IConfiguracionService _configuracionService;
+
+    public CajaViewModel(ICajaService cajaService, IConfiguracionService configuracionService)
     {
         _cajaService = cajaService ?? throw new ArgumentNullException(nameof(cajaService));
+        _configuracionService = configuracionService ?? throw new ArgumentNullException(nameof(configuracionService));
     }
 
     public async Task CargarDatosAsync()
     {
+        try
+        {
+            var config = await _configuracionService.ObtenerConfiguracionAsync();
+            NombreTerminal = config.NombreTerminal;
+            ModoTerminal = config.ModoCajaMultiTerminal;
+        }
+        catch { }
+
         var turno = await _cajaService.ObtenerTurnoActivoAsync();
         TurnoActivo = turno;
         EsCajaAbierta = turno != null;
+
 
         Movimientos.Clear();
 

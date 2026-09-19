@@ -63,7 +63,19 @@ public class ConfiguracionService : IConfiguracionService
             ImprimirAutomaticoAlCobrar = config.ImprimirAutomaticoAlCobrar,
             MostrarVistaPreviaTicket = config.MostrarVistaPreviaTicket,
             GitHubRepoOwner = config.GitHubRepoOwner,
-            GitHubRepoName = config.GitHubRepoName
+            GitHubRepoName = config.GitHubRepoName,
+            CarpetaBackupsPersonalizada = config.CarpetaBackupsPersonalizada,
+            BackupAutomaticoAlCerrarSistema = config.BackupAutomaticoAlCerrarSistema,
+            BackupAutomaticoAlCierreCaja = config.BackupAutomaticoAlCierreCaja,
+            DiasRetencionBackups = config.DiasRetencionBackups,
+            NombreTerminal = config.NombreTerminal,
+            ModoCajaMultiTerminal = config.ModoCajaMultiTerminal,
+            MotorBaseDatos = config.MotorBaseDatos,
+            ServidorPostgres = config.ServidorPostgres,
+            PuertoPostgres = config.PuertoPostgres,
+            BaseDatosPostgres = config.BaseDatosPostgres,
+            UsuarioPostgres = config.UsuarioPostgres,
+            PasswordPostgres = config.PasswordPostgres
         };
     }
 
@@ -104,9 +116,22 @@ public class ConfiguracionService : IConfiguracionService
         config.MostrarVistaPreviaTicket = dto.MostrarVistaPreviaTicket;
         config.GitHubRepoOwner = dto.GitHubRepoOwner.Trim();
         config.GitHubRepoName = dto.GitHubRepoName.Trim();
+        config.CarpetaBackupsPersonalizada = dto.CarpetaBackupsPersonalizada;
+        config.BackupAutomaticoAlCerrarSistema = dto.BackupAutomaticoAlCerrarSistema;
+        config.BackupAutomaticoAlCierreCaja = dto.BackupAutomaticoAlCierreCaja;
+        config.DiasRetencionBackups = dto.DiasRetencionBackups;
+        config.NombreTerminal = string.IsNullOrWhiteSpace(dto.NombreTerminal) ? "Caja Principal" : dto.NombreTerminal.Trim();
+        config.ModoCajaMultiTerminal = string.IsNullOrWhiteSpace(dto.ModoCajaMultiTerminal) ? "Compartida" : dto.ModoCajaMultiTerminal.Trim();
+        config.MotorBaseDatos = string.IsNullOrWhiteSpace(dto.MotorBaseDatos) ? "SQLite" : dto.MotorBaseDatos.Trim();
+        config.ServidorPostgres = string.IsNullOrWhiteSpace(dto.ServidorPostgres) ? "localhost" : dto.ServidorPostgres.Trim();
+        config.PuertoPostgres = dto.PuertoPostgres <= 0 ? 5432 : dto.PuertoPostgres;
+        config.BaseDatosPostgres = string.IsNullOrWhiteSpace(dto.BaseDatosPostgres) ? "mr_sys_libreria" : dto.BaseDatosPostgres.Trim();
+        config.UsuarioPostgres = string.IsNullOrWhiteSpace(dto.UsuarioPostgres) ? "postgres" : dto.UsuarioPostgres.Trim();
+        config.PasswordPostgres = dto.PasswordPostgres ?? string.Empty;
 
         await _context.SaveChangesAsync(cancellationToken);
     }
+
 
     public async Task<EstadoRetirosDueñoDto> ObtenerEstadoRetirosDueñoMesAsync(CancellationToken cancellationToken = default)
     {

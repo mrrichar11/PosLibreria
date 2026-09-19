@@ -22,9 +22,20 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                <TextBlock Text="CAJA &amp; TURNOS DE MOSTRADOR" FontSize="20" FontWeight="Bold" Foreground="#0F172A"/>
-                <TextBlock Text="Control de flujos de efectivo, arqueos y movimientos de mostrador" FontSize="12" Foreground="#64748B"/>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="CAJA &amp; TURNOS DE MOSTRADOR" FontSize="20" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,12,0"/>
+                    <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="6" Padding="8,2" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🖥️ " FontSize="11"/>
+                            <TextBlock Text="{Binding NombreTerminal, StringFormat='Terminal: {0}'}" FontSize="11" FontWeight="Bold" Foreground="#1D4ED8"/>
+                            <TextBlock Text=" • " FontSize="11" Foreground="#94A3B8"/>
+                            <TextBlock Text="{Binding ModoTerminal, StringFormat='Modo: {0}'}" FontSize="11" FontWeight="SemiBold" Foreground="#475569"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+                <TextBlock Text="Control de flujos de efectivo, arqueos y movimientos de mostrador" FontSize="12" Foreground="#64748B" Margin="0,2,0,0"/>
             </StackPanel>
+
 
             <StackPanel Grid.Column="1" Orientation="Horizontal">
                 <Button Content="➕ Gasto Operativo" Command="{Binding RegistrarGastoCommand}"

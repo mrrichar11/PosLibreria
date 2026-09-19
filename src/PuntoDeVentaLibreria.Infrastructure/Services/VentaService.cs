@@ -33,6 +33,8 @@ public class VentaService : IVentaService
 
         var correlativo = await _context.Ventas.CountAsync(ct) + 1;
         var numeroComprobante = $"L-{correlativo:D6}";
+        var config = await _context.Configuraciones.AsNoTracking().FirstOrDefaultAsync(ct);
+        var nombreTerminal = config?.NombreTerminal ?? "Caja Principal";
 
         var venta = new Venta
         {
@@ -40,6 +42,7 @@ public class VentaService : IVentaService
             TurnoCajaId = turno.Id,
             ClienteId = dto.ClienteId,
             VendedoraNombre = dto.VendedoraNombre,
+            NombreTerminal = nombreTerminal,
             SubtotalBruto = subtotalBruto,
             DescuentoEfectivoMonto = dto.DescuentoEfectivoMonto,
             RecargoCuotasMonto = dto.RecargoCuotasMonto,
@@ -47,6 +50,7 @@ public class VentaService : IVentaService
             MetodoPagoPrincipal = dto.MetodoPago,
             CantidadCuotas = dto.CantidadCuotas
         };
+
 
         foreach (var item in dto.Items)
         {

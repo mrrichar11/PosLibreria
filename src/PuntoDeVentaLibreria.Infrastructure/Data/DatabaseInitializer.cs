@@ -64,6 +64,97 @@ public static class DatabaseInitializer
         }
         catch { }
 
+        // Nuevas columnas para Backups y Terminales Multi-PC
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN CarpetaBackupsPersonalizada TEXT NULL;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN BackupAutomaticoAlCerrarSistema INTEGER NOT NULL DEFAULT 1;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN BackupAutomaticoAlCierreCaja INTEGER NOT NULL DEFAULT 1;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN DiasRetencionBackups INTEGER NOT NULL DEFAULT 30;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN NombreTerminal TEXT NOT NULL DEFAULT 'Caja Principal';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN ModoCajaMultiTerminal TEXT NOT NULL DEFAULT 'Compartida';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN MotorBaseDatos TEXT NOT NULL DEFAULT 'SQLite';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN ServidorPostgres TEXT NOT NULL DEFAULT 'localhost';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN PuertoPostgres INTEGER NOT NULL DEFAULT 5432;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN BaseDatosPostgres TEXT NOT NULL DEFAULT 'mr_sys_libreria';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN UsuarioPostgres TEXT NOT NULL DEFAULT 'postgres';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN PasswordPostgres TEXT NOT NULL DEFAULT '';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE TurnosCaja ADD COLUMN NombreTerminal TEXT NOT NULL DEFAULT 'Caja Principal';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE TurnosCaja ADD COLUMN ModoTerminal TEXT NOT NULL DEFAULT 'Compartida';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Ventas ADD COLUMN NombreTerminal TEXT NOT NULL DEFAULT 'Caja Principal';", cancellationToken);
+        }
+        catch { }
+
         // 2.1 Tablas y columnas añadidas para Proveedores y multi-código
         try
         {

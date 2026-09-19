@@ -37,7 +37,24 @@ public class ConfiguracionNegocioDto
 
     public string GitHubRepoOwner { get; set; } = "mrrichar11";
     public string GitHubRepoName { get; set; } = "PosLibreria";
+
+    // Copias de Seguridad (Backups)
+    public string? CarpetaBackupsPersonalizada { get; set; }
+    public bool BackupAutomaticoAlCerrarSistema { get; set; } = true;
+    public bool BackupAutomaticoAlCierreCaja { get; set; } = true;
+    public int DiasRetencionBackups { get; set; } = 30;
+
+    // Terminal y Red Multi-PC (Plan PRO)
+    public string NombreTerminal { get; set; } = "Caja Principal";
+    public string ModoCajaMultiTerminal { get; set; } = "Compartida";
+    public string MotorBaseDatos { get; set; } = "SQLite";
+    public string ServidorPostgres { get; set; } = "localhost";
+    public int PuertoPostgres { get; set; } = 5432;
+    public string BaseDatosPostgres { get; set; } = "mr_sys_libreria";
+    public string UsuarioPostgres { get; set; } = "postgres";
+    public string PasswordPostgres { get; set; } = string.Empty;
 }
+
 
 public class EstadoRetirosDueñoDto
 {

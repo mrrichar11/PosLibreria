@@ -41,10 +41,20 @@ public partial class App : System.Windows.Application
         _host = Host.CreateDefaultBuilder()
             .ConfigureServices((context, services) =>
             {
-                // Base de datos SQLite local en el directorio base de la aplicación
-                var dbPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "punto_venta_libreria.db");
-                services.AddDbContext<AppDbContext>(options =>
-                    options.UseSqlite($"Data Source={dbPath}"));
+                // Carga dinámica de configuración de base de datos (SQLite Local o PostgreSQL Nube / Plan PRO)
+                var dbConfig = DatabaseConfigProvider.Cargar();
+                if (dbConfig.Motor.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
+                {
+                    var connStr = DatabaseConfigProvider.ObtenerCadenaConexion(dbConfig);
+                    services.AddDbContext<AppDbContext>(options =>
+                        options.UseNpgsql(connStr));
+                }
+                else
+                {
+                    var dbPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "punto_venta_libreria.db");
+                    services.AddDbContext<AppDbContext>(options =>
+                        options.UseSqlite($"Data Source={dbPath}"));
+                }
 
                 // Servicios de Dominio e Infraestructura
                 services.AddScoped<IInventarioService, InventarioService>();
@@ -56,9 +66,11 @@ public partial class App : System.Windows.Application
                 services.AddScoped<ILicenseService, LicenseService>();
                 services.AddScoped<IUpdateService, GitHubUpdateService>();
                 services.AddScoped<IBackupService, BackupService>();
+                services.AddScoped<IDatabaseMigrationService, DatabaseMigrationService>();
                 services.AddScoped<ITicketPrinterService, TicketPrinterService>();
                 services.AddScoped<IReporteService, ReporteService>();
                 services.AddScoped<IAuthService, AuthService>();
+
 
                 // ViewModels
                 services.AddSingleton<MainViewModel>();
@@ -149,9 +161,23 @@ public partial class App : System.Windows.Application
     {
         if (_host != null)
         {
+            try
+            {
+                using var scope = _host.Services.CreateScope();
+                var configService = scope.ServiceProvider.GetRequiredService<IConfiguracionService>();
+                var config = await configService.ObtenerConfiguracionAsync();
+                if (config.BackupAutomaticoAlCerrarSistema && config.MotorBaseDatos.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+                {
+                    var backupService = scope.ServiceProvider.GetRequiredService<IBackupService>();
+                    await backupService.CrearBackupAsync(null, "cierre_sistema");
+                }
+            }
+            catch { }
+
             await _host.StopAsync();
             _host.Dispose();
         }
         base.OnExit(e);
     }
 }
+

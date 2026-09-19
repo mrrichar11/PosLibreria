@@ -380,46 +380,197 @@
                 </ScrollViewer>
             </TabItem>
 
-            <!-- TAB 7: COPIAS DE SEGURIDAD -->
+            <!-- TAB 7: COPIAS DE SEGURIDAD (BACKUPS) -->
             <TabItem Header="🛡 Copias de Seguridad">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
                     <StackPanel HorizontalAlignment="Stretch">
-                        <Grid Margin="0,0,0,12">
+                        <Grid Margin="0,0,0,16">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
-                                <TextBlock Text="RESPALDO SEGURO DE LA BASE DE DATOS (SQLITE)" FontSize="14" FontWeight="Bold" Foreground="#1E293B"/>
-                                <TextBlock Text="Las copias son atómicas y protegen todas sus ventas, artículos y clientes" FontSize="12" Foreground="#64748B"/>
+                                <TextBlock Text="SISTEMA INTEGRAL DE COPIAS DE SEGURIDAD (BACKUPS)" FontSize="15" FontWeight="Bold" Foreground="#1E293B"/>
+                                <TextBlock Text="Copias atómicas comprimidas en ZIP que protegen su inventario, ventas, clientes y caja." FontSize="12" Foreground="#64748B"/>
                             </StackPanel>
-                            <Button Grid.Column="1" Content="💾 Crear Copia de Seguridad Ahora" Command="{Binding CrearBackupAhoraCommand}"
-                                    Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="16,8" Cursor="Hand"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <Button Content="📂 Abrir Carpeta" Command="{Binding AbrirCarpetaBackupsCommand}"
+                                        Background="#F1F5F9" Foreground="#334155" BorderBrush="#CBD5E1" FontWeight="SemiBold" Padding="14,8" Margin="0,0,8,0" Cursor="Hand"/>
+                                <Button Content="💾 Crear Copia Ahora" Command="{Binding CrearBackupAhoraCommand}"
+                                        Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="16,8" Cursor="Hand"/>
+                            </StackPanel>
                         </Grid>
 
-                        <TextBlock Text="{Binding MensajeBackup}" FontWeight="Bold" Foreground="#16A34A" FontSize="12" Margin="0,0,0,12"/>
+                        <TextBlock Text="{Binding MensajeBackup}" FontWeight="Bold" Foreground="#16A34A" FontSize="12" Margin="0,0,0,12" TextWrapping="Wrap"/>
 
-                        <!-- Historial -->
-                        <TextBlock Text="Copias de Seguridad Disponibles:" FontSize="13" FontWeight="Bold" Foreground="#1E293B" Margin="0,8,0,8"/>
+                        <!-- CONFIGURACIÓN DE RESPALDOS -->
+                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="⚙️ POLÍTICAS DE RESPALDO AUTOMÁTICO" FontSize="13" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,12"/>
+                                
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                        <TextBlock Text="Carpeta de Destino de las Copias:" FontSize="12" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding Config.CarpetaBackupsPersonalizada, FallbackValue='(Predeterminada: ./Backups/ dentro del sistema)'}" FontSize="11" Foreground="#64748B"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="📁 Cambiar Carpeta..." Command="{Binding SeleccionarCarpetaBackupsCommand}"
+                                            Background="#E2E8F0" Foreground="#0F172A" FontWeight="SemiBold" Padding="12,6" FontSize="12" Cursor="Hand"/>
+                                </Grid>
+
+                                <Separator Margin="0,6,0,12" Background="#E2E8F0"/>
+
+                                <WrapPanel Margin="0,0,0,8">
+                                    <CheckBox Content="Generar copia automática al realizar Cierre de Caja" IsChecked="{Binding Config.BackupAutomaticoAlCierreCaja}"
+                                              FontWeight="SemiBold" Margin="0,0,24,6"/>
+                                    <CheckBox Content="Generar copia automática al salir / cerrar el sistema" IsChecked="{Binding Config.BackupAutomaticoAlCerrarSistema}"
+                                              FontWeight="SemiBold" Margin="0,0,24,6"/>
+                                </WrapPanel>
+
+                                <DockPanel LastChildFill="False" Margin="0,4,0,0">
+                                    <TextBlock Text="Conservar copias de los últimos:" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Margin="0,0,8,0"/>
+                                    <TextBox Text="{Binding Config.DiasRetencionBackups, UpdateSourceTrigger=PropertyChanged}" Width="50" FontSize="12" Padding="4,2" TextAlignment="Center"/>
+                                    <TextBlock Text="días (los respaldos anteriores se purgan automáticamente para ahorrar espacio)." VerticalAlignment="Center" FontSize="12" Foreground="#64748B" Margin="8,0,0,0"/>
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Historial de Backups -->
+                        <TextBlock Text="Historial de Copias de Seguridad Guardadas:" FontSize="13" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,8"/>
                         <DataGrid ItemsSource="{Binding HistorialBackups}"
                                   AutoGenerateColumns="False"
                                   CanUserAddRows="False"
                                   CanUserDeleteRows="False"
                                   HeadersVisibility="Column"
                                   GridLinesVisibility="Horizontal"
-                                  Height="240"
+                                  Height="220"
                                   RowHeight="36"
                                   FontSize="12">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Archivo de Copia" Binding="{Binding NombreArchivo}" Width="*"/>
-                                <DataGridTextColumn Header="Fecha / Hora" Binding="{Binding FechaCreacion, StringFormat='dd/MM/yyyy HH:mm'}" Width="150"/>
-                                <DataGridTextColumn Header="Tamaño" Binding="{Binding TamañoFormateado}" Width="100"/>
+                                <DataGridTextColumn Header="Tipo" Binding="{Binding TipoBackup}" Width="160"/>
+                                <DataGridTextColumn Header="Fecha / Hora" Binding="{Binding FechaFormateada}" Width="150"/>
+                                <DataGridTextColumn Header="Tamaño" Binding="{Binding TamañoFormateado}" Width="90"/>
+                                <DataGridTemplateColumn Header="Acciones" Width="170">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                                <Button Content="📥 Restaurar" Command="{Binding DataContext.RestaurarBackupCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}" Background="#0284C7" Foreground="White" FontWeight="SemiBold" Padding="8,4" FontSize="11" Margin="0,0,6,0" Cursor="Hand"/>
+                                                <Button Content="🗑️" Command="{Binding DataContext.EliminarBackupCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}" Background="#FEE2E2" Foreground="#DC2626" Padding="6,4" FontSize="11" Cursor="Hand" ToolTip="Eliminar archivo"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
                             </DataGrid.Columns>
                         </DataGrid>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
+
+            <!-- TAB 8: CONEXIÓN Y NUBE (PLAN PRO MULTI-PC) -->
+            <TabItem Header="🌐 Red y Nube (Plan PRO)">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="780" HorizontalAlignment="Left">
+                        <TextBlock Text="CONFIGURACIÓN DE RED Y BASE DE DATOS (PLAN PRO MULTI-TERMINAL)" FontSize="15" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,4"/>
+                        <TextBlock Text="Permite conectar 2 o más computadoras (en el local o de forma remota desde su casa) trabajando sobre la misma información en tiempo real." 
+                                   FontSize="12" Foreground="#64748B" Margin="0,0,0,16" TextWrapping="Wrap"/>
+
+                        <!-- MODO DE BASE DE DATOS -->
+                        <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1.5" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="🔌 MOTOR DE BASE DE DATOS" FontSize="13" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,10"/>
+                                
+                                <RadioButton Content="🔘 Base de Datos Local (SQLite - Plan Básico 1 PC Offline)" IsChecked="{Binding EsModoSqlite}" 
+                                             FontWeight="Bold" FontSize="13" Foreground="#0F172A" Margin="0,0,0,6"/>
+                                <TextBlock Text="Utiliza el archivo local embebido punto_venta_libreria.db. No requiere conexión a internet ni servidor externo." 
+                                           FontSize="11" Foreground="#64748B" Margin="22,0,0,14"/>
+
+                                <RadioButton Content="☁️ Base de Datos en Nube / Red (PostgreSQL - Plan PRO Multi-PC)" IsChecked="{Binding EsModoPostgres}" 
+                                             FontWeight="Bold" FontSize="13" Foreground="#2563EB" Margin="0,0,0,6"/>
+                                <TextBlock Text="Conecta esta estación a una base centralizada (Supabase, Neon, VPS o Servidor Local) para sincronización instantánea de stock, ventas y precios." 
+                                           FontSize="11" Foreground="#64748B" Margin="22,0,0,12"/>
+
+                                <!-- PARÁMETROS POSTGRESQL -->
+                                <Border Background="White" BorderBrush="#93C5FD" BorderThickness="1" CornerRadius="8" Padding="14" Margin="22,0,0,0"
+                                        Visibility="{Binding EsModoPostgres, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <StackPanel>
+                                        <TextBlock Text="Parámetros del Servidor PostgreSQL:" FontSize="12" FontWeight="Bold" Foreground="#1E40AF" Margin="0,0,0,10"/>
+                                        
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="100"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                                <TextBlock Text="Servidor / Host / Dominio:" FontSize="11" FontWeight="SemiBold"/>
+                                                <TextBox Text="{Binding Config.ServidorPostgres, UpdateSourceTrigger=PropertyChanged}" FontSize="12" Padding="6,4"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1">
+                                                <TextBlock Text="Puerto:" FontSize="11" FontWeight="SemiBold"/>
+                                                <TextBox Text="{Binding Config.PuertoPostgres, UpdateSourceTrigger=PropertyChanged}" FontSize="12" Padding="6,4"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <Grid Margin="0,0,0,8">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                                <TextBlock Text="Nombre Base de Datos:" FontSize="11" FontWeight="SemiBold"/>
+                                                <TextBox Text="{Binding Config.BaseDatosPostgres, UpdateSourceTrigger=PropertyChanged}" FontSize="12" Padding="6,4"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1" Margin="0,0,6,0">
+                                                <TextBlock Text="Usuario:" FontSize="11" FontWeight="SemiBold"/>
+                                                <TextBox Text="{Binding Config.UsuarioPostgres, UpdateSourceTrigger=PropertyChanged}" FontSize="12" Padding="6,4"/>
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="2">
+                                                <TextBlock Text="Contraseña:" FontSize="11" FontWeight="SemiBold"/>
+                                                <TextBox Text="{Binding Config.PasswordPostgres, UpdateSourceTrigger=PropertyChanged}" FontSize="12" Padding="6,4"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <DockPanel LastChildFill="False" Margin="0,8,0,0">
+                                            <Button Content="🔌 Probar Conexión" Command="{Binding ProbarConexionPostgresCommand}"
+                                                    Background="#0284C7" Foreground="White" FontWeight="Bold" Padding="14,6" FontSize="12" Cursor="Hand" Margin="0,0,10,0"/>
+                                            <Button Content="🚀 Migrar Datos Locales a la Nube (1 Clic)" Command="{Binding MigrarSqliteAPostgresCommand}"
+                                                    Background="#16A34A" Foreground="White" FontWeight="Bold" Padding="14,6" FontSize="12" Cursor="Hand"/>
+                                        </DockPanel>
+
+                                        <TextBlock Text="{Binding MensajeConexionDb}" FontSize="11" FontWeight="Bold" Foreground="#0F172A" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                                        <TextBlock Text="{Binding ProgresoMigracionTexto}" FontSize="11" Foreground="#166534" Margin="0,4,0,0" TextWrapping="Wrap"
+                                                   Visibility="{Binding EstaMigrandoBaseDatos, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- IDENTIDAD DE ESTA TERMINAL Y MANEJO DE CAJAS -->
+                        <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1.5" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="🖥️ IDENTIDAD DE ESTA TERMINAL Y MANEJO DE CAJAS" FontSize="13" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,10"/>
+
+                                <TextBlock Text="Nombre / Identificador de esta Terminal:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBox Text="{Binding Config.NombreTerminal, UpdateSourceTrigger=PropertyChanged}" FontSize="13" Padding="8,6" Margin="0,0,0,12" MaxWidth="350" HorizontalAlignment="Left"/>
+
+                                <TextBlock Text="Modalidad de Cajas y Turnos en Multi-PC:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                                <RadioButton Content="Caja Compartida / Turno Único (1 solo cajón de dinero compartido entre todas las PCs)" 
+                                             IsChecked="{Binding EsCajaCompartida}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <RadioButton Content="Cajas Independientes (Cada terminal abre y cierra su propio turno con su cajón físico)" 
+                                             IsChecked="{Binding EsCajaIndependiente}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
         </TabControl>
+
 
         <!-- Barra Inferior de Estado -->
         <TextBlock Grid.Row="2" Text="{Binding MensajeGuardado}" Foreground="#16A34A" FontWeight="Bold" FontSize="13" Margin="0,10,0,0"/>

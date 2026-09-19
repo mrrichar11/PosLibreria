@@ -16,6 +16,7 @@ public class Venta : BaseEntity
     public TurnoCaja TurnoCaja { get; set; } = null!;
 
     public string VendedoraNombre { get; set; } = string.Empty;
+    public string NombreTerminal { get; set; } = "Caja Principal";
 
     // Totales
     public decimal SubtotalBruto { get; set; }

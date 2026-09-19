@@ -20,6 +20,7 @@ public partial class ConfiguracionViewModel : ObservableObject
     private readonly IUpdateService _updateService;
     private readonly IBackupService _backupService;
     private readonly ITicketPrinterService _ticketPrinterService;
+    private readonly IDatabaseMigrationService _databaseMigrationService;
 
     [ObservableProperty]
     private ConfiguracionNegocioDto _config = new();
@@ -54,6 +55,18 @@ public partial class ConfiguracionViewModel : ObservableObject
     [ObservableProperty]
     private string _mensajeGuardado = string.Empty;
 
+    [ObservableProperty]
+    private string _mensajeConexionDb = string.Empty;
+
+    [ObservableProperty]
+    private bool _estaProbandoConexionDb;
+
+    [ObservableProperty]
+    private bool _estaMigrandoBaseDatos;
+
+    [ObservableProperty]
+    private string _progresoMigracionTexto = string.Empty;
+
     public bool EsPapel80Mm
     {
         get => Config.AnchoPapelMm == 80;
@@ -82,6 +95,50 @@ public partial class ConfiguracionViewModel : ObservableObject
         }
     }
 
+    public bool EsModoPostgres
+    {
+        get => Config.MotorBaseDatos.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase);
+        set
+        {
+            Config.MotorBaseDatos = value ? "PostgreSQL" : "SQLite";
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(EsModoSqlite));
+        }
+    }
+
+    public bool EsModoSqlite
+    {
+        get => !EsModoPostgres;
+        set
+        {
+            Config.MotorBaseDatos = value ? "SQLite" : "PostgreSQL";
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(EsModoPostgres));
+        }
+    }
+
+    public bool EsCajaIndependiente
+    {
+        get => Config.ModoCajaMultiTerminal.Equals("Independiente", StringComparison.OrdinalIgnoreCase);
+        set
+        {
+            Config.ModoCajaMultiTerminal = value ? "Independiente" : "Compartida";
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(EsCajaCompartida));
+        }
+    }
+
+    public bool EsCajaCompartida
+    {
+        get => !EsCajaIndependiente;
+        set
+        {
+            Config.ModoCajaMultiTerminal = value ? "Compartida" : "Independiente";
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(EsCajaIndependiente));
+        }
+    }
+
     public ObservableCollection<string> ImpresorasDisponibles { get; } = new();
     public ObservableCollection<BackupInfoDto> HistorialBackups { get; } = new();
     public ObservableCollection<string> PaisesDisponibles { get; } = new()
@@ -104,14 +161,17 @@ public partial class ConfiguracionViewModel : ObservableObject
         ILicenseService licenseService,
         IUpdateService updateService,
         IBackupService backupService,
-        ITicketPrinterService ticketPrinterService)
+        ITicketPrinterService ticketPrinterService,
+        IDatabaseMigrationService databaseMigrationService)
     {
         _configuracionService = configuracionService ?? throw new ArgumentNullException(nameof(configuracionService));
         _licenseService = licenseService ?? throw new ArgumentNullException(nameof(licenseService));
         _updateService = updateService ?? throw new ArgumentNullException(nameof(updateService));
         _backupService = backupService ?? throw new ArgumentNullException(nameof(backupService));
         _ticketPrinterService = ticketPrinterService ?? throw new ArgumentNullException(nameof(ticketPrinterService));
+        _databaseMigrationService = databaseMigrationService ?? throw new ArgumentNullException(nameof(databaseMigrationService));
     }
+
 
     [RelayCommand]
     public void SeleccionarPais(string? pais)
@@ -327,15 +387,209 @@ public partial class ConfiguracionViewModel : ObservableObject
     {
         try
         {
-            var b = await _backupService.CrearBackupAsync(null, false);
-            MensajeBackup = $"Copia creada exitosamente: {b.NombreArchivo} ({b.TamañoFormateado})";
+            var b = await _backupService.CrearBackupAsync(null, "manual");
+            MensajeBackup = $"¡Copia de seguridad creada con éxito!\nArchivo: {b.NombreArchivo} ({b.TamañoFormateado})";
             await CargarHistorialBackupsAsync();
         }
         catch (Exception ex)
         {
-            MensajeBackup = $"Error al crear respaldo: {ex.Message}";
+            MensajeBackup = $"Error al crear copia de seguridad:\n{ex.Message}";
         }
     }
+
+    [RelayCommand]
+    private void SeleccionarCarpetaBackups()
+    {
+        try
+        {
+            var ofd = new Microsoft.Win32.OpenFolderDialog
+            {
+                Title = "Seleccionar Carpeta para Copias de Seguridad (Backups)",
+                Multiselect = false
+            };
+
+            if (ofd.ShowDialog() == true)
+            {
+                Config.CarpetaBackupsPersonalizada = ofd.FolderName;
+                OnPropertyChanged(nameof(Config));
+                MensajeBackup = $"Carpeta de destino actualizada a: {ofd.FolderName}. Recuerde guardar la configuración.";
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Error al seleccionar carpeta: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private void AbrirCarpetaBackups()
+    {
+        try
+        {
+            var carpeta = _backupService.ObtenerCarpetaBackupsPredeterminada();
+            if (System.IO.Directory.Exists(carpeta))
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = carpeta,
+                    UseShellExecute = true
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"No se pudo abrir la carpeta: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task RestaurarBackupAsync(BackupInfoDto? backup)
+    {
+        if (backup == null) return;
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"ATENCIÓN: ¿Está seguro que desea restaurar la copia de seguridad:\n'{backup.NombreArchivo}'?\n\nEsta acción reemplazará los datos actuales por los datos de este respaldo. Se creará una copia preventiva automática antes de restaurar.",
+            "Confirmar Restauración de Copia de Seguridad",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        try
+        {
+            var ok = await _backupService.RestaurarBackupAsync(backup.RutaCompleta);
+            if (ok)
+            {
+                System.Windows.MessageBox.Show(
+                    "¡Copia de seguridad restaurada correctamente!\n\nPor favor, reinicie la aplicación para que todos los módulos recarguen los datos restaurados.",
+                    "Restauración Completada",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+                await CargarHistorialBackupsAsync();
+            }
+            else
+            {
+                System.Windows.MessageBox.Show("No se pudo restaurar el archivo de respaldo seleccionado.", "Error de Restauración", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Error al restaurar: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private async Task EliminarBackupAsync(BackupInfoDto? backup)
+    {
+        if (backup == null) return;
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"¿Desea eliminar permanentemente el archivo de copia de seguridad '{backup.NombreArchivo}'?",
+            "Eliminar Backup",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Question);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        await _backupService.EliminarBackupAsync(backup.RutaCompleta);
+        await CargarHistorialBackupsAsync();
+        MensajeBackup = "Copia de seguridad eliminada.";
+    }
+
+    [RelayCommand]
+    private async Task ProbarConexionPostgresAsync()
+    {
+        EstaProbandoConexionDb = true;
+        MensajeConexionDb = "Probando conexión con el servidor PostgreSQL...";
+
+        try
+        {
+            var dbConfig = new PuntoDeVentaLibreria.Infrastructure.Data.DatabaseConfig
+            {
+                Motor = "PostgreSQL",
+                ServidorPostgres = Config.ServidorPostgres,
+                PuertoPostgres = Config.PuertoPostgres,
+                BaseDatosPostgres = Config.BaseDatosPostgres,
+                UsuarioPostgres = Config.UsuarioPostgres,
+                PasswordPostgres = Config.PasswordPostgres,
+                NombreTerminal = Config.NombreTerminal,
+                ModoCajaMultiTerminal = Config.ModoCajaMultiTerminal
+            };
+
+            var (exito, mensaje) = await PuntoDeVentaLibreria.Infrastructure.Data.DatabaseConfigProvider.ProbarConexionPostgresAsync(dbConfig);
+            MensajeConexionDb = mensaje;
+            if (exito)
+            {
+                // Guardar la configuración en database_config.json local
+                PuntoDeVentaLibreria.Infrastructure.Data.DatabaseConfigProvider.Guardar(dbConfig);
+            }
+        }
+        catch (Exception ex)
+        {
+            MensajeConexionDb = $"Error al probar conexión: {ex.Message}";
+        }
+        finally
+        {
+            EstaProbandoConexionDb = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task MigrarSqliteAPostgresAsync()
+    {
+        var confirm = System.Windows.MessageBox.Show(
+            "¿Desea migrar todos los datos locales (artículos, clientes, proveedores, ventas e historial) a la base de datos PostgreSQL en la nube?\n\nEste proceso creará las tablas necesarias en el servidor y cargará todos los registros sin alterar la base local.",
+            "Confirmar Migración a la Nube",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Question);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        EstaMigrandoBaseDatos = true;
+        ProgresoMigracionTexto = "Iniciando proceso de migración...";
+
+        try
+        {
+            var dbConfig = new PuntoDeVentaLibreria.Infrastructure.Data.DatabaseConfig
+            {
+                Motor = "PostgreSQL",
+                ServidorPostgres = Config.ServidorPostgres,
+                PuertoPostgres = Config.PuertoPostgres,
+                BaseDatosPostgres = Config.BaseDatosPostgres,
+                UsuarioPostgres = Config.UsuarioPostgres,
+                PasswordPostgres = Config.PasswordPostgres,
+                NombreTerminal = Config.NombreTerminal,
+                ModoCajaMultiTerminal = Config.ModoCajaMultiTerminal
+            };
+
+            var connStr = PuntoDeVentaLibreria.Infrastructure.Data.DatabaseConfigProvider.ObtenerCadenaConexion(dbConfig);
+            var progreso = new Progress<string>(msg => ProgresoMigracionTexto = msg);
+
+            var resultado = await _databaseMigrationService.MigrarSqliteAPostgresAsync(connStr, progreso);
+            if (resultado.Exitoso)
+            {
+                PuntoDeVentaLibreria.Infrastructure.Data.DatabaseConfigProvider.Guardar(dbConfig);
+                System.Windows.MessageBox.Show(
+                    $"{resultado.Mensaje}\n\nPara comenzar a operar en la nube con todas las terminales, reinicie la aplicación.",
+                    "¡Migración Exitosa!",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+            }
+            else
+            {
+                System.Windows.MessageBox.Show(resultado.Mensaje, "Error en Migración", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Error: {ex.Message}", "Error en Migración", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+        finally
+        {
+            EstaMigrandoBaseDatos = false;
+        }
+    }
+
 
     [RelayCommand]
     private async Task ProbarVistaPreviaTicketAsync()

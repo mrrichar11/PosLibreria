@@ -14,7 +14,10 @@ public class TurnoCaja : BaseEntity
     public string UsuarioApertura { get; set; } = string.Empty;
     public string? UsuarioCierre { get; set; }
     public string? ObservacionesCierre { get; set; }
+    public string NombreTerminal { get; set; } = "Caja Principal";
+    public string ModoTerminal { get; set; } = "Compartida";
     public bool EstaAbierto => FechaCierre == null;
 
     public ICollection<MovimientoCaja> Movimientos { get; set; } = new List<MovimientoCaja>();
 }
+
