@@ -291,35 +291,8 @@
             <TabItem Header="🚀 Actualizaciones">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
                     <StackPanel MaxWidth="720" HorizontalAlignment="Left">
-                        <TextBlock Text="ACTUALIZACIONES OFICIALES Y REPOSITORIO GITHUB" FontSize="14" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,4"/>
-                        <TextBlock Text="Configure el repositorio de distribución y compruebe nuevas versiones del software en 1 clic." FontSize="12" Foreground="#64748B" Margin="0,0,0,16"/>
-
-                        <!-- CONFIGURACION DE REPOSITORIO GITHUB -->
-                        <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,16">
-                            <StackPanel>
-                                <TextBlock Text="Repositorio Oficial de Distribución (GitHub Releases)" FontSize="13" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,12"/>
-                                
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="16"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <StackPanel Grid.Column="0">
-                                        <TextBlock Text="Usuario / Organización GitHub:" FontSize="12" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
-                                        <TextBox Text="{Binding Config.GitHubRepoOwner, UpdateSourceTrigger=PropertyChanged}" FontSize="13" Padding="8,6"/>
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Column="2">
-                                        <TextBlock Text="Nombre del Repositorio:" FontSize="12" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
-                                        <TextBox Text="{Binding Config.GitHubRepoName, UpdateSourceTrigger=PropertyChanged}" FontSize="13" Padding="8,6"/>
-                                    </StackPanel>
-                                </Grid>
-
-                                <TextBlock Text="💡 El sistema consultará automáticamente este repositorio público para detectar nuevas versiones y descargar paquetes de actualización." FontSize="11" Foreground="#64748B"/>
-                            </StackPanel>
-                        </Border>
+                        <TextBlock Text="ACTUALIZACIONES OFICIALES DEL SISTEMA" FontSize="14" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,4"/>
+                        <TextBlock Text="Compruebe e instale las últimas versiones y mejoras de MR SYS en 1 clic de forma segura." FontSize="12" Foreground="#64748B" Margin="0,0,0,16"/>
 
                         <!-- ESTADO ACTUAL Y BUSQUEDA -->
                         <Border Background="#FFFFFF" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="10" Padding="16" Margin="0,0,0,16">

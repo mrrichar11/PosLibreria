@@ -224,7 +224,7 @@ public partial class ConfiguracionViewModel : ObservableObject
     [RelayCommand]
     private async Task BuscarActualizacionesAsync()
     {
-        MensajeActualizacion = "Consultando versiones disponibles en GitHub...";
+        MensajeActualizacion = "Consultando versiones oficiales disponibles...";
         var res = await _updateService.VerificarActualizacionesAsync(Config.GitHubRepoOwner, Config.GitHubRepoName);
         ActualizacionInfo = res;
 
