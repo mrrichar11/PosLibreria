@@ -22,7 +22,7 @@ param(
     [Parameter(Position = 1)]
     [string]$Notas = "",
 
-    [switch]$SelfContained = $false
+    [bool]$SelfContained = $true
 )
 
 $ErrorActionPreference = "Stop"

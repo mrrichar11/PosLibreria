@@ -10,8 +10,8 @@ param(
     [Parameter(Position = 1)]
     [string]$Notas = "",
 
-    [switch]$SelfContained = $false
+    [bool]$SelfContained = $true
 )
 
 $script = Join-Path $PSScriptRoot "package_github_release.ps1"
-& $script -Version $Version -Notas $Notas -SelfContained:$SelfContained
+& $script -Version $Version -Notas $Notas -SelfContained $SelfContained
