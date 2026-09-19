@@ -183,4 +183,54 @@ public class LibreriaProveedoresYMigracionTests
             artActualizado[0].PrecioVenta.Should().Be(item.VentaNueva);
         }
     }
+
+    [Fact]
+    public async Task InventarioService_MigracionAlmaLibre_ConStockFechasTarjetaYMayoristaOnce_ProcesaCorrectamente()
+    {
+        var rutaArchivo = @"C:\Proyectos\PuntoDeVentaLibreria\Lista de precios ALMA LIBRE.xlsx";
+        if (!File.Exists(rutaArchivo)) return;
+
+        using var context = CrearContextoEnMemoria();
+        var service = new InventarioService(context);
+
+        using var stream = File.OpenRead(rutaArchivo);
+        var preview = await service.PrevisualizarCatalogoAlmaLibreAsync(stream);
+        preview.Should().NotBeEmpty();
+
+        // 1. Validar fechas parseadas
+        var itemsConFecha = preview.Where(i => i.FechaAlta.HasValue || i.FechaUltimaActualizacionPrecio.HasValue).ToList();
+        itemsConFecha.Should().NotBeEmpty();
+
+        // 2. Validar precios de tarjeta y recargos
+        var itemsConTarjeta = preview.Where(i => i.PrecioTarjeta.HasValue && i.PrecioTarjeta > 0).ToList();
+        itemsConTarjeta.Should().NotBeEmpty();
+        var ejemploTarjeta = itemsConTarjeta.First();
+        ejemploTarjeta.PrecioTarjeta.Should().BeGreaterThan(0);
+        ejemploTarjeta.RecargoTarjetaPorcentaje.Should().BeGreaterThan(0);
+
+        // 3. Validar cruce con Mayorista El Once
+        var itemsElOnce = preview.Where(i => i.EsDeMayoristaElOnce).ToList();
+        itemsElOnce.Should().NotBeEmpty();
+
+        // 4. Probar importación selectiva con asignación de stock inicial
+        var muestraImportar = preview.Take(5).ToList();
+        foreach (var m in muestraImportar)
+        {
+            m.Seleccionado = true;
+            m.StockImportar = 12m;
+        }
+
+        var res = await service.ImportarCatalogoSeleccionadoAsync(muestraImportar);
+        res.ArticulosCreados.Should().Be(5);
+        res.TotalStockIngresado.Should().Be(60m);
+
+        var guardados = await context.Articulos.Include(a => a.MovimientosStock).ToListAsync();
+        guardados.Should().HaveCount(5);
+        foreach (var g in guardados)
+        {
+            g.StockActual.Should().Be(12m);
+            g.MovimientosStock.Should().HaveCount(1);
+            g.MovimientosStock.First().Cantidad.Should().Be(12m);
+        }
+    }
 }

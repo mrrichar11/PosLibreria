@@ -4,6 +4,7 @@ using PuntoDeVentaLibreria.Application.Common;
 using PuntoDeVentaLibreria.Application.DTOs.Inventario;
 using PuntoDeVentaLibreria.Application.Services;
 using PuntoDeVentaLibreria.Domain.Entities.Catalogo;
+using PuntoDeVentaLibreria.Domain.Entities.Inventario;
 using PuntoDeVentaLibreria.Infrastructure.Data;
 
 namespace PuntoDeVentaLibreria.Infrastructure.Services;
@@ -341,6 +342,94 @@ public class InventarioService : IInventarioService
     // MIGRACIÓN E IMPORTACIÓN MASIVA (ej. Lista de Precios ALMA LIBRE)
     // =========================================================================
 
+    private (HashSet<string> CodigosOnce, HashSet<string> BarrasOnce) CargarCatalogosOnceEnMemoria()
+    {
+        var codigosOnce = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var barrasOnce = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            var directoriosCandidatos = new[]
+            {
+                AppDomain.CurrentDomain.BaseDirectory,
+                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", ".."),
+                @"C:\Proyectos\PuntoDeVentaLibreria"
+            };
+
+            var archivosEncontrados = new List<string>();
+            foreach (var dir in directoriosCandidatos)
+            {
+                if (Directory.Exists(dir))
+                {
+                    var files = Directory.GetFiles(dir, "*Once*.xls*", SearchOption.TopDirectoryOnly);
+                    archivosEncontrados.AddRange(files);
+                }
+            }
+
+            foreach (var archivoPath in archivosEncontrados.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    using var fileStream = File.OpenRead(archivoPath);
+                    var (_, onceRows) = LeerExcelSimple(fileStream);
+                    foreach (var r in onceRows)
+                    {
+                        var cod = ObtenerValorColumna(r, "codigo", "cod", "codigoproducto")?.Trim();
+                        var bar = ObtenerValorColumna(r, "codigodebarra", "codigobarra", "barra", "barcode")?.Trim();
+                        if (!string.IsNullOrWhiteSpace(cod) && cod != "0")
+                        {
+                            codigosOnce.Add(cod);
+                        }
+                        if (!string.IsNullOrWhiteSpace(bar) && bar != "0")
+                        {
+                            barrasOnce.Add(bar);
+                        }
+                    }
+                }
+                catch { }
+            }
+        }
+        catch { }
+
+        return (codigosOnce, barrasOnce);
+    }
+
+    private static DateTime? ParseFechaExcel(string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return null;
+
+        var formatos = new[]
+        {
+            "dd-MMM-yy", "dd-MMM-yyyy", "d-MMM-yy", "d-MMM-yyyy",
+            "dd/MM/yyyy", "d/M/yyyy", "dd-MM-yyyy", "d-M-yyyy",
+            "yyyy-MM-dd", "dd/MM/yy", "dd-MM-yy", "yyyy/MM/dd",
+            "yyyy-MM-dd HH:mm:ss", "dd/MM/yyyy HH:mm:ss"
+        };
+
+        var culturaEs = new System.Globalization.CultureInfo("es-AR");
+        if (DateTime.TryParseExact(valor.Trim(), formatos, culturaEs, System.Globalization.DateTimeStyles.None, out var dtEs))
+        {
+            return dtEs;
+        }
+
+        if (DateTime.TryParseExact(valor.Trim(), formatos, System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dtInv))
+        {
+            return dtInv;
+        }
+
+        if (DateTime.TryParse(valor.Trim(), culturaEs, System.Globalization.DateTimeStyles.None, out var dtGeneral))
+        {
+            return dtGeneral;
+        }
+
+        if (double.TryParse(valor.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var serial) && serial > 30000 && serial < 80000)
+        {
+            try { return DateTime.FromOADate(serial); } catch { }
+        }
+
+        return null;
+    }
+
     public async Task<IReadOnlyList<ItemPrevisualizacionAlmaLibreDto>> PrevisualizarCatalogoAlmaLibreAsync(Stream archivoExcelStream, CancellationToken ct = default)
     {
         var (_, rows) = LeerExcelSimple(archivoExcelStream);
@@ -348,6 +437,9 @@ public class InventarioService : IInventarioService
 
         var skusExistentes = (await _context.Articulos.AsNoTracking().Select(a => a.SKU).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var barrasExistentes = (await _context.Articulos.AsNoTracking().Where(a => a.CodigoBarras != null).Select(a => a.CodigoBarras!).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Cruce inteligente con catálogos de Mayorista El Once
+        var (codigosOnce, barrasOnce) = CargarCatalogosOnceEnMemoria();
 
         foreach (var row in rows)
         {
@@ -372,11 +464,46 @@ public class InventarioService : IInventarioService
                 precio = CalculoPreciosUtils.CalcularPrecioVenta(costo, pcgan, pciva);
             }
 
+            // Precio Tarjeta & Recargo Financiero
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "tarjeta", "preciotarjeta", "tarj", "pcredito"), out var pTarjeta);
+            decimal? recargoPct = null;
+            if (pTarjeta > 0 && precio > 0 && pTarjeta > precio)
+            {
+                recargoPct = Math.Round(((pTarjeta - precio) / precio) * 100m, 1);
+            }
+
+            // Fechas de Alta y Último Precio
+            var fchAltaStr = ObtenerValorColumna(row, "fchalta", "fechaalta", "alta");
+            var fchUltPreStr = ObtenerValorColumna(row, "fchultpre", "fechaultprecio", "ultprecio", "fchprecio", "actualizado");
+
+            var fechaAlta = ParseFechaExcel(fchAltaStr);
+            var fechaUltPrecio = ParseFechaExcel(fchUltPreStr);
+
+            // Cruce con El Once
+            bool esOnce = false;
+            string? codOnceMatch = null;
+            if (!string.IsNullOrWhiteSpace(codProv) && codigosOnce.Contains(codProv))
+            {
+                esOnce = true;
+                codOnceMatch = codProv;
+            }
+            else if (!string.IsNullOrWhiteSpace(sku) && codigosOnce.Contains(sku))
+            {
+                esOnce = true;
+                codOnceMatch = sku;
+            }
+            else if (!string.IsNullOrWhiteSpace(codBarra) && barrasOnce.Contains(codBarra))
+            {
+                esOnce = true;
+                codOnceMatch = codBarra;
+            }
+
             var existe = (!string.IsNullOrWhiteSpace(sku) && skusExistentes.Contains(sku)) ||
                          (!string.IsNullOrWhiteSpace(codBarra) && barrasExistentes.Contains(codBarra));
 
             resultado.Add(new ItemPrevisualizacionAlmaLibreDto
             {
+                Seleccionado = true,
                 SKU = !string.IsNullOrWhiteSpace(sku) ? sku : (!string.IsNullOrWhiteSpace(codBarra) ? codBarra : "SIN-SKU"),
                 CodigoProveedor = string.IsNullOrWhiteSpace(codProv) ? null : codProv,
                 CodigoBarras = string.IsNullOrWhiteSpace(codBarra) ? null : codBarra,
@@ -386,6 +513,13 @@ public class InventarioService : IInventarioService
                 IvaPorcentaje = pciva,
                 PorcentajeGanancia = pcgan,
                 PrecioVenta = precio,
+                PrecioTarjeta = pTarjeta > 0 ? pTarjeta : null,
+                RecargoTarjetaPorcentaje = recargoPct,
+                FechaAlta = fechaAlta,
+                FechaUltimaActualizacionPrecio = fechaUltPrecio,
+                StockImportar = 0,
+                EsDeMayoristaElOnce = esOnce,
+                CodigoOnceCoincidente = codOnceMatch,
                 YaExisteEnSistema = existe
             });
         }
@@ -395,15 +529,38 @@ public class InventarioService : IInventarioService
 
     public async Task<MigracionResultadoDto> ImportarCatalogoAlmaLibreAsync(Stream archivoExcelStream, Guid? proveedorId = null, CancellationToken ct = default)
     {
-        var (_, rows) = LeerExcelSimple(archivoExcelStream);
-        var resultado = new MigracionResultadoDto { TotalFilasProcesadas = rows.Count };
+        var items = await PrevisualizarCatalogoAlmaLibreAsync(archivoExcelStream, ct);
+        return await ImportarCatalogoSeleccionadoAsync(items, proveedorId, ct);
+    }
+
+    public async Task<MigracionResultadoDto> ImportarCatalogoSeleccionadoAsync(IReadOnlyList<ItemPrevisualizacionAlmaLibreDto> items, Guid? proveedorIdPorDefecto = null, CancellationToken ct = default)
+    {
+        var itemsSeleccionados = items.Where(i => i.Seleccionado).ToList();
+        var resultado = new MigracionResultadoDto { TotalFilasProcesadas = itemsSeleccionados.Count };
 
         // Precargar categorías para mapear rápidamente
         var categorias = await _context.Categorias.ToListAsync(ct);
         var dictCategorias = categorias.ToDictionary(c => c.Nombre.Trim().ToUpperInvariant(), c => c.Id);
 
+        // Precargar proveedores y buscar/crear 'Mayorista El Once' si es necesario
+        var proveedores = await _context.Proveedores.ToListAsync(ct);
+        var onceProveedor = proveedores.FirstOrDefault(p => p.Nombre.Contains("Once", StringComparison.OrdinalIgnoreCase));
+        if (onceProveedor == null && itemsSeleccionados.Any(i => i.EsDeMayoristaElOnce))
+        {
+            onceProveedor = new PuntoDeVentaLibreria.Domain.Entities.Proveedores.Proveedor
+            {
+                Id = Guid.NewGuid(),
+                Nombre = "Mayorista El Once",
+                Telefono = "011-4951-0000",
+                Email = "ventas@eloncemayorista.com.ar",
+                Activo = true
+            };
+            _context.Proveedores.Add(onceProveedor);
+            proveedores.Add(onceProveedor);
+        }
+
         // Precargar artículos existentes por SKU y Barras
-        var articulosExistentes = await _context.Articulos.ToListAsync(ct);
+        var articulosExistentes = await _context.Articulos.Include(a => a.MovimientosStock).ToListAsync(ct);
         var dictPorSku = articulosExistentes.Where(a => !string.IsNullOrEmpty(a.SKU))
             .ToDictionary(a => a.SKU.Trim().ToUpperInvariant(), a => a);
         var dictPorBarra = articulosExistentes.Where(a => !string.IsNullOrEmpty(a.CodigoBarras))
@@ -411,37 +568,21 @@ public class InventarioService : IInventarioService
 
         int secuenciaSku = articulosExistentes.Count + 1;
 
-        foreach (var row in rows)
+        foreach (var item in itemsSeleccionados)
         {
             try
             {
-                var sku = ObtenerValorColumna(row, "codigo", "sku")?.Trim();
-                var codProv = ObtenerValorColumna(row, "codprov", "codigoproveedor")?.Trim();
-                var codBarra = ObtenerValorColumna(row, "codbarra", "codigodebarra", "codigobarra", "barra")?.Trim();
-                var descrip = ObtenerValorColumna(row, "descrip", "descripcion", "nombre", "articulo")?.Trim();
-                var rubro = ObtenerValorColumna(row, "rubro", "categoria")?.Trim();
+                var sku = item.SKU?.Trim();
+                var codProv = item.CodigoProveedor?.Trim();
+                var codBarra = item.CodigoBarras?.Trim();
+                var descrip = item.Nombre?.Trim();
+                var rubro = item.CategoriaRubro?.Trim();
 
-                if (string.IsNullOrWhiteSpace(descrip))
-                {
-                    continue;
-                }
+                if (string.IsNullOrWhiteSpace(descrip)) continue;
 
-                if (string.IsNullOrWhiteSpace(sku))
+                if (string.IsNullOrWhiteSpace(sku) || sku == "SIN-SKU")
                 {
                     sku = !string.IsNullOrWhiteSpace(codBarra) ? codBarra : $"ART-{secuenciaSku++:D5}";
-                }
-
-                CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "costo", "preciocosto"), out var costo);
-                CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "pciva", "iva"), out var pciva);
-                if (pciva <= 0) pciva = 21.0m;
-
-                CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "pcgan", "ganancia%", "utilidad", "margen"), out var pcgan);
-                if (pcgan <= 0) pcgan = 60.0m;
-
-                CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "precio", "precioventa", "pvp"), out var precio);
-                if (precio <= 0 && costo > 0)
-                {
-                    precio = CalculoPreciosUtils.CalcularPrecioVenta(costo, pcgan, pciva);
                 }
 
                 // Resolver Categoría
@@ -462,6 +603,13 @@ public class InventarioService : IInventarioService
                     }
                 }
 
+                // Resolver Proveedor: si el usuario seleccionó uno, usar ese; sino si es de El Once, asignar Once
+                Guid? provId = proveedorIdPorDefecto;
+                if (!provId.HasValue && item.EsDeMayoristaElOnce && onceProveedor != null)
+                {
+                    provId = onceProveedor.Id;
+                }
+
                 // Buscar si ya existe por SKU o Código de Barra
                 Articulo? articulo = null;
                 if (dictPorSku.TryGetValue(sku.ToUpperInvariant(), out var porSku))
@@ -480,13 +628,32 @@ public class InventarioService : IInventarioService
                     if (!string.IsNullOrWhiteSpace(codBarra)) articulo.CodigoBarras = codBarra;
                     if (!string.IsNullOrWhiteSpace(codProv)) articulo.CodigoProveedor = codProv;
                     if (catId.HasValue) articulo.CategoriaId = catId;
-                    if (proveedorId.HasValue) articulo.ProveedorId = proveedorId;
+                    if (provId.HasValue) articulo.ProveedorId = provId;
 
-                    articulo.PrecioCosto = costo;
-                    articulo.IvaPorcentaje = pciva;
-                    articulo.PorcentajeGanancia = pcgan;
-                    articulo.PrecioVenta = precio;
+                    articulo.PrecioCosto = item.PrecioCosto;
+                    articulo.IvaPorcentaje = item.IvaPorcentaje > 0 ? item.IvaPorcentaje : 21.0m;
+                    articulo.PorcentajeGanancia = item.PorcentajeGanancia > 0 ? item.PorcentajeGanancia : 60.0m;
+                    articulo.PrecioVenta = item.PrecioVenta;
                     articulo.Activo = true;
+
+                    // Si el usuario especificó stock inicial a cargar
+                    if (item.StockImportar > 0)
+                    {
+                        var stockPrevio = articulo.StockActual;
+                        articulo.StockActual = item.StockImportar;
+                        _context.Set<MovimientoStock>().Add(new MovimientoStock
+                        {
+                            Id = Guid.NewGuid(),
+                            ArticuloId = articulo.Id,
+                            Cantidad = item.StockImportar,
+                            StockPrevio = stockPrevio,
+                            StockPosterior = item.StockImportar,
+                            Tipo = TipoMovimientoStock.AjusteManualPositivo,
+                            Motivo = "Carga / ajuste de stock inicial desde catálogo migrado",
+                            FechaCreacion = DateTime.UtcNow
+                        });
+                        resultado.TotalStockIngresado += item.StockImportar;
+                    }
 
                     resultado.ArticulosActualizados++;
                 }
@@ -501,15 +668,31 @@ public class InventarioService : IInventarioService
                         CodigoProveedor = string.IsNullOrWhiteSpace(codProv) ? null : codProv,
                         Nombre = descrip,
                         CategoriaId = catId,
-                        ProveedorId = proveedorId,
-                        PrecioCosto = costo,
-                        IvaPorcentaje = pciva,
-                        PorcentajeGanancia = pcgan,
-                        PrecioVenta = precio,
-                        StockActual = 0,
+                        ProveedorId = provId,
+                        PrecioCosto = item.PrecioCosto,
+                        IvaPorcentaje = item.IvaPorcentaje > 0 ? item.IvaPorcentaje : 21.0m,
+                        PorcentajeGanancia = item.PorcentajeGanancia > 0 ? item.PorcentajeGanancia : 60.0m,
+                        PrecioVenta = item.PrecioVenta,
+                        StockActual = item.StockImportar,
                         StockMinimo = 5,
                         Activo = true
                     };
+
+                    if (item.StockImportar > 0)
+                    {
+                        nuevo.MovimientosStock.Add(new MovimientoStock
+                        {
+                            Id = Guid.NewGuid(),
+                            ArticuloId = nuevo.Id,
+                            Cantidad = item.StockImportar,
+                            StockPrevio = 0,
+                            StockPosterior = item.StockImportar,
+                            Tipo = TipoMovimientoStock.AjusteManualPositivo,
+                            Motivo = "Carga de stock inicial desde catálogo migrado",
+                            FechaCreacion = DateTime.UtcNow
+                        });
+                        resultado.TotalStockIngresado += item.StockImportar;
+                    }
 
                     _context.Articulos.Add(nuevo);
                     dictPorSku[sku.ToUpperInvariant()] = nuevo;
@@ -519,13 +702,15 @@ public class InventarioService : IInventarioService
                     }
                     resultado.ArticulosCreados++;
                 }
+
+                item.YaExisteEnSistema = true;
             }
             catch (Exception ex)
             {
                 resultado.Errores++;
                 if (resultado.MensajesErrores.Count < 20)
                 {
-                    resultado.MensajesErrores.Add($"Error en fila: {ex.Message}");
+                    resultado.MensajesErrores.Add($"Error en '{item.Nombre}': {ex.Message}");
                 }
             }
         }

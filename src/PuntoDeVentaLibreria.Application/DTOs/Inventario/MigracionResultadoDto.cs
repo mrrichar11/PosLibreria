@@ -5,12 +5,14 @@ public class MigracionResultadoDto
     public int TotalFilasProcesadas { get; set; }
     public int ArticulosCreados { get; set; }
     public int ArticulosActualizados { get; set; }
+    public decimal TotalStockIngresado { get; set; }
     public int Errores { get; set; }
     public List<string> MensajesErrores { get; set; } = new();
 }
 
 public class ItemPrevisualizacionAlmaLibreDto
 {
+    public bool Seleccionado { get; set; } = true;
     public string SKU { get; set; } = string.Empty;
     public string? CodigoProveedor { get; set; }
     public string? CodigoBarras { get; set; }
@@ -20,5 +22,21 @@ public class ItemPrevisualizacionAlmaLibreDto
     public decimal IvaPorcentaje { get; set; }
     public decimal PorcentajeGanancia { get; set; }
     public decimal PrecioVenta { get; set; }
+    
+    // Precio de Tarjeta / Recargo
+    public decimal? PrecioTarjeta { get; set; }
+    public decimal? RecargoTarjetaPorcentaje { get; set; }
+
+    // Fechas de Carga y Actualización
+    public DateTime? FechaAlta { get; set; }
+    public DateTime? FechaUltimaActualizacionPrecio { get; set; }
+
+    // Control de Stock
+    public decimal StockImportar { get; set; } = 0;
+
+    // Cruce con Mayorista El Once
+    public bool EsDeMayoristaElOnce { get; set; }
+    public string? CodigoOnceCoincidente { get; set; }
+
     public bool YaExisteEnSistema { get; set; }
 }
