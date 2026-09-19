@@ -7,9 +7,10 @@
         xmlns:converters="clr-namespace:PuntoDeVentaLibreria.UI.Converters"
         mc:Ignorable="d"
         Title="Finalizar Venta y Cobro" 
-        Height="730" Width="780"
+        Height="660" Width="780"
+        MinHeight="540" MinWidth="700"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize"
+        ResizeMode="CanResizeWithGrip"
         Background="#F8FAFC"
         FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
 

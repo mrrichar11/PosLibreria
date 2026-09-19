@@ -14,17 +14,28 @@
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVis"/>
     </Window.Resources>
 
     <Grid VerticalAlignment="Center" HorizontalAlignment="Center" Width="380">
         <Border Background="White" CornerRadius="16" Padding="32,28" BorderBrush="#334155" BorderThickness="1">
             <StackPanel>
-                <!-- Logo y Encabezado -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,16">
-                    <Border Background="#2563EB" CornerRadius="8" Padding="10,4" Margin="0,0,8,0">
-                        <TextBlock Text="MR SYS" FontWeight="Black" Foreground="White" FontSize="16"/>
+                <!-- Logo del Negocio o Encabezado Estándar -->
+                <StackPanel HorizontalAlignment="Center" Margin="0,0,0,16">
+                    <!-- Si tiene logo personalizado -->
+                    <Border Visibility="{Binding TieneLogoCustom, Converter={StaticResource BoolToVis}}" 
+                            HorizontalAlignment="Center" MaxWidth="180" MaxHeight="80" Margin="0,0,0,8">
+                        <Image Source="{Binding LogoRuta}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
                     </Border>
-                    <TextBlock Text="Librería &amp; Regalería" FontSize="16" FontWeight="Bold" Foreground="#0F172A" VerticalAlignment="Center"/>
+
+                    <!-- Si NO tiene logo personalizado, muestra el badge clásico -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                Visibility="{Binding TieneLogoCustom, Converter={StaticResource InverseBoolToVis}}">
+                        <Border Background="#2563EB" CornerRadius="8" Padding="10,4" Margin="0,0,8,0">
+                            <TextBlock Text="MR SYS" FontWeight="Black" Foreground="White" FontSize="16"/>
+                        </Border>
+                        <TextBlock Text="{Binding NombreComercio}" FontSize="16" FontWeight="Bold" Foreground="#0F172A" VerticalAlignment="Center"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <TextBlock Text="INICIAR SESIÓN" FontSize="18" FontWeight="Black" Foreground="#1E293B" HorizontalAlignment="Center" Margin="0,0,0,4"/>

@@ -45,6 +45,12 @@ public partial class MainViewModel : ObservableObject
     private PuntoDeVentaLibreria.Application.DTOs.Sistema.ActualizacionDto? _actualizacionDisponible;
 
     [ObservableProperty]
+    private string? _logoRuta;
+
+    [ObservableProperty]
+    private bool _tieneLogoCustom;
+
+    [ObservableProperty]
     private string _statusBarIzquierdaTexto = "Librería & Regalería · Base SQLite Activa";
 
     [ObservableProperty]
@@ -85,6 +91,17 @@ public partial class MainViewModel : ObservableObject
             var config = await _configuracionService.ObtenerConfiguracionAsync();
             NombreComercio = config.NombreComercio;
             StatusBarIzquierdaTexto = $"{config.NombreComercio} · {config.Direccion}";
+
+            if (!string.IsNullOrWhiteSpace(config.LogoRuta) && System.IO.File.Exists(config.LogoRuta))
+            {
+                LogoRuta = config.LogoRuta;
+                TieneLogoCustom = true;
+            }
+            else
+            {
+                LogoRuta = null;
+                TieneLogoCustom = false;
+            }
         }
         catch { }
     }

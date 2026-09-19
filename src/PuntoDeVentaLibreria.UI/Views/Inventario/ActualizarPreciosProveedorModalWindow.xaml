@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Actualización Masiva de Precios de Mayorista / Proveedor" 
-        Height="720" Width="1060"
+        Height="660" Width="1040"
+        MinHeight="520" MinWidth="850"
         WindowStartupLocation="CenterOwner"
         Background="#F8FAFC"
         FontFamily="Segoe UI Variable, Segoe UI, sans-serif">

@@ -190,6 +190,50 @@ public partial class ConfiguracionViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void CargarLogo()
+    {
+        try
+        {
+            var ofd = new Microsoft.Win32.OpenFileDialog
+            {
+                Title = "Seleccionar Logo del Comercio",
+                Filter = "Archivos de Imagen (*.png;*.jpg;*.jpeg;*.bmp;*.webp)|*.png;*.jpg;*.jpeg;*.bmp;*.webp|Todos los archivos (*.*)|*.*",
+                Multiselect = false
+            };
+
+            if (ofd.ShowDialog() == true)
+            {
+                var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+                var logosDir = System.IO.Path.Combine(baseDir, "Logos");
+                if (!System.IO.Directory.Exists(logosDir))
+                {
+                    System.IO.Directory.CreateDirectory(logosDir);
+                }
+
+                var ext = System.IO.Path.GetExtension(ofd.FileName);
+                var destPath = System.IO.Path.Combine(logosDir, $"logo_comercio{ext}");
+                System.IO.File.Copy(ofd.FileName, destPath, true);
+
+                Config.LogoRuta = destPath;
+                OnPropertyChanged(nameof(Config));
+                MensajeGuardado = "Logo seleccionado correctamente. Guarde los cambios para aplicar.";
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Error al cargar el logo: {ex.Message}", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
+
+    [RelayCommand]
+    private void QuitarLogo()
+    {
+        Config.LogoRuta = null;
+        OnPropertyChanged(nameof(Config));
+        MensajeGuardado = "Logo removido. Guarde los cambios para aplicar.";
+    }
+
+    [RelayCommand]
     private async Task GuardarConfiguracionAsync()
     {
         await _configuracionService.GuardarConfiguracionAsync(Config);

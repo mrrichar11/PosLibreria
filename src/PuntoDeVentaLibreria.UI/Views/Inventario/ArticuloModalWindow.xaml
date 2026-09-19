@@ -273,7 +273,9 @@
 
         <!-- Botones de Acción -->
         <DockPanel Grid.Row="2" Margin="0,16,0,0">
-            <Button Content="Cancelar" Click="BtnCancelar_Click" Padding="16,8" FontSize="13" Cursor="Hand"/>
+            <Button Content="Cancelar" Click="BtnCancelar_Click" Padding="16,8" FontSize="13" Cursor="Hand" Margin="0,0,8,0"/>
+            <Button x:Name="BtnEliminar" Content="🗑️ Eliminar Producto" Click="BtnEliminar_Click" Padding="14,8" FontSize="13" Cursor="Hand"
+                    Background="#FEF2F2" Foreground="#DC2626" BorderBrush="#FECACA" FontWeight="SemiBold" Visibility="Collapsed"/>
             <Button Content="💾 Guardar Artículo" Click="BtnGuardar_Click" HorizontalAlignment="Right"
                     Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="20,8" FontSize="13" Cursor="Hand"/>
         </DockPanel>

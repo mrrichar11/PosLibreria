@@ -115,6 +115,32 @@ public partial class InventarioViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task EliminarArticuloAsync(ArticuloDto? item)
+    {
+        var art = item ?? ArticuloSeleccionado;
+        if (art == null || art.Id == Guid.Empty) return;
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"¿Está seguro de que desea eliminar el artículo '{art.Nombre}' (SKU: {art.SKU})?\n\nEsta acción lo quitará del inventario activo y del catálogo de ventas.",
+            "Confirmar Eliminación",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning);
+
+        if (confirm == System.Windows.MessageBoxResult.Yes)
+        {
+            var res = await _inventarioService.EliminarArticuloAsync(art.Id);
+            if (res)
+            {
+                await CargarDatosAsync();
+            }
+            else
+            {
+                System.Windows.MessageBox.Show("No se pudo eliminar el artículo seleccionado.", "Error", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+        }
+    }
+
+    [RelayCommand]
     private async Task ExportarCsvAsync()
     {
         try

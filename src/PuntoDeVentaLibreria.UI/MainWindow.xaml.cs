@@ -57,6 +57,10 @@ public partial class MainWindow : Window
         _configuracionView.ViewModel.OnConfiguracionGuardada += async () =>
         {
             await _mainViewModel.ActualizarInformacionAsync();
+            if (_botonActivoActual != null)
+            {
+                ActivarBoton(_botonActivoActual);
+            }
         };
 
         Loaded += async (s, e) =>
@@ -66,10 +70,19 @@ public partial class MainWindow : Window
         };
     }
 
+    private System.Windows.Controls.Button? _botonActivoActual;
+
     private void RestablecerEstiloBotones()
     {
+        var isDark = false;
+        try
+        {
+            isDark = Wpf.Ui.Appearance.ApplicationThemeManager.GetAppTheme() == Wpf.Ui.Appearance.ApplicationTheme.Dark;
+        }
+        catch { }
+
         var normalBg = Brushes.Transparent;
-        var normalFg = new SolidColorBrush(Color.FromRgb(30, 41, 59));
+        var normalFg = isDark ? new SolidColorBrush(Color.FromRgb(226, 232, 240)) : new SolidColorBrush(Color.FromRgb(30, 41, 59));
 
         BtnNavPos.Background = normalBg;
         BtnNavPos.Foreground = normalFg;
@@ -92,8 +105,9 @@ public partial class MainWindow : Window
 
     private void ActivarBoton(System.Windows.Controls.Button btn)
     {
+        _botonActivoActual = btn;
         RestablecerEstiloBotones();
-        btn.Background = new SolidColorBrush(Color.FromRgb(37, 99, 235)); // Azul
+        btn.Background = new SolidColorBrush(Color.FromRgb(37, 99, 235)); // Azul vibrante
         btn.Foreground = Brushes.White;
     }
 

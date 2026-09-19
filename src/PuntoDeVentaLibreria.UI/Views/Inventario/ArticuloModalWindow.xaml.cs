@@ -71,6 +71,11 @@ public partial class ArticuloModalWindow : Window
         CargarProveedoresAsync();
         CargarConfiguracionNegocioAsync();
 
+        if (Articulo.Id != Guid.Empty)
+        {
+            BtnEliminar.Visibility = Visibility.Visible;
+        }
+
         TxtNombre.Focus();
     }
 
@@ -486,6 +491,36 @@ public partial class ArticuloModalWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show($"Error al guardar el artículo: {ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void BtnEliminar_Click(object sender, RoutedEventArgs e)
+    {
+        if (Articulo.Id == Guid.Empty) return;
+
+        var confirm = MessageBox.Show(
+            $"¿Está seguro de que desea eliminar el artículo '{Articulo.Nombre}' (SKU: {Articulo.SKU})?\n\nEsta acción lo quitará del inventario activo.",
+            "Confirmar Eliminación", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+        if (confirm != MessageBoxResult.Yes) return;
+
+        try
+        {
+            var res = await _inventarioService.EliminarArticuloAsync(Articulo.Id);
+            if (res)
+            {
+                GuardadoExitoso = true; // Forzar recarga en el ViewModel padre
+                DialogResult = true;
+                Close();
+            }
+            else
+            {
+                MessageBox.Show("No se pudo eliminar el artículo seleccionado.", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al eliminar: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 

@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Migración &amp; Carga de Catálogo (Alma Libre / Sistema Anterior)" 
-        Height="800" Width="1240"
+        Height="680" Width="1180"
+        MinHeight="560" MinWidth="900"
         WindowStartupLocation="CenterOwner"
         Background="#F8FAFC"
         FontFamily="Segoe UI Variable, Segoe UI, sans-serif">

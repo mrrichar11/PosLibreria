@@ -9,6 +9,7 @@ namespace PuntoDeVentaLibreria.UI.ViewModels;
 public partial class LoginViewModel : ObservableObject
 {
     private readonly IAuthService _authService;
+    private readonly IConfiguracionService? _configuracionService;
 
     [ObservableProperty]
     private string _username = "admin";
@@ -22,19 +23,51 @@ public partial class LoginViewModel : ObservableObject
     [ObservableProperty]
     private bool _estaCargando;
 
+    [ObservableProperty]
+    private string? _logoRuta;
+
+    [ObservableProperty]
+    private string _nombreComercio = "Librería & Regalería";
+
+    [ObservableProperty]
+    private bool _tieneLogoCustom;
+
     public ObservableCollection<UsuarioDto> UsuariosDisponibles { get; } = new();
 
     public SesionUsuarioDto? SesionAutenticada { get; private set; }
 
     public event Action? OnLoginExitoso;
 
-    public LoginViewModel(IAuthService authService)
+    public LoginViewModel(IAuthService authService, IConfiguracionService? configuracionService = null)
     {
         _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+        _configuracionService = configuracionService;
     }
 
     public async Task InicializarAsync()
     {
+        if (_configuracionService != null)
+        {
+            try
+            {
+                var cfg = await _configuracionService.ObtenerConfiguracionAsync();
+                if (!string.IsNullOrWhiteSpace(cfg.NombreComercio))
+                {
+                    NombreComercio = cfg.NombreComercio;
+                }
+                if (!string.IsNullOrWhiteSpace(cfg.LogoRuta) && System.IO.File.Exists(cfg.LogoRuta))
+                {
+                    LogoRuta = cfg.LogoRuta;
+                    TieneLogoCustom = true;
+                }
+                else
+                {
+                    TieneLogoCustom = false;
+                }
+            }
+            catch { }
+        }
+
         UsuariosDisponibles.Clear();
         var lista = await _authService.ObtenerUsuariosActivosAsync();
         foreach (var u in lista)

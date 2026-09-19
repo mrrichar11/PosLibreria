@@ -164,12 +164,19 @@
                     <DataGridTextColumn Header="Mínimo" Binding="{Binding StockMinimo, StringFormat='N0'}" Width="75"/>
 
                     <!-- Acciones -->
-                    <DataGridTemplateColumn Header="Acción" Width="80">
+                    <DataGridTemplateColumn Header="Acciones" Width="145">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Button Content="✏ Editar" Padding="6,2" Cursor="Hand"
-                                        Command="{Binding DataContext.EditarArticuloCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
-                                        CommandParameter="{Binding}"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <Button Content="✏ Editar" Padding="6,2" Margin="0,0,4,0" Cursor="Hand" FontSize="11"
+                                            Background="#F1F5F9" Foreground="#1E293B" BorderBrush="#CBD5E1"
+                                            Command="{Binding DataContext.EditarArticuloCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            CommandParameter="{Binding}"/>
+                                    <Button Content="🗑️" Padding="6,2" Cursor="Hand" FontSize="11"
+                                            Background="#FEF2F2" Foreground="#DC2626" BorderBrush="#FECACA" ToolTip="Eliminar este artículo"
+                                            Command="{Binding DataContext.EliminarArticuloCommand, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                            CommandParameter="{Binding}"/>
+                                </StackPanel>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

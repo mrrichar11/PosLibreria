@@ -5,9 +5,9 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Cierre y Arqueo de Caja - MR SYS" 
-        Height="640" Width="600"
+        Height="600" Width="580"
+        MinHeight="500" MinWidth="500"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize"
         Background="#F8FAFC"
         FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
 
