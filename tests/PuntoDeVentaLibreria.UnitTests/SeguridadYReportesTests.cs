@@ -152,4 +152,92 @@ public class SeguridadYReportesTests
         dto.TopArticulos.First().Descripcion.Should().Be("Cuaderno Rivadavia Tapa Dura");
         dto.TopArticulos.First().CantidadVendida.Should().Be(2);
     }
+
+    [Fact]
+    public async Task AuthService_CambiarPassword_ConPasswordActualValida_ActualizaYPermiteNuevoLogin()
+    {
+        using var context = CrearContextoEnMemoria();
+        await DataSeeder.SeedAsync(context);
+        var authService = new AuthService(context);
+
+        var sesion = await authService.IniciarSesionAsync("admin", "admin");
+        sesion.Should().NotBeNull();
+
+        // 1. Intentar con clave errónea
+        var resFallo = await authService.CambiarPasswordAsync(sesion!.UsuarioId, "clave_incorrecta", "admin1234");
+        resFallo.Exitoso.Should().BeFalse();
+
+        // 2. Cambiar con clave correcta
+        var resExito = await authService.CambiarPasswordAsync(sesion.UsuarioId, "admin", "admin1234");
+        resExito.Exitoso.Should().BeTrue();
+
+        // 3. Probar login con clave vieja (debe fallar)
+        var sesionVieja = await authService.IniciarSesionAsync("admin", "admin");
+        sesionVieja.Should().BeNull();
+
+        // 4. Probar login con nueva clave (debe ingresar)
+        var sesionNueva = await authService.IniciarSesionAsync("admin", "admin1234");
+        sesionNueva.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task AuthService_CrearYDesactivarUsuario_FuncionaCorrectamente()
+    {
+        using var context = CrearContextoEnMemoria();
+        await DataSeeder.SeedAsync(context);
+        var authService = new AuthService(context);
+
+        var nuevo = new PuntoDeVentaLibreria.Application.DTOs.Seguridad.CrearUsuarioDto
+        {
+            Username = "cajero2",
+            NombreCompleto = "Cajero Turno Tarde",
+            Password = "pass",
+            Rol = RolUsuario.Vendedor
+        };
+
+        var resCrear = await authService.CrearUsuarioAsync(nuevo);
+        resCrear.Exitoso.Should().BeTrue();
+
+        // Intentar duplicado
+        var resDuplicado = await authService.CrearUsuarioAsync(nuevo);
+        resDuplicado.Exitoso.Should().BeFalse();
+
+        // Login nuevo usuario
+        var sesion = await authService.IniciarSesionAsync("cajero2", "pass");
+        sesion.Should().NotBeNull();
+        sesion!.Username.Should().Be("cajero2");
+
+        // Desactivar usuario
+        var resEliminar = await authService.EliminarODesactivarUsuarioAsync(sesion.UsuarioId, Guid.NewGuid());
+        resEliminar.Exitoso.Should().BeTrue();
+
+        // Login después de desactivar debe fallar
+        var sesionDesactivada = await authService.IniciarSesionAsync("cajero2", "pass");
+        sesionDesactivada.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task LicenseService_TrialEstandar_Y_ClavePro_ValidaCorrectamente()
+    {
+        using var context = CrearContextoEnMemoria();
+        var licenseService = new LicenseService(context);
+
+        // 1. Validar Trial inicial de cortesía (Plan Estándar)
+        var trial = await licenseService.ValidarLicenciaAsync();
+        trial.EsValida.Should().BeTrue();
+        trial.EsPlanPro.Should().BeFalse();
+        trial.PlanNombre.Should().Contain("Estándar");
+
+        // 2. Activar Clave PRO
+        var resultadoActivacion = await licenseService.ActivarLicenciaAsync("MRSYS-PRO-2026-X99");
+        resultadoActivacion.Exitoso.Should().BeTrue();
+        resultadoActivacion.EsPlanPro.Should().BeTrue();
+
+        // 3. Validar que ahora es Plan PRO
+        var pro = await licenseService.ValidarLicenciaAsync();
+        pro.EsValida.Should().BeTrue();
+        pro.EsPlanPro.Should().BeTrue();
+        pro.PlanNombre.Should().Contain("PRO");
+    }
 }
+

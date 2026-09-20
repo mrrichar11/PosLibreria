@@ -127,6 +127,9 @@ public partial class App : System.Windows.Application
                 var posVm = _host.Services.GetRequiredService<PosViewModel>();
                 posVm.UsuarioActual = sesion.NombreCompleto;
 
+                var configVm = _host.Services.GetRequiredService<ConfiguracionViewModel>();
+                configVm.EstablecerSesion(sesion);
+
                 var mainWindow = _host.Services.GetRequiredService<MainWindow>();
                 mainWindow.OnCerrarSesionSolicitado -= HandleCerrarSesion;
                 mainWindow.OnCerrarSesionSolicitado += HandleCerrarSesion;

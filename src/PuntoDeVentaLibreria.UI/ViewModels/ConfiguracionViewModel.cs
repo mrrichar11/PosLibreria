@@ -9,6 +9,7 @@ using PuntoDeVentaLibreria.Application.DTOs.Seguridad;
 using PuntoDeVentaLibreria.Application.DTOs.Sistema;
 using PuntoDeVentaLibreria.Application.DTOs.Ventas;
 using PuntoDeVentaLibreria.Application.Services;
+using PuntoDeVentaLibreria.Domain.Entities.Seguridad;
 using Wpf.Ui.Appearance;
 
 namespace PuntoDeVentaLibreria.UI.ViewModels;
@@ -21,6 +22,7 @@ public partial class ConfiguracionViewModel : ObservableObject
     private readonly IBackupService _backupService;
     private readonly ITicketPrinterService _ticketPrinterService;
     private readonly IDatabaseMigrationService _databaseMigrationService;
+    private readonly IAuthService _authService;
 
     [ObservableProperty]
     private ConfiguracionNegocioDto _config = new();
@@ -66,6 +68,50 @@ public partial class ConfiguracionViewModel : ObservableObject
 
     [ObservableProperty]
     private string _progresoMigracionTexto = string.Empty;
+
+    // === GESTIÓN DE USUARIOS Y SEGURIDAD ===
+    [ObservableProperty]
+    private SesionUsuarioDto? _sesionActual;
+
+    public bool EsAdmin => SesionActual?.EsAdmin ?? true;
+
+    [ObservableProperty]
+    private string _passwordActual = string.Empty;
+
+    [ObservableProperty]
+    private string _passwordNueva = string.Empty;
+
+    [ObservableProperty]
+    private string _passwordNuevaConfirmacion = string.Empty;
+
+    [ObservableProperty]
+    private string _mensajePassword = string.Empty;
+
+    [ObservableProperty]
+    private bool _mensajePasswordExito;
+
+    // Nuevo Usuario Form
+    [ObservableProperty]
+    private string _nuevoUsername = string.Empty;
+
+    [ObservableProperty]
+    private string _nuevoNombreCompleto = string.Empty;
+
+    [ObservableProperty]
+    private string _nuevoPasswordUsuario = string.Empty;
+
+    [ObservableProperty]
+    private RolUsuario _nuevoRolUsuario = RolUsuario.Vendedor;
+
+    [ObservableProperty]
+    private string _mensajeUsuarioCrud = string.Empty;
+
+    [ObservableProperty]
+    private bool _mensajeUsuarioCrudExito;
+
+    public RolUsuario[] RolesDisponibles => new[] { RolUsuario.Vendedor, RolUsuario.Encargado, RolUsuario.Administrador };
+
+    public ObservableCollection<UsuarioDto> Usuarios { get; } = new();
 
     public bool EsPapel80Mm
     {
@@ -162,7 +208,8 @@ public partial class ConfiguracionViewModel : ObservableObject
         IUpdateService updateService,
         IBackupService backupService,
         ITicketPrinterService ticketPrinterService,
-        IDatabaseMigrationService databaseMigrationService)
+        IDatabaseMigrationService databaseMigrationService,
+        IAuthService authService)
     {
         _configuracionService = configuracionService ?? throw new ArgumentNullException(nameof(configuracionService));
         _licenseService = licenseService ?? throw new ArgumentNullException(nameof(licenseService));
@@ -170,6 +217,13 @@ public partial class ConfiguracionViewModel : ObservableObject
         _backupService = backupService ?? throw new ArgumentNullException(nameof(backupService));
         _ticketPrinterService = ticketPrinterService ?? throw new ArgumentNullException(nameof(ticketPrinterService));
         _databaseMigrationService = databaseMigrationService ?? throw new ArgumentNullException(nameof(databaseMigrationService));
+        _authService = authService ?? throw new ArgumentNullException(nameof(authService));
+    }
+
+    public void EstablecerSesion(SesionUsuarioDto sesion)
+    {
+        SesionActual = sesion;
+        OnPropertyChanged(nameof(EsAdmin));
     }
 
 
@@ -233,6 +287,7 @@ public partial class ConfiguracionViewModel : ObservableObject
         catch { }
 
         await CargarHistorialBackupsAsync();
+        await CargarUsuariosAsync();
         ActualizacionInfo.VersionActual = _updateService.ObtenerVersionActual();
         OnPropertyChanged(nameof(ActualizacionInfo));
         OnPropertyChanged(nameof(EsPapel80Mm));
@@ -649,5 +704,138 @@ public partial class ConfiguracionViewModel : ObservableObject
             ImpresoraNombre = Config.ImpresoraTickets,
             MensajePie = Config.MensajePieTicket
         };
+    }
+
+    // =========================================================================
+    // USUARIOS, CLAVES Y CONTACTO SOPORTE WHATSAPP
+    // =========================================================================
+
+    [RelayCommand]
+    public async Task CargarUsuariosAsync()
+    {
+        Usuarios.Clear();
+        var lista = await _authService.ObtenerUsuariosActivosAsync();
+        foreach (var u in lista)
+        {
+            Usuarios.Add(u);
+        }
+    }
+
+    [RelayCommand]
+    private async Task CambiarMiPasswordAsync()
+    {
+        MensajePassword = string.Empty;
+
+        if (SesionActual == null)
+        {
+            MensajePassword = "No hay sesión activa.";
+            MensajePasswordExito = false;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(PasswordActual) || string.IsNullOrWhiteSpace(PasswordNueva))
+        {
+            MensajePassword = "Debe ingresar su contraseña actual y la nueva contraseña.";
+            MensajePasswordExito = false;
+            return;
+        }
+
+        if (PasswordNueva != PasswordNuevaConfirmacion)
+        {
+            MensajePassword = "La nueva contraseña y su confirmación no coinciden.";
+            MensajePasswordExito = false;
+            return;
+        }
+
+        var res = await _authService.CambiarPasswordAsync(SesionActual.UsuarioId, PasswordActual, PasswordNueva);
+        MensajePassword = res.Mensaje;
+        MensajePasswordExito = res.Exitoso;
+
+        if (res.Exitoso)
+        {
+            PasswordActual = string.Empty;
+            PasswordNueva = string.Empty;
+            PasswordNuevaConfirmacion = string.Empty;
+        }
+    }
+
+    [RelayCommand]
+    private async Task CrearNuevoUsuarioAsync()
+    {
+        MensajeUsuarioCrud = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(NuevoUsername) || string.IsNullOrWhiteSpace(NuevoNombreCompleto) || string.IsNullOrWhiteSpace(NuevoPasswordUsuario))
+        {
+            MensajeUsuarioCrud = "Debe completar usuario, nombre y contraseña.";
+            MensajeUsuarioCrudExito = false;
+            return;
+        }
+
+        var dto = new CrearUsuarioDto
+        {
+            Username = NuevoUsername,
+            NombreCompleto = NuevoNombreCompleto,
+            Password = NuevoPasswordUsuario,
+            Rol = NuevoRolUsuario
+        };
+
+        var res = await _authService.CrearUsuarioAsync(dto);
+        MensajeUsuarioCrud = res.Mensaje;
+        MensajeUsuarioCrudExito = res.Exitoso;
+
+        if (res.Exitoso)
+        {
+            NuevoUsername = string.Empty;
+            NuevoNombreCompleto = string.Empty;
+            NuevoPasswordUsuario = string.Empty;
+            NuevoRolUsuario = RolUsuario.Vendedor;
+            await CargarUsuariosAsync();
+        }
+    }
+
+    [RelayCommand]
+    private async Task EliminarUsuarioAsync(UsuarioDto? usuario)
+    {
+        if (usuario == null) return;
+        if (SesionActual == null) return;
+
+        var confirm = System.Windows.MessageBox.Show(
+            $"¿Confirma desactivar el usuario '{usuario.Username}' ({usuario.NombreCompleto})?",
+            "Confirmar Desactivación de Usuario",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Question);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        var res = await _authService.EliminarODesactivarUsuarioAsync(usuario.Id, SesionActual.UsuarioId);
+        MensajeUsuarioCrud = res.Mensaje;
+        MensajeUsuarioCrudExito = res.Exitoso;
+
+        if (res.Exitoso)
+        {
+            await CargarUsuariosAsync();
+        }
+        else
+        {
+            System.Windows.MessageBox.Show(res.Mensaje, "MR SYS Seguridad", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+        }
+    }
+
+    [RelayCommand]
+    private void AbrirWhatsAppSoporte()
+    {
+        try
+        {
+            var url = "https://wa.me/5493493495801?text=Hola,%20quisiera%20activar/renovar%20el%20Plan%20PRO%20Multi-Terminal%20de%20MR%20SYS%20Librer%C3%ADa";
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show($"Contacto de Soporte:\nWhatsApp: +54 9 3493 495801\n\n(No se pudo abrir el navegador: {ex.Message})", "MR SYS Soporte", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+        }
     }
 }

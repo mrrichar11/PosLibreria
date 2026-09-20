@@ -25,15 +25,15 @@ public class LicenseService : ILicenseService
 
         if (licencia == null)
         {
-            // Crear licencia de prueba inicial (30 días de cortesía)
+            // Crear licencia de prueba inicial (30 días de cortesía en Plan Estándar)
             licencia = new LicenciaSistema
             {
                 CodigoInstalacion = codigoInstalacion,
-                ClaveActivacion = "TRIAL-LIBRERIA-MR",
+                ClaveActivacion = "TRIAL-ESTANDAR-30",
                 FechaActivacion = DateTime.UtcNow,
                 FechaExpiracion = DateTime.UtcNow.AddDays(30),
-                TieneModuloIA = true,
-                ComercioNombre = "Librería & Regalería"
+                TieneModuloIA = false,
+                ComercioNombre = "Librería"
             };
 
             _context.Licencias.Add(licencia);
@@ -43,10 +43,14 @@ public class LicenseService : ILicenseService
         var ahora = DateTime.UtcNow;
         bool esValida = licencia.FechaExpiracion > ahora;
         var dias = (licencia.FechaExpiracion.Date - ahora.Date).Days;
+        bool esPro = !string.IsNullOrWhiteSpace(licencia.ClaveActivacion) && 
+                     (licencia.ClaveActivacion.Contains("PRO") || licencia.TieneModuloIA);
+
+        string nombrePlan = esPro ? "Plan PRO Multi-Terminal (Nube)" : "Plan Estándar (1 PC Local)";
 
         string mensaje = esValida
-            ? (dias <= 5 ? $"¡Atención! Su plan vence en {dias} días. Contacte soporte para renovar." : "Plan activo y verificado.")
-            : "Su período de suscripción ha expirado. Ingrese una clave de activación para continuar.";
+            ? (dias <= 5 ? $"¡Atención! Su {nombrePlan} vence en {dias} días. Contacte soporte por WhatsApp al +54 9 3493 495801 para renovar." : $"{nombrePlan} activo y verificado.")
+            : "Su período de suscripción ha expirado. Ingrese una clave de activación o solicítela por WhatsApp al +54 9 3493 495801.";
 
         return new EstadoLicenciaDto
         {
@@ -54,7 +58,8 @@ public class LicenseService : ILicenseService
             Mensaje = mensaje,
             FechaExpiracion = licencia.FechaExpiracion,
             CodigoInstalacion = codigoInstalacion,
-            PlanNombre = "Plan Mensual MR SYS Librería PRO"
+            PlanNombre = nombrePlan,
+            EsPlanPro = esPro
         };
     }
 
@@ -74,24 +79,31 @@ public class LicenseService : ILicenseService
             _context.Licencias.Add(licencia);
         }
 
-        // Validación simple o extendida de clave
+        // Validación de duración según clave
         int diasAAgregar = 30;
-        if (clave.StartsWith("ANUAL-") || clave.EndsWith("-365"))
+        if (clave.Contains("ANUAL") || clave.EndsWith("-365"))
             diasAAgregar = 365;
-        else if (clave.StartsWith("SEMESTRE-"))
+        else if (clave.Contains("SEMESTRE") || clave.EndsWith("-180"))
             diasAAgregar = 180;
+        else if (clave.Contains("TRIMESTRE") || clave.EndsWith("-90"))
+            diasAAgregar = 90;
 
+        bool esPro = clave.Contains("PRO");
+        licencia.TieneModuloIA = esPro;
         licencia.ClaveActivacion = clave;
         licencia.FechaActivacion = DateTime.UtcNow;
         licencia.FechaExpiracion = (licencia.FechaExpiracion > DateTime.UtcNow ? licencia.FechaExpiracion : DateTime.UtcNow).AddDays(diasAAgregar);
 
         await _context.SaveChangesAsync(cancellationToken);
 
+        string nombrePlan = esPro ? "Plan PRO Multi-Terminal" : "Plan Estándar";
+
         return new ResultadoActivacionDto
         {
             Exitoso = true,
-            Mensaje = $"¡Licencia activada con éxito por {diasAAgregar} días! Vigente hasta el {licencia.FechaExpiracion:dd/MM/yyyy}.",
-            NuevaFechaExpiracion = licencia.FechaExpiracion
+            Mensaje = $"¡{nombrePlan} activado con éxito por {diasAAgregar} días! Vigente hasta el {licencia.FechaExpiracion:dd/MM/yyyy}.",
+            NuevaFechaExpiracion = licencia.FechaExpiracion,
+            EsPlanPro = esPro
         };
     }
 

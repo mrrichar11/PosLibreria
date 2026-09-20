@@ -32,3 +32,26 @@ public class SesionUsuarioDto
 
     public bool EsAdmin => Rol == RolUsuario.Administrador;
 }
+
+public class CrearUsuarioDto
+{
+    public string Username { get; set; } = string.Empty;
+    public string NombreCompleto { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public RolUsuario Rol { get; set; } = RolUsuario.Vendedor;
+}
+
+public class ActualizarUsuarioDto
+{
+    public Guid Id { get; set; }
+    public string NombreCompleto { get; set; } = string.Empty;
+    public RolUsuario Rol { get; set; } = RolUsuario.Vendedor;
+    public string? NuevaPassword { get; set; }
+}
+
+public class CambiarPasswordDto
+{
+    public Guid UsuarioId { get; set; }
+    public string PasswordActual { get; set; } = string.Empty;
+    public string NuevaPassword { get; set; } = string.Empty;
+}

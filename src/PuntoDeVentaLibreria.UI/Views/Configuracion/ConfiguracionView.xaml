@@ -273,8 +273,8 @@
                 </ScrollViewer>
             </TabItem>
 
-            <!-- TAB 5: PLAN MENSUAL & LICENCIA -->
-            <TabItem Header="🔑 Plan Mensual &amp; Licencia">
+            <!-- TAB 5: PLAN & LICENCIA -->
+            <TabItem Header="🔑 Plan &amp; Licencia">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
                     <StackPanel MaxWidth="700" HorizontalAlignment="Left">
                         <TextBlock Text="ESTADO DE LA SUSCRIPCIÓN" FontSize="14" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,12"/>
@@ -293,12 +293,24 @@
                                     </Border>
                                 </Grid>
                                 <TextBlock Text="{Binding EstadoLicencia.Mensaje}" FontSize="12" Foreground="#475569" Margin="0,0,0,6"/>
-                                <TextBlock Text="{Binding EstadoLicencia.CodigoInstalacion, StringFormat='ID de Máquina: {0}'}" FontFamily="Consolas" FontSize="12" Foreground="#64748B"/>
+                                <TextBlock Text="{Binding EstadoLicencia.CodigoInstalacion, StringFormat='ID de Máquina: {0}'}" FontFamily="Consolas" FontSize="12" Foreground="#64748B" Margin="0,0,0,12"/>
+
+                                <!-- Contacto WhatsApp -->
+                                <Border Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="8" Padding="12">
+                                    <DockPanel LastChildFill="True">
+                                        <Button DockPanel.Dock="Right" Content="📲 Contactar por WhatsApp" Command="{Binding AbrirWhatsAppSoporteCommand}"
+                                                Background="#16A34A" Foreground="White" FontWeight="Bold" Padding="12,6" FontSize="12" Cursor="Hand" Margin="10,0,0,0"/>
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock Text="💬 Soporte y Activación de Planes:" FontWeight="Bold" Foreground="#065F46" FontSize="11.5"/>
+                                            <TextBlock Text="Solicite su clave para renovar o pasar al Plan PRO al +54 9 3493 495801" Foreground="#047857" FontSize="11"/>
+                                        </StackPanel>
+                                    </DockPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 
                         <!-- Input Clave de Activación -->
-                        <TextBlock Text="Activar o Renovar Plan Mensual:" FontSize="13" FontWeight="Bold" Margin="0,0,0,6"/>
+                        <TextBlock Text="Activar o Renovar Clave de Suscripción:" FontSize="13" FontWeight="Bold" Margin="0,0,0,6"/>
                         <Grid Margin="0,0,0,10">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -307,7 +319,7 @@
                             <TextBox Text="{Binding ClaveActivacionInput, UpdateSourceTrigger=PropertyChanged}"
                                      FontSize="14" FontFamily="Consolas" Padding="8,6" Margin="0,0,10,0"/>
                             <Button Grid.Column="1" Content="✔ Activar Clave" Command="{Binding ActivarLicenciaCommand}"
-                                    Background="#16A34A" Foreground="White" FontWeight="Bold" Padding="16,8" Cursor="Hand"/>
+                                     Background="#16A34A" Foreground="White" FontWeight="Bold" Padding="16,8" Cursor="Hand"/>
                         </Grid>
 
                         <TextBlock Text="{Binding MensajeActivacion}" FontWeight="Bold" Foreground="#2563EB" FontSize="12"/>
@@ -480,6 +492,22 @@
                         <TextBlock Text="Permite conectar 2 o más computadoras (en el local o de forma remota desde su casa) trabajando sobre la misma información en tiempo real." 
                                    FontSize="12" Foreground="#64748B" Margin="0,0,0,16" TextWrapping="Wrap"/>
 
+                        <!-- BANNER SI ESTÁ EN PLAN ESTÁNDAR -->
+                        <Border Background="#FEF3C7" BorderBrush="#F59E0B" BorderThickness="1.5" CornerRadius="10" Padding="14" Margin="0,0,0,16"
+                                Visibility="{Binding EstadoLicencia.EsPlanPro, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                            <DockPanel LastChildFill="True">
+                                <TextBlock Text="⭐" FontSize="24" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Función Multi-Terminal habilitada en Plan PRO" FontSize="13" FontWeight="Bold" Foreground="#92400E"/>
+                                    <TextBlock Text="Actualmente su sistema se encuentra en Plan Estándar (1 PC Local Offline). Para sincronizar 2 o más computadoras con base de datos en la nube (PostgreSQL / Supabase), solicite su Clave Plan PRO." 
+                                               FontSize="11" Foreground="#B45309" TextWrapping="Wrap" Margin="0,2,0,8"/>
+                                    <Button Content="📲 Solicitar Activación Plan PRO por WhatsApp (+54 9 3493 495801)"
+                                            Command="{Binding AbrirWhatsAppSoporteCommand}"
+                                            Background="#25D366" Foreground="White" FontWeight="Bold" FontSize="11" Padding="12,6" HorizontalAlignment="Left" Cursor="Hand"/>
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+
                         <!-- MODO DE BASE DE DATOS -->
                         <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1.5" CornerRadius="10" Padding="16" Margin="0,0,0,16">
                             <StackPanel>
@@ -564,6 +592,135 @@
                                              IsChecked="{Binding EsCajaCompartida}" FontWeight="SemiBold" Margin="0,0,0,4"/>
                                 <RadioButton Content="Cajas Independientes (Cada terminal abre y cierra su propio turno con su cajón físico)" 
                                              IsChecked="{Binding EsCajaIndependiente}" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- TAB 9: USUARIOS Y SEGURIDAD -->
+            <TabItem Header="👥 Usuarios y Claves">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                    <StackPanel MaxWidth="850" HorizontalAlignment="Left">
+                        <TextBlock Text="SEGURIDAD Y CONTROL DE ACCESO DE USUARIOS" FontSize="15" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,4"/>
+                        <TextBlock Text="Gestione las contraseñas personales de los operadores y cree nuevos usuarios/cajeros para el uso del sistema." 
+                                   FontSize="12" Foreground="#64748B" Margin="0,0,0,16" TextWrapping="Wrap"/>
+
+                        <!-- SECCIÓN 1: MI PERFIL Y CAMBIO DE CONTRASEÑA -->
+                        <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1.5" CornerRadius="10" Padding="16" Margin="0,0,0,16">
+                            <StackPanel>
+                                <TextBlock Text="🔑 CAMBIAR MI CONTRASEÑA" FontSize="13" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,6"/>
+                                <TextBlock Text="Actualice su clave de ingreso personal al sistema." FontSize="11" Foreground="#64748B" Margin="0,0,0,12"/>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                        <TextBlock Text="Contraseña Actual:" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding PasswordActual, UpdateSourceTrigger=PropertyChanged}" FontSize="12" Padding="6,4"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                        <TextBlock Text="Nueva Contraseña:" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding PasswordNueva, UpdateSourceTrigger=PropertyChanged}" FontSize="12" Padding="6,4"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="Repetir Nueva Contraseña:" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox Text="{Binding PasswordNuevaConfirmacion, UpdateSourceTrigger=PropertyChanged}" FontSize="12" Padding="6,4"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <DockPanel LastChildFill="False">
+                                    <Button Content="🔐 Actualizar Mi Contraseña" Command="{Binding CambiarMiPasswordCommand}"
+                                            Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="16,6" FontSize="12" Cursor="Hand"/>
+                                </DockPanel>
+
+                                <TextBlock Text="{Binding MensajePassword}" FontSize="12" FontWeight="Bold" Margin="0,8,0,0" TextWrapping="Wrap"
+                                           Foreground="#16A34A"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- SECCIÓN 2: ADMINISTRACIÓN DE USUARIOS Y CAJEROS (SOLO ADMINS) -->
+                        <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1.5" CornerRadius="10" Padding="16" Margin="0,0,0,16"
+                                Visibility="{Binding EsAdmin, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel>
+                                <TextBlock Text="👥 ADMINISTRACIÓN DE USUARIOS Y CAJEROS" FontSize="13" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,6"/>
+                                <TextBlock Text="Cree usuarios independientes para cada cajero o personal del negocio. En Multi-PC, los usuarios se sincronizan automáticamente en todas las terminales." FontSize="11" Foreground="#64748B" Margin="0,0,0,12"/>
+
+                                <!-- FORMULARIO NUEVO USUARIO -->
+                                <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,14">
+                                    <StackPanel>
+                                        <TextBlock Text="➕ Dar de alta un nuevo usuario / cajero:" FontSize="12" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,10"/>
+                                        
+                                        <Grid Margin="0,0,0,10">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="140"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                                                <TextBlock Text="Usuario (Login):" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                                <TextBox Text="{Binding NuevoUsername, UpdateSourceTrigger=PropertyChanged}" FontSize="12" Padding="6,4"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="1" Margin="0,0,8,0">
+                                                <TextBlock Text="Nombre Completo:" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                                <TextBox Text="{Binding NuevoNombreCompleto, UpdateSourceTrigger=PropertyChanged}" FontSize="12" Padding="6,4"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="2" Margin="0,0,8,0">
+                                                <TextBlock Text="Contraseña Inicial:" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                                <TextBox Text="{Binding NuevoPasswordUsuario, UpdateSourceTrigger=PropertyChanged}" FontSize="12" Padding="6,4"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="3">
+                                                <TextBlock Text="Rol:" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                                <ComboBox ItemsSource="{Binding RolesDisponibles}" SelectedItem="{Binding NuevoRolUsuario}" FontSize="12" Padding="6,4"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <DockPanel LastChildFill="False">
+                                            <Button Content="➕ Crear Usuario" Command="{Binding CrearNuevoUsuarioCommand}"
+                                                    Background="#16A34A" Foreground="White" FontWeight="Bold" Padding="16,6" FontSize="12" Cursor="Hand"/>
+                                        </DockPanel>
+
+                                        <TextBlock Text="{Binding MensajeUsuarioCrud}" FontSize="12" FontWeight="Bold" Margin="0,8,0,0" TextWrapping="Wrap"
+                                                   Foreground="#16A34A"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- GRILLA DE USUARIOS EXISTENTES -->
+                                <TextBlock Text="Usuarios Activos en el Sistema:" FontSize="12" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,8"/>
+                                <DataGrid ItemsSource="{Binding Usuarios}"
+                                          AutoGenerateColumns="False"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          HeadersVisibility="Column"
+                                          GridLinesVisibility="Horizontal"
+                                          Height="180"
+                                          RowHeight="36"
+                                          FontSize="12">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Usuario" Binding="{Binding Username}" Width="140" FontWeight="SemiBold"/>
+                                        <DataGridTextColumn Header="Nombre Completo" Binding="{Binding NombreCompleto}" Width="*"/>
+                                        <DataGridTextColumn Header="Rol Asignado" Binding="{Binding Rol}" Width="140"/>
+                                        <DataGridTemplateColumn Header="Acción" Width="120">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Content="🗑️ Desactivar" Command="{Binding DataContext.EliminarUsuarioCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}" Background="#FEE2E2" Foreground="#DC2626" FontWeight="SemiBold" Padding="8,4" FontSize="11" Cursor="Hand" ToolTip="Desactivar usuario"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
                             </StackPanel>
                         </Border>
                     </StackPanel>
