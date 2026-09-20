@@ -430,51 +430,67 @@ public class InventarioService : IInventarioService
         return null;
     }
 
-    public async Task<IReadOnlyList<ItemPrevisualizacionAlmaLibreDto>> PrevisualizarCatalogoAlmaLibreAsync(Stream archivoExcelStream, CancellationToken ct = default)
+    public async Task<AnalisisExcelResultadoDto> AnalizarExcelGenericoAsync(Stream archivoExcelStream, MapeoColumnasExcelDto? mapeoPersonalizado = null, CancellationToken ct = default)
     {
-        var (_, rows) = LeerExcelSimple(archivoExcelStream);
-        var resultado = new List<ItemPrevisualizacionAlmaLibreDto>();
+        var (headers, rows) = LeerExcelSimple(archivoExcelStream);
+        var resultado = new AnalisisExcelResultadoDto
+        {
+            ColumnasDetectadas = headers,
+            TotalFilas = rows.Count
+        };
+
+        var mapeo = mapeoPersonalizado ?? AutoDetectarMapeo(headers);
+        resultado.MapeoSugerido = mapeo;
 
         var skusExistentes = (await _context.Articulos.AsNoTracking().Select(a => a.SKU).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var barrasExistentes = (await _context.Articulos.AsNoTracking().Where(a => a.CodigoBarras != null).Select(a => a.CodigoBarras!).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        // Cruce inteligente con catálogos de Mayorista El Once
         var (codigosOnce, barrasOnce) = CargarCatalogosOnceEnMemoria();
+
+        var items = new List<ItemPrevisualizacionAlmaLibreDto>();
 
         foreach (var row in rows)
         {
-            var sku = ObtenerValorColumna(row, "codigo", "sku");
-            var codProv = ObtenerValorColumna(row, "codprov", "codigoproveedor");
-            var codBarra = ObtenerValorColumna(row, "codbarra", "codigodebarra", "codigobarra", "barra");
-            var descrip = ObtenerValorColumna(row, "descrip", "descripcion", "nombre", "articulo");
-            var rubro = ObtenerValorColumna(row, "rubro", "categoria");
+            var sku = ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaSku, "codigo", "sku", "cod", "codart");
+            var codProv = ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaCodigoProveedor, "codprov", "codigoproveedor", "cod_prov");
+            var codBarra = ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaCodigoBarras, "codbarra", "codigodebarra", "codigobarra", "barra", "barcode", "ean");
+            var descrip = ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaDescripcion, "descrip", "descripcion", "nombre", "articulo", "detalle", "producto");
+            var rubro = ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaCategoria, "rubro", "categoria", "familia", "depto");
+            var marca = ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaMarca, "marca", "fabricante");
 
-            if (string.IsNullOrWhiteSpace(descrip) && string.IsNullOrWhiteSpace(sku)) continue;
+            if (string.IsNullOrWhiteSpace(descrip) && string.IsNullOrWhiteSpace(sku) && string.IsNullOrWhiteSpace(codBarra)) 
+                continue;
 
-            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "costo", "preciocosto"), out var costo);
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaPrecioCosto, "costo", "preciocosto", "compra", "pcompra"), out var costo);
             CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "pciva", "iva"), out var pciva);
-            if (pciva <= 0) pciva = 21.0m; // Default IVA Argentina librerías
+            if (pciva <= 0) pciva = mapeo.IvaDefecto > 0 ? mapeo.IvaDefecto : 21.0m;
 
             CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "pcgan", "ganancia%", "utilidad", "margen"), out var pcgan);
-            if (pcgan <= 0) pcgan = 60.0m;
+            if (pcgan <= 0) pcgan = mapeo.PorcentajeGananciaDefecto > 0 ? mapeo.PorcentajeGananciaDefecto : 60.0m;
 
-            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "precio", "precioventa", "pvp"), out var precio);
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaPrecioVenta, "precio", "precioventa", "pvp", "publico", "pventa"), out var precio);
             if (precio <= 0 && costo > 0)
             {
                 precio = CalculoPreciosUtils.CalcularPrecioVenta(costo, pcgan, pciva);
             }
 
             // Precio Tarjeta & Recargo Financiero
-            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "tarjeta", "preciotarjeta", "tarj", "pcredito"), out var pTarjeta);
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaPrecioTarjeta, "tarjeta", "preciotarjeta", "tarj", "pcredito"), out var pTarjeta);
             decimal? recargoPct = null;
             if (pTarjeta > 0 && precio > 0 && pTarjeta > precio)
             {
                 recargoPct = Math.Round(((pTarjeta - precio) / precio) * 100m, 1);
             }
 
+            // Stock Inicial
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaStock, "stock", "cantidad", "cant", "existencia", "stockactual", "unidades"), out var stockExcel);
+            if (stockExcel <= 0 && mapeo.StockDefecto > 0)
+            {
+                stockExcel = mapeo.StockDefecto;
+            }
+
             // Fechas de Alta y Último Precio
-            var fchAltaStr = ObtenerValorColumna(row, "fchalta", "fechaalta", "alta");
-            var fchUltPreStr = ObtenerValorColumna(row, "fchultpre", "fechaultprecio", "ultprecio", "fchprecio", "actualizado");
+            var fchAltaStr = ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaFechaAlta, "fchalta", "fechaalta", "alta", "creado");
+            var fchUltPreStr = ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaFechaUltimoPrecio, "fchultpre", "fechaultprecio", "ultprecio", "fchprecio", "actualizado");
 
             var fechaAlta = ParseFechaExcel(fchAltaStr);
             var fechaUltPrecio = ParseFechaExcel(fchUltPreStr);
@@ -501,7 +517,7 @@ public class InventarioService : IInventarioService
             var existe = (!string.IsNullOrWhiteSpace(sku) && skusExistentes.Contains(sku)) ||
                          (!string.IsNullOrWhiteSpace(codBarra) && barrasExistentes.Contains(codBarra));
 
-            resultado.Add(new ItemPrevisualizacionAlmaLibreDto
+            items.Add(new ItemPrevisualizacionAlmaLibreDto
             {
                 Seleccionado = true,
                 SKU = !string.IsNullOrWhiteSpace(sku) ? sku : (!string.IsNullOrWhiteSpace(codBarra) ? codBarra : "SIN-SKU"),
@@ -517,15 +533,90 @@ public class InventarioService : IInventarioService
                 RecargoTarjetaPorcentaje = recargoPct,
                 FechaAlta = fechaAlta,
                 FechaUltimaActualizacionPrecio = fechaUltPrecio,
-                StockImportar = 0,
+                StockImportar = stockExcel,
                 EsDeMayoristaElOnce = esOnce,
-                CodigoOnceCoincidente = codOnceMatch,
-                YaExisteEnSistema = existe
+                CodigoOnceDetectado = codOnceMatch,
+                EsYaImportado = existe
             });
         }
 
+        resultado.Items = items;
         return resultado;
     }
+
+    private static MapeoColumnasExcelDto AutoDetectarMapeo(List<string> headers)
+    {
+        var mapeo = new MapeoColumnasExcelDto();
+
+        foreach (var h in headers)
+        {
+            var norm = NormalizarTextoColumna(h);
+
+            if (mapeo.ColumnaCodigoBarras == null && (norm.Contains("codbarra") || norm.Contains("codigobarra") || norm.Contains("barcode") || norm.Contains("ean") || norm == "barra" || norm == "barras"))
+                mapeo.ColumnaCodigoBarras = h;
+            else if (mapeo.ColumnaSku == null && (norm.Contains("sku") || norm == "codigo" || norm == "cod" || norm == "codart" || norm == "articulo" || norm == "id"))
+                mapeo.ColumnaSku = h;
+            else if (mapeo.ColumnaDescripcion == null && (norm.Contains("descrip") || norm.Contains("nombre") || norm.Contains("detalle") || norm.Contains("producto") || norm == "articulo"))
+                mapeo.ColumnaDescripcion = h;
+            else if (mapeo.ColumnaPrecioVenta == null && (norm.Contains("precioventa") || norm == "precio" || norm == "pvp" || norm.Contains("publico") || norm == "pventa" || norm == "precio1" || norm == "lista"))
+                mapeo.ColumnaPrecioVenta = h;
+            else if (mapeo.ColumnaPrecioCosto == null && (norm.Contains("preciocosto") || norm == "costo" || norm.Contains("compra") || norm == "pcompra" || norm == "neto"))
+                mapeo.ColumnaPrecioCosto = h;
+            else if (mapeo.ColumnaPrecioTarjeta == null && (norm.Contains("tarjeta") || norm.Contains("tarj") || norm.Contains("credito") || norm == "pcredito"))
+                mapeo.ColumnaPrecioTarjeta = h;
+            else if (mapeo.ColumnaStock == null && (norm.Contains("stock") || norm.Contains("cantidad") || norm == "cant" || norm.Contains("existencia") || norm.Contains("unidades")))
+                mapeo.ColumnaStock = h;
+            else if (mapeo.ColumnaCategoria == null && (norm.Contains("rubro") || norm.Contains("categoria") || norm.Contains("familia") || norm.Contains("depto") || norm == "seccion"))
+                mapeo.ColumnaCategoria = h;
+            else if (mapeo.ColumnaMarca == null && (norm.Contains("marca") || norm.Contains("fabricante")))
+                mapeo.ColumnaMarca = h;
+            else if (mapeo.ColumnaCodigoProveedor == null && (norm.Contains("codprov") || norm.Contains("codigoproveedor") || norm.Contains("prov_cod")))
+                mapeo.ColumnaCodigoProveedor = h;
+            else if (mapeo.ColumnaFechaAlta == null && (norm.Contains("fchalta") || norm.Contains("fechaalta") || norm == "alta"))
+                mapeo.ColumnaFechaAlta = h;
+            else if (mapeo.ColumnaFechaUltimoPrecio == null && (norm.Contains("fchultpre") || norm.Contains("fechaultprecio") || norm.Contains("ultprecio") || norm.Contains("actualizado")))
+                mapeo.ColumnaFechaUltimoPrecio = h;
+        }
+
+        return mapeo;
+    }
+
+    private static string? ObtenerValorPorColumnaOMapeo(Dictionary<string, string> row, string? nombreColumnaMapeada, params string[] aliasFallback)
+    {
+        if (!string.IsNullOrWhiteSpace(nombreColumnaMapeada) && row.TryGetValue(nombreColumnaMapeada, out var val))
+        {
+            return val?.Trim();
+        }
+
+        return ObtenerValorColumna(row, aliasFallback);
+    }
+
+    public async Task<byte[]> GenerarPlantillaExcelModeloAsync(CancellationToken ct = default)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("CodigoBarras;SKU;Nombre;Categoria;Marca;PrecioCosto;PorcentajeGanancia;PrecioVenta;StockActual;StockMinimo;CodigoProveedor");
+        sb.AppendLine("7791234567890;ART-00001;Cuaderno Rivadavia 48H Rayado;Cuadernos;Rivadavia;1500;60;2400;25;5;RIV-48R");
+        sb.AppendLine("7799876543210;ART-00002;Bolígrafo BIC Cristal Azul 1.0;Escritura;BIC;350;70;595;100;20;BIC-AZ-01");
+        sb.AppendLine("7795551122334;ART-00003;Resaltador Pelikan Fluo Amarillo;Escritura;Pelikan;900;65;1485;40;10;PEL-RES-AM");
+        sb.AppendLine("7793332221110;ART-00004;Goma de Borrar Dos Banderas;Escritura;Dos Banderas;200;80;360;50;15;GOM-DB-01");
+        sb.AppendLine("7798887776665;ART-00005;Cartuchera Canopla 2 Cierres;Marroquineria;Mooving;4500;60;7200;10;2;MOOV-CAN-02");
+
+        // UTF-8 con BOM para que Excel en Windows lo abra perfecto con tildes y caracteres especiales
+        var bytesTexto = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        var bom = new byte[] { 0xEF, 0xBB, 0xBF };
+        var resultado = new byte[bom.Length + bytesTexto.Length];
+        Buffer.BlockCopy(bom, 0, resultado, 0, bom.Length);
+        Buffer.BlockCopy(bytesTexto, 0, resultado, bom.Length, bytesTexto.Length);
+
+        return await Task.FromResult(resultado);
+    }
+
+    public async Task<IReadOnlyList<ItemPrevisualizacionAlmaLibreDto>> PrevisualizarCatalogoAlmaLibreAsync(Stream archivoExcelStream, CancellationToken ct = default)
+    {
+        var analisis = await AnalizarExcelGenericoAsync(archivoExcelStream, null, ct);
+        return analisis.Items;
+    }
+
 
     public async Task<MigracionResultadoDto> ImportarCatalogoAlmaLibreAsync(Stream archivoExcelStream, Guid? proveedorId = null, CancellationToken ct = default)
     {
@@ -600,6 +691,7 @@ public class InventarioService : IInventarioService
                         _context.Categorias.Add(nuevaCat);
                         dictCategorias[rubroUpper] = nuevaCat.Id;
                         catId = nuevaCat.Id;
+                        resultado.CategoriasCreadas++;
                     }
                 }
 

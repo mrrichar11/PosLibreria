@@ -5,6 +5,7 @@ public class MigracionResultadoDto
     public int TotalFilasProcesadas { get; set; }
     public int ArticulosCreados { get; set; }
     public int ArticulosActualizados { get; set; }
+    public int CategoriasCreadas { get; set; }
     public decimal TotalStockIngresado { get; set; }
     public int Errores { get; set; }
     public List<string> MensajesErrores { get; set; } = new();
@@ -37,6 +38,10 @@ public class ItemPrevisualizacionAlmaLibreDto
     // Cruce con Mayorista El Once
     public bool EsDeMayoristaElOnce { get; set; }
     public string? CodigoOnceCoincidente { get; set; }
+    public string? CodigoOnceDetectado { get => CodigoOnceCoincidente; set => CodigoOnceCoincidente = value; }
 
     public bool YaExisteEnSistema { get; set; }
+    public bool EsYaImportado { get => YaExisteEnSistema; set => YaExisteEnSistema = value; }
+    public bool TieneRecargoTarjeta => RecargoTarjetaPorcentaje.HasValue && RecargoTarjetaPorcentaje.Value > 0;
 }
+

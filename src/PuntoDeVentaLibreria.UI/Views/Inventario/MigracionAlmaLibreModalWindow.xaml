@@ -4,15 +4,16 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Migración &amp; Carga de Catálogo (Alma Libre / Sistema Anterior)" 
-        Height="680" Width="1180"
+        Title="Importador Universal de Catálogo &amp; Precios desde Excel" 
+        Height="700" Width="1200"
         MinHeight="560" MinWidth="900"
         WindowStartupLocation="CenterOwner"
         Background="#F8FAFC"
         FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
 
-    <Grid Margin="18">
+    <Grid Margin="16">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -23,24 +24,28 @@
 
         <!-- Cabecera -->
         <Border Grid.Row="0" Margin="0,0,0,10">
-            <StackPanel>
-                <TextBlock Text="MIGRACIÓN RÁPIDA DE CATÁLOGO DESDE EXCEL" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
-                <TextBlock Text="Importe los miles de artículos del sistema anterior conservando SKUs, códigos de barras, rubros, costos, precios, controlando stock inicial y detectando artículos del Mayorista El Once." FontSize="12" Foreground="#64748B"/>
-            </StackPanel>
+            <DockPanel LastChildFill="True">
+                <Button DockPanel.Dock="Right" Content="📥 Descargar Plantilla Excel Modelo" Click="BtnDescargarPlantilla_Click"
+                        Background="#F0FDF4" BorderBrush="#86EFAC" BorderThickness="1.5" Foreground="#166534" FontWeight="Bold" Padding="14,8" FontSize="12" Cursor="Hand"/>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="IMPORTADOR UNIVERSAL DE CATÁLOGO &amp; EXCEL" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
+                    <TextBlock Text="Importe productos de cualquier sistema anterior o proveedor con mapeo inteligente, control de stock y cálculo de precios." FontSize="12" Foreground="#64748B"/>
+                </StackPanel>
+            </DockPanel>
         </Border>
 
         <!-- Selector de Archivo y Proveedor -->
-        <Border Grid.Row="1" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+        <Border Grid.Row="1" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="260"/>
+                    <ColumnDefinition Width="240"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- Ruta de archivo -->
                 <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                    <TextBlock Text="Archivo Excel a importar (.xlsx o .xls):" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="Archivo Excel / Planilla a importar (.xlsx, .xls, .csv):" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,4"/>
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Content="📁 Examinar..." Click="BtnExaminar_Click"
                                 Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" Padding="12,6" FontWeight="SemiBold" Cursor="Hand" Margin="6,0,0,0"/>
@@ -55,15 +60,93 @@
                 </StackPanel>
 
                 <!-- Botón Analizar -->
-                <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
+                <StackPanel Grid.Column="2" VerticalAlignment="Bottom" Orientation="Horizontal">
                     <Button x:Name="BtnAnalizar" Content="🔎 Analizar Archivo" Click="BtnAnalizar_Click"
                             Background="#0284C7" Foreground="White" FontWeight="Bold" Padding="18,8" Cursor="Hand"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Barra de Filtros y Herramientas de Depuración -->
-        <Border Grid.Row="2" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+        <!-- PANEL DE MAPEO INTELIGENTE DE COLUMNAS (Desplegable) -->
+        <Border Grid.Row="2" Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+            <Expander x:Name="ExpMapeo" Header="⚙️ Mapeo Inteligente de Columnas del Excel (Auto-Detectado)" IsExpanded="False" FontWeight="Bold" FontSize="12" Foreground="#1E293B">
+                <StackPanel Margin="0,8,0,0">
+                    <TextBlock Text="El sistema detecta automáticamente las columnas, pero puede ajustar manualmente la correspondencia si su Excel tiene títulos diferentes:" 
+                               FontSize="11" Foreground="#64748B" FontWeight="Normal" Margin="0,0,0,10"/>
+                    
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Fila 1 -->
+                        <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,8,8">
+                            <TextBlock Text="Código de Barras:" FontSize="11" FontWeight="SemiBold" Foreground="#334155"/>
+                            <ComboBox x:Name="CmbColCodigoBarras" FontSize="11" Padding="6,3"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="0" Grid.Column="1" Margin="0,0,8,8">
+                            <TextBlock Text="Código Interno / SKU:" FontSize="11" FontWeight="SemiBold" Foreground="#334155"/>
+                            <ComboBox x:Name="CmbColSku" FontSize="11" Padding="6,3"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="0" Grid.Column="2" Margin="0,0,8,8">
+                            <TextBlock Text="Descripción / Nombre:" FontSize="11" FontWeight="SemiBold" Foreground="#334155"/>
+                            <ComboBox x:Name="CmbColDescripcion" FontSize="11" Padding="6,3"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="0" Grid.Column="3" Margin="0,0,0,8">
+                            <TextBlock Text="Precio de Venta (Efectivo):" FontSize="11" FontWeight="SemiBold" Foreground="#334155"/>
+                            <ComboBox x:Name="CmbColPrecioVenta" FontSize="11" Padding="6,3"/>
+                        </StackPanel>
+
+                        <!-- Fila 2 -->
+                        <StackPanel Grid.Row="1" Grid.Column="0" Margin="0,0,8,8">
+                            <TextBlock Text="Precio de Costo:" FontSize="11" FontWeight="SemiBold" Foreground="#334155"/>
+                            <ComboBox x:Name="CmbColPrecioCosto" FontSize="11" Padding="6,3"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="1" Margin="0,0,8,8">
+                            <TextBlock Text="Precio Tarjeta (Opcional):" FontSize="11" FontWeight="SemiBold" Foreground="#334155"/>
+                            <ComboBox x:Name="CmbColPrecioTarjeta" FontSize="11" Padding="6,3"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="2" Margin="0,0,8,8">
+                            <TextBlock Text="Stock Actual / Cantidad:" FontSize="11" FontWeight="SemiBold" Foreground="#334155"/>
+                            <ComboBox x:Name="CmbColStock" FontSize="11" Padding="6,3"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Grid.Column="3" Margin="0,0,0,8">
+                            <TextBlock Text="Categoría / Rubro:" FontSize="11" FontWeight="SemiBold" Foreground="#334155"/>
+                            <ComboBox x:Name="CmbColCategoria" FontSize="11" Padding="6,3"/>
+                        </StackPanel>
+
+                        <!-- Fila 3 -->
+                        <StackPanel Grid.Row="2" Grid.Column="0" Margin="0,0,8,0">
+                            <TextBlock Text="Marca:" FontSize="11" FontWeight="SemiBold" Foreground="#334155"/>
+                            <ComboBox x:Name="CmbColMarca" FontSize="11" Padding="6,3"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,8,0">
+                            <TextBlock Text="Código Proveedor:" FontSize="11" FontWeight="SemiBold" Foreground="#334155"/>
+                            <ComboBox x:Name="CmbColCodProv" FontSize="11" Padding="6,3"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="2" Margin="0,0,8,0">
+                            <TextBlock Text="Fecha Carga / Alta:" FontSize="11" FontWeight="SemiBold" Foreground="#334155"/>
+                            <ComboBox x:Name="CmbColFechaAlta" FontSize="11" Padding="6,3"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="2" Grid.Column="3" VerticalAlignment="Bottom">
+                            <Button Content="🔄 Re-Analizar con este Mapeo" Click="BtnReanalizarConMapeo_Click"
+                                    Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="10,5" FontSize="11" Cursor="Hand"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Expander>
+        </Border>
+
+        <!-- Barra de Filtros y Herramientas -->
+        <Border Grid.Row="3" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,8">
             <StackPanel>
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -80,26 +163,26 @@
                         <TextBox x:Name="TxtFiltroTexto" Padding="6,4" FontSize="12" TextChanged="Filtros_Changed" ToolTip="Buscar por Nombre, SKU, Código de Proveedor o Código de Barras"/>
                     </StackPanel>
 
-                    <!-- Filtro por Fecha de Carga (fchalta) -->
+                    <!-- Filtro por Fecha de Carga -->
                     <StackPanel Grid.Column="1" Margin="0,0,10,0">
-                        <TextBlock Text="📅 Fecha de Carga (Desde):" FontSize="11" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,3"/>
+                        <TextBlock Text="📅 Fecha Carga (Desde):" FontSize="11" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,3"/>
                         <DatePicker x:Name="DpFechaAltaDesde" SelectedDateChanged="Filtros_Changed" FontSize="11.5"/>
                     </StackPanel>
 
-                    <!-- Filtro por Última Actualización de Precio (fchultpre) -->
+                    <!-- Filtro por Última Actualización de Precio -->
                     <StackPanel Grid.Column="2" Margin="0,0,10,0">
-                        <TextBlock Text="📅 Últ. Actualización Precio (Desde):" FontSize="11" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,3"/>
+                        <TextBlock Text="📅 Últ. Actualización Precio:" FontSize="11" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,3"/>
                         <DatePicker x:Name="DpFechaPrecioDesde" SelectedDateChanged="Filtros_Changed" FontSize="11.5"/>
                     </StackPanel>
 
                     <!-- Filtro de Proveedor / Cruce Once -->
                     <StackPanel Grid.Column="3" Margin="0,0,10,0">
-                        <TextBlock Text="🏷️ Origen / Proveedor:" FontSize="11" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,3"/>
+                        <TextBlock Text="🏷️ Origen / Estado:" FontSize="11" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,3"/>
                         <ComboBox x:Name="CmbFiltroProveedor" SelectionChanged="Filtros_Changed" FontSize="11.5" Padding="6,4">
                             <ComboBoxItem Content="Todos los artículos" IsSelected="True"/>
                             <ComboBoxItem Content="🏷️ Solo Mayorista El Once"/>
                             <ComboBoxItem Content="Otros artículos"/>
-                            <ComboBoxItem Content="Solo Nuevos (No importados)"/>
+                            <ComboBoxItem Content="Solo Nuevos (No en sistema)"/>
                             <ComboBoxItem Content="Solo Ya Importados"/>
                         </ComboBox>
                     </StackPanel>
@@ -142,128 +225,147 @@
             </StackPanel>
         </Border>
 
-        <!-- Tabla de Previsualización y Edición de Stock -->
-        <Border Grid.Row="3" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8">
+        <!-- Grilla Principal con Scroll y Edición de Stock -->
+        <Border Grid.Row="4" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8">
             <Grid>
-                <DataGrid x:Name="GridPreview" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
-                          HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#F1F5F9"
-                          RowHeight="34" FontSize="11.5" Background="White" BorderThickness="0"
-                          VirtualizingStackPanel.IsVirtualizing="True" VirtualizingStackPanel.VirtualizationMode="Recycling">
+                <DataGrid x:Name="DgPrevisualizacion" 
+                          AutoGenerateColumns="False" 
+                          CanUserAddRows="False" 
+                          CanUserDeleteRows="False"
+                          GridLinesVisibility="Horizontal"
+                          HeadersVisibility="Column"
+                          RowHeight="34"
+                          FontSize="11.5"
+                          BorderThickness="0"
+                          Background="Transparent">
                     <DataGrid.Columns>
-                        <!-- Checkbox de Selección -->
-                        <DataGridTemplateColumn Width="45">
-                            <DataGridTemplateColumn.Header>
-                                <CheckBox x:Name="ChkSeleccionarTodoHeader" Click="ChkSeleccionarTodoHeader_Click" HorizontalAlignment="Center" ToolTip="Seleccionar / Deseleccionar visibles"/>
-                            </DataGridTemplateColumn.Header>
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <CheckBox IsChecked="{Binding Seleccionado, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                              Checked="ChkItem_Checked" Unchecked="ChkItem_Unchecked" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
+                        <!-- Checkbox Selección -->
+                        <DataGridCheckBoxColumn Binding="{Binding Seleccionado, UpdateSourceTrigger=PropertyChanged}" Width="40">
+                            <DataGridCheckBoxColumn.HeaderStyle>
+                                <Style TargetType="DataGridColumnHeader">
+                                    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+                                </Style>
+                            </DataGridCheckBoxColumn.HeaderStyle>
+                        </DataGridCheckBoxColumn>
 
-                        <DataGridTextColumn Header="SKU / Cód." Binding="{Binding SKU}" Width="85" FontWeight="SemiBold" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Cód. Prov." Binding="{Binding CodigoProveedor}" Width="80" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Código de Barras" Binding="{Binding CodigoBarras}" Width="115" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Descripción del Artículo" Binding="{Binding Nombre}" Width="*" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="Rubro" Binding="{Binding CategoriaRubro}" Width="100" IsReadOnly="True"/>
-                        
-                        <!-- Cruce Mayorista El Once -->
-                        <DataGridTemplateColumn Header="Proveedor" Width="100" IsReadOnly="True">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <Border Visibility="{Binding EsDeMayoristaElOnce, Converter={x:Null}}" 
-                                                Background="#DBEAFE" BorderBrush="#93C5FD" BorderThickness="1" CornerRadius="4" Padding="5,2">
-                                            <Border.Style>
-                                                <Style TargetType="Border">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding EsDeMayoristaElOnce}" Value="True">
-                                                            <Setter Property="Visibility" Value="Visible"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </Border.Style>
-                                            <TextBlock Text="🏷️ EL ONCE" Foreground="#1E40AF" FontWeight="Bold" FontSize="10"/>
-                                        </Border>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
+                        <!-- SKU / Código Interno -->
+                        <DataGridTextColumn Header="Código / SKU" Binding="{Binding SKU}" Width="100" IsReadOnly="True"/>
 
-                        <DataGridTextColumn Header="P. Costo" Binding="{Binding PrecioCosto, StringFormat='${0:N2}'}" Width="80" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="P. Venta" Binding="{Binding PrecioVenta, StringFormat='${0:N2}'}" Width="85" FontWeight="Bold" IsReadOnly="True"/>
-                        
-                        <!-- Precio Tarjeta y Recargo -->
-                        <DataGridTemplateColumn Header="P. Tarjeta (Recargo)" Width="120" IsReadOnly="True">
+                        <!-- Código Proveedor / El Once -->
+                        <DataGridTextColumn Header="Cód. Prov." Binding="{Binding CodigoProveedor}" Width="85" IsReadOnly="True">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#64748B"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+
+                        <!-- Código de Barras -->
+                        <DataGridTextColumn Header="Código Barras" Binding="{Binding CodigoBarras}" Width="120" IsReadOnly="True"/>
+
+                        <!-- Descripción / Nombre del Producto -->
+                        <DataGridTextColumn Header="Descripción del Producto" Binding="{Binding Nombre}" Width="*" IsReadOnly="True">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+
+                        <!-- Rubro / Categoría -->
+                        <DataGridTextColumn Header="Rubro / Cat." Binding="{Binding CategoriaRubro}" Width="100" IsReadOnly="True"/>
+
+                        <!-- Costo -->
+                        <DataGridTextColumn Header="Costo" Binding="{Binding PrecioCosto, StringFormat='${0:N2}'}" Width="80" IsReadOnly="True">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#475569"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+
+                        <!-- Margen % -->
+                        <DataGridTextColumn Header="Margen" Binding="{Binding PorcentajeGanancia, StringFormat='{}{0:N0}%'}" Width="65" IsReadOnly="True"/>
+
+                        <!-- Precio Venta Efectivo -->
+                        <DataGridTextColumn Header="P. Efectivo" Binding="{Binding PrecioVenta, StringFormat='${0:N2}'}" Width="95" IsReadOnly="True">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="Foreground" Value="#16A34A"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+
+                        <!-- Precio Tarjeta -->
+                        <DataGridTemplateColumn Header="P. Tarjeta" Width="95">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding PrecioTarjeta, StringFormat='${0:N2}', TargetNullValue='-'}" FontWeight="SemiBold" Foreground="#0F172A"/>
-                                        <TextBlock Text="{Binding RecargoTarjetaPorcentaje, StringFormat=' (+{0:N1}%)', TargetNullValue=''}" FontSize="10" Foreground="#D97706" FontWeight="Bold" Margin="3,0,0,0"/>
+                                        <TextBlock Text="{Binding PrecioTarjeta, StringFormat='${0:N2}', TargetNullValue='-'}" FontWeight="SemiBold" Foreground="#2563EB"/>
+                                        <TextBlock Text="{Binding RecargoTarjetaPorcentaje, StringFormat=' (+{0:N0}%)'}" FontSize="10" Foreground="#64748B"
+                                                   Visibility="{Binding TieneRecargoTarjeta, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                     </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Stock a Importar (Editable inline) -->
+                        <DataGridTemplateColumn Header="📦 Stock Inicial" Width="100">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBox Text="{Binding StockImportar, UpdateSourceTrigger=PropertyChanged, StringFormat='{}{0:N0}'}" 
+                                             FontWeight="Bold" TextAlignment="Center" Padding="4,2" Background="#FEF3C7" BorderBrush="#FCD34D"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
 
                         <!-- Fechas -->
-                        <DataGridTextColumn Header="F. Carga" Binding="{Binding FechaAlta, StringFormat='dd/MM/yy', TargetNullValue='-'}" Width="75" IsReadOnly="True"/>
-                        <DataGridTextColumn Header="F. Últ. Precio" Binding="{Binding FechaUltimaActualizacionPrecio, StringFormat='dd/MM/yy', TargetNullValue='-'}" Width="85" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="F. Carga" Binding="{Binding FechaAlta, StringFormat='dd/MM/yy'}" Width="75" IsReadOnly="True"/>
+                        <DataGridTextColumn Header="F. Precio" Binding="{Binding FechaUltimaActualizacionPrecio, StringFormat='dd/MM/yy'}" Width="75" IsReadOnly="True"/>
 
-                        <!-- Stock Inicial Editable -->
-                        <DataGridTemplateColumn Header="📦 Stock Inicial" Width="95">
+                        <!-- Estado / Origen -->
+                        <DataGridTemplateColumn Header="Origen / Estado" Width="120">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBox Text="{Binding StockImportar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, StringFormat='{}{0:G29}'}" 
-                                             Width="65" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
-                                             FontWeight="Bold" Padding="3,2" Background="#FEFCE8" BorderBrush="#FDE047" BorderThickness="1"/>
-                                </DataTemplate>
-                            </DataGridTemplateColumn.CellTemplate>
-                        </DataGridTemplateColumn>
-
-                        <!-- Estado en Sistema -->
-                        <DataGridTemplateColumn Header="Estado" Width="90" IsReadOnly="True">
-                            <DataGridTemplateColumn.CellTemplate>
-                                <DataTemplate>
-                                    <TextBlock FontWeight="Bold" FontSize="10.5" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Text" Value="NUEVO"/>
-                                                <Setter Property="Foreground" Value="#16A34A"/>
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding YaExisteEnSistema}" Value="True">
-                                                        <Setter Property="Text" Value="EXISTENTE"/>
-                                                        <Setter Property="Foreground" Value="#D97706"/>
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="4" Padding="4,1" Margin="0,0,4,0"
+                                                Visibility="{Binding EsDeMayoristaElOnce, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <TextBlock Text="🏷️ El Once" FontSize="10" FontWeight="Bold" Foreground="#1D4ED8"/>
+                                        </Border>
+                                        <Border Background="#F1F5F9" CornerRadius="4" Padding="4,1"
+                                                Visibility="{Binding EsYaImportado, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            <TextBlock Text="Ya en Sistema" FontSize="10" Foreground="#64748B"/>
+                                        </Border>
+                                    </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                     </DataGrid.Columns>
                 </DataGrid>
 
-                <TextBlock x:Name="TxtEstadoVacio" Text="Seleccione el archivo 'Lista de precios ALMA LIBRE.xlsx' y presione 'Analizar Archivo' para ver la vista previa."
-                           HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#94A3B8" FontWeight="Medium"/>
+                <TextBlock x:Name="TxtEstadoVacio" Text="Cargue un archivo Excel y haga clic en 'Analizar Archivo' para comenzar la importación." 
+                           HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="#94A3B8" FontSize="13"/>
             </Grid>
         </Border>
 
         <!-- Barra de Progreso -->
-        <ProgressBar x:Name="PbProgreso" Grid.Row="4" Height="8" Margin="0,10,0,0" IsIndeterminate="True" Visibility="Collapsed"/>
+        <ProgressBar x:Name="PbProgreso" Grid.Row="5" Height="4" IsIndeterminate="True" Visibility="Collapsed" Margin="0,6,0,0"/>
 
-        <!-- Pie y Botones de Acción -->
-        <DockPanel Grid.Row="5" Margin="0,12,0,0">
-            <Button Content="Cerrar" Click="BtnCerrar_Click" Padding="16,8" FontSize="12" Cursor="Hand"/>
+        <!-- Pie de Página y Acciones -->
+        <Border Grid.Row="6" Margin="0,10,0,0">
+            <DockPanel LastChildFill="True">
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Left" VerticalAlignment="Center">
+                    <TextBlock Text="ℹ️ Consejo: Puede ajustar las cantidades de stock directamente en la grilla antes de importar." FontSize="11.5" Foreground="#64748B"/>
+                </StackPanel>
 
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <TextBlock x:Name="TxtMensajeResultado" VerticalAlignment="Center" FontSize="12.5" FontWeight="Bold" Margin="0,0,16,0"/>
-                <Button x:Name="BtnImportar" Content="🚀 Comenzar Importación Seleccionados" Click="BtnImportar_Click"
-                        Background="#16A34A" Foreground="White" FontWeight="Bold" Padding="20,8" FontSize="13" Cursor="Hand" IsEnabled="False"/>
-            </StackPanel>
-        </DockPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button Content="Cancelar" Click="BtnCancelar_Click" Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" Padding="16,8" FontWeight="SemiBold" Margin="0,0,10,0" Cursor="Hand"/>
+                    <Button x:Name="BtnImportar" Content="🚀 Importar Artículos Seleccionados al Inventario" Click="BtnImportar_Click"
+                            Background="#16A34A" Foreground="White" FontWeight="Bold" Padding="20,10" FontSize="13" Cursor="Hand"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
     </Grid>
 </Window>

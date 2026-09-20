@@ -14,12 +14,15 @@ public interface IInventarioService
     Task<string> GenerarSkuSugeridoAsync(CancellationToken ct = default);
     Task<string> GenerarCodigoBarrasSugeridoAsync(CancellationToken ct = default);
 
-    // Migración e importación masiva de librerías anteriores (ej. Alma Libre / Sixtored)
+    // Migración e importación masiva universal de catálogos y sistemas anteriores
+    Task<AnalisisExcelResultadoDto> AnalizarExcelGenericoAsync(Stream archivoExcelStream, MapeoColumnasExcelDto? mapeoPersonalizado = null, CancellationToken ct = default);
     Task<IReadOnlyList<ItemPrevisualizacionAlmaLibreDto>> PrevisualizarCatalogoAlmaLibreAsync(Stream archivoExcelStream, CancellationToken ct = default);
     Task<MigracionResultadoDto> ImportarCatalogoAlmaLibreAsync(Stream archivoExcelStream, Guid? proveedorId = null, CancellationToken ct = default);
     Task<MigracionResultadoDto> ImportarCatalogoSeleccionadoAsync(IReadOnlyList<ItemPrevisualizacionAlmaLibreDto> items, Guid? proveedorIdPorDefecto = null, CancellationToken ct = default);
+    Task<byte[]> GenerarPlantillaExcelModeloAsync(CancellationToken ct = default);
 
     // Actualizador masivo de precios desde listas de mayoristas (ej. El Once)
     Task<ResumenPrevisualizacionAumentoDto> PrevisualizarActualizacionPreciosProveedorAsync(Stream archivoExcelStream, Guid? proveedorId = null, CancellationToken ct = default);
     Task<ActualizacionPreciosResultadoDto> AplicarActualizacionPreciosAsync(IEnumerable<ArticuloAumentoPrecioItemDto> items, CancellationToken ct = default);
 }
+

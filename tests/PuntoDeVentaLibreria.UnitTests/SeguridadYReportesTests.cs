@@ -101,7 +101,7 @@ public class SeguridadYReportesTests
             TotalCostoHistorico = 6040m,
             VendedoraNombre = "cajero",
             MetodoPagoPrincipal = "Transferencia",
-            FechaVenta = DateTime.UtcNow
+            FechaVenta = DateTime.Today.AddHours(12)
         };
 
         venta.LineasVenta.Add(new LineaVenta

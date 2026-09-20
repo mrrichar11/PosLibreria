@@ -76,10 +76,11 @@
                 <!-- Fila 2: Herramientas Masivas de Librería -->
                 <DockPanel LastChildFill="False">
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                        <Button Content="🚀 Migrar Catálogo (Alma Libre)" Click="BtnMigrarAlmaLibre_Click"
+                        <Button Content="🚀 Importar / Migrar Catálogo (Excel)" Click="BtnMigrarAlmaLibre_Click"
                                 Background="#ECFDF5" Foreground="#047857" BorderBrush="#A7F3D0" BorderThickness="1.5"
                                 Padding="12,6" FontWeight="Bold" FontSize="12" Margin="0,0,8,0" Cursor="Hand"
-                                ToolTip="Importe masivamente los 2.800+ artículos desde el Excel de Alma Libre"/>
+                                ToolTip="Importador universal: cargue listas de precios o catálogos Excel de cualquier sistema anterior con mapeo de columnas y control de stock"/>
+
 
                         <Button Content="📈 Actualizar Precios (El Once)" Click="BtnActualizarPrecios_Click"
                                 Background="#F5F3FF" Foreground="#6D28D9" BorderBrush="#DDD6FE" BorderThickness="1.5"

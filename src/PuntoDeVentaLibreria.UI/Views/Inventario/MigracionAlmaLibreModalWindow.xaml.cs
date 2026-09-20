@@ -15,6 +15,7 @@ public partial class MigracionAlmaLibreModalWindow : Window
     private string _rutaArchivo = string.Empty;
     private List<ItemPrevisualizacionAlmaLibreDto> _itemsCompletos = new();
     private List<ItemPrevisualizacionAlmaLibreDto> _itemsFiltrados = new();
+    private List<string> _columnasDetectadas = new();
     public bool MigracionRealizada { get; private set; }
 
     public MigracionAlmaLibreModalWindow(IInventarioService inventarioService, IProveedorService proveedorService)
@@ -71,8 +72,8 @@ public partial class MigracionAlmaLibreModalWindow : Window
     {
         var ofd = new OpenFileDialog
         {
-            Filter = "Archivos de Excel (*.xlsx;*.xls)|*.xlsx;*.xls|Todos los archivos (*.*)|*.*",
-            Title = "Seleccione la lista de precios anterior (ej. ALMA LIBRE.xlsx)"
+            Filter = "Planillas y Catálogos (*.xlsx;*.xls;*.csv)|*.xlsx;*.xls;*.csv|Todos los archivos (*.*)|*.*",
+            Title = "Seleccione el archivo de catálogo o lista de precios a importar"
         };
 
         if (ofd.ShowDialog() == true)
@@ -85,6 +86,31 @@ public partial class MigracionAlmaLibreModalWindow : Window
 
     private async void BtnAnalizar_Click(object sender, RoutedEventArgs e)
     {
+        await ProcesarAnalisisAsync(null);
+    }
+
+    private async void BtnReanalizarConMapeo_Click(object sender, RoutedEventArgs e)
+    {
+        var customMapeo = new MapeoColumnasExcelDto
+        {
+            ColumnaCodigoBarras = ObtenerColumnaSeleccionada(CmbColCodigoBarras),
+            ColumnaSku = ObtenerColumnaSeleccionada(CmbColSku),
+            ColumnaDescripcion = ObtenerColumnaSeleccionada(CmbColDescripcion),
+            ColumnaPrecioVenta = ObtenerColumnaSeleccionada(CmbColPrecioVenta),
+            ColumnaPrecioCosto = ObtenerColumnaSeleccionada(CmbColPrecioCosto),
+            ColumnaPrecioTarjeta = ObtenerColumnaSeleccionada(CmbColPrecioTarjeta),
+            ColumnaStock = ObtenerColumnaSeleccionada(CmbColStock),
+            ColumnaCategoria = ObtenerColumnaSeleccionada(CmbColCategoria),
+            ColumnaMarca = ObtenerColumnaSeleccionada(CmbColMarca),
+            ColumnaCodigoProveedor = ObtenerColumnaSeleccionada(CmbColCodProv),
+            ColumnaFechaAlta = ObtenerColumnaSeleccionada(CmbColFechaAlta)
+        };
+
+        await ProcesarAnalisisAsync(customMapeo);
+    }
+
+    private async Task ProcesarAnalisisAsync(MapeoColumnasExcelDto? mapeoPersonalizado)
+    {
         if (string.IsNullOrWhiteSpace(_rutaArchivo) || !File.Exists(_rutaArchivo))
         {
             MessageBox.Show("Por favor seleccione un archivo Excel válido primero.", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -94,14 +120,19 @@ public partial class MigracionAlmaLibreModalWindow : Window
         PbProgreso.Visibility = Visibility.Visible;
         BtnAnalizar.IsEnabled = false;
         BtnImportar.IsEnabled = false;
-        TxtEstadoVacio.Text = "Analizando archivo Excel, cruzando con Mayorista El Once y verificando base de datos...";
+        TxtEstadoVacio.Text = "Analizando columnas y registros del archivo...";
 
         try
         {
             using var stream = File.OpenRead(_rutaArchivo);
-            var items = await _inventarioService.PrevisualizarCatalogoAlmaLibreAsync(stream);
+            var analisis = await _inventarioService.AnalizarExcelGenericoAsync(stream, mapeoPersonalizado);
 
-            _itemsCompletos = items.ToList();
+            _columnasDetectadas = analisis.ColumnasDetectadas;
+            _itemsCompletos = analisis.Items;
+
+            // Actualizar combos de mapeo
+            PoblarCombosMapeo(_columnasDetectadas, analisis.MapeoSugerido);
+
             AplicarFiltros();
 
             TxtEstadoVacio.Visibility = _itemsCompletos.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
@@ -109,7 +140,7 @@ public partial class MigracionAlmaLibreModalWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al analizar el archivo Excel:\n\n{ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"Error al analizar el archivo:\n\n{ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
             TxtEstadoVacio.Text = "Ocurrió un error al procesar el archivo.";
         }
         finally
@@ -119,164 +150,206 @@ public partial class MigracionAlmaLibreModalWindow : Window
         }
     }
 
+    private void PoblarCombosMapeo(List<string> columnas, MapeoColumnasExcelDto mapeo)
+    {
+        var opciones = new List<string> { "(Ninguna / No usar)" };
+        opciones.AddRange(columnas);
+
+        ConfigurarCombo(CmbColCodigoBarras, opciones, mapeo.ColumnaCodigoBarras);
+        ConfigurarCombo(CmbColSku, opciones, mapeo.ColumnaSku);
+        ConfigurarCombo(CmbColDescripcion, opciones, mapeo.ColumnaDescripcion);
+        ConfigurarCombo(CmbColPrecioVenta, opciones, mapeo.ColumnaPrecioVenta);
+        ConfigurarCombo(CmbColPrecioCosto, opciones, mapeo.ColumnaPrecioCosto);
+        ConfigurarCombo(CmbColPrecioTarjeta, opciones, mapeo.ColumnaPrecioTarjeta);
+        ConfigurarCombo(CmbColStock, opciones, mapeo.ColumnaStock);
+        ConfigurarCombo(CmbColCategoria, opciones, mapeo.ColumnaCategoria);
+        ConfigurarCombo(CmbColMarca, opciones, mapeo.ColumnaMarca);
+        ConfigurarCombo(CmbColCodProv, opciones, mapeo.ColumnaCodigoProveedor);
+        ConfigurarCombo(CmbColFechaAlta, opciones, mapeo.ColumnaFechaAlta);
+
+        ExpMapeo.Header = $"⚙️ Mapeo Inteligente de Columnas ({columnas.Count} columnas detectadas en el archivo)";
+    }
+
+    private static void ConfigurarCombo(ComboBox combo, List<string> opciones, string? seleccionado)
+    {
+        combo.ItemsSource = opciones;
+        if (!string.IsNullOrEmpty(seleccionado) && opciones.Contains(seleccionado))
+        {
+            combo.SelectedItem = seleccionado;
+        }
+        else
+        {
+            combo.SelectedIndex = 0;
+        }
+    }
+
+    private static string? ObtenerColumnaSeleccionada(ComboBox combo)
+    {
+        var sel = combo.SelectedItem as string;
+        if (string.IsNullOrWhiteSpace(sel) || sel.StartsWith("(")) return null;
+        return sel;
+    }
+
+    private async void BtnDescargarPlantilla_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var sfd = new SaveFileDialog
+            {
+                Title = "Guardar Plantilla Modelo de Catálogo Excel",
+                Filter = "Archivo CSV compatible con Excel (*.csv)|*.csv|Todos los archivos (*.*)|*.*",
+                FileName = "Plantilla_Catalogo_MR_SYS.csv"
+            };
+
+            if (sfd.ShowDialog() == true)
+            {
+                var bytes = await _inventarioService.GenerarPlantillaExcelModeloAsync();
+                await File.WriteAllBytesAsync(sfd.FileName, bytes);
+
+                var r = MessageBox.Show(
+                    $"¡Plantilla descargada con éxito en:\n{sfd.FileName}\n\n¿Desea abrir la carpeta contenedora?",
+                    "Plantilla Generada",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Information);
+
+                if (r == MessageBoxResult.Yes)
+                {
+                    System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                    {
+                        FileName = Path.GetDirectoryName(sfd.FileName)!,
+                        UseShellExecute = true
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al generar plantilla: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
     private void Filtros_Changed(object sender, RoutedEventArgs e)
     {
-        if (_itemsCompletos == null || _itemsCompletos.Count == 0) return;
         AplicarFiltros();
     }
 
     private void AplicarFiltros()
     {
-        if (_itemsCompletos == null) return;
+        if (_itemsCompletos == null || _itemsCompletos.Count == 0) return;
 
-        var q = _itemsCompletos.AsEnumerable();
+        var criterio = TxtFiltroTexto?.Text?.Trim().ToLowerInvariant() ?? "";
+        var fechaAltaDesde = DpFechaAltaDesde?.SelectedDate;
+        var fechaPrecioDesde = DpFechaPrecioDesde?.SelectedDate;
+        var filtroProvIdx = CmbFiltroProveedor?.SelectedIndex ?? 0;
 
-        // 1. Filtro de Texto
-        var texto = TxtFiltroTexto?.Text?.Trim();
-        if (!string.IsNullOrWhiteSpace(texto))
+        _itemsFiltrados = _itemsCompletos.Where(i =>
         {
-            q = q.Where(i =>
-                (i.Nombre != null && i.Nombre.Contains(texto, StringComparison.OrdinalIgnoreCase)) ||
-                (i.SKU != null && i.SKU.Contains(texto, StringComparison.OrdinalIgnoreCase)) ||
-                (i.CodigoProveedor != null && i.CodigoProveedor.Contains(texto, StringComparison.OrdinalIgnoreCase)) ||
-                (i.CodigoBarras != null && i.CodigoBarras.Contains(texto, StringComparison.OrdinalIgnoreCase)) ||
-                (i.CategoriaRubro != null && i.CategoriaRubro.Contains(texto, StringComparison.OrdinalIgnoreCase)));
-        }
-
-        // 2. Filtro Fecha de Carga (fchalta)
-        if (DpFechaAltaDesde?.SelectedDate.HasValue == true)
-        {
-            var fechaMin = DpFechaAltaDesde.SelectedDate.Value.Date;
-            q = q.Where(i => i.FechaAlta.HasValue && i.FechaAlta.Value.Date >= fechaMin);
-        }
-
-        // 3. Filtro Última Actualización de Precio (fchultpre)
-        if (DpFechaPrecioDesde?.SelectedDate.HasValue == true)
-        {
-            var fechaMin = DpFechaPrecioDesde.SelectedDate.Value.Date;
-            q = q.Where(i => i.FechaUltimaActualizacionPrecio.HasValue && i.FechaUltimaActualizacionPrecio.Value.Date >= fechaMin);
-        }
-
-        // 4. Filtro Proveedor / Once / Estado
-        if (CmbFiltroProveedor != null && CmbFiltroProveedor.SelectedIndex > 0)
-        {
-            switch (CmbFiltroProveedor.SelectedIndex)
+            // 1. Filtro de Texto
+            if (!string.IsNullOrEmpty(criterio))
             {
-                case 1: // Solo Mayorista El Once
-                    q = q.Where(i => i.EsDeMayoristaElOnce);
+                bool coincide = (i.Nombre?.ToLowerInvariant().Contains(criterio) == true) ||
+                                (i.SKU?.ToLowerInvariant().Contains(criterio) == true) ||
+                                (i.CodigoProveedor?.ToLowerInvariant().Contains(criterio) == true) ||
+                                (i.CodigoBarras?.ToLowerInvariant().Contains(criterio) == true) ||
+                                (i.CategoriaRubro?.ToLowerInvariant().Contains(criterio) == true);
+                if (!coincide) return false;
+            }
+
+            // 2. Filtro Fecha de Carga
+            if (fechaAltaDesde.HasValue)
+            {
+                if (!i.FechaAlta.HasValue || i.FechaAlta.Value.Date < fechaAltaDesde.Value.Date)
+                    return false;
+            }
+
+            // 3. Filtro Fecha Último Precio
+            if (fechaPrecioDesde.HasValue)
+            {
+                if (!i.FechaUltimaActualizacionPrecio.HasValue || i.FechaUltimaActualizacionPrecio.Value.Date < fechaPrecioDesde.Value.Date)
+                    return false;
+            }
+
+            // 4. Filtro Proveedor / Origen
+            switch (filtroProvIdx)
+            {
+                case 1: // Solo El Once
+                    if (!i.EsDeMayoristaElOnce) return false;
                     break;
-                case 2: // Otros artículos (No Once)
-                    q = q.Where(i => !i.EsDeMayoristaElOnce);
+                case 2: // Otros
+                    if (i.EsDeMayoristaElOnce) return false;
                     break;
-                case 3: // Solo Nuevos (No importados)
-                    q = q.Where(i => !i.YaExisteEnSistema);
+                case 3: // Solo Nuevos
+                    if (i.EsYaImportado) return false;
                     break;
                 case 4: // Solo Ya Importados
-                    q = q.Where(i => i.YaExisteEnSistema);
+                    if (!i.EsYaImportado) return false;
                     break;
             }
-        }
 
-        _itemsFiltrados = q.ToList();
-        GridPreview.ItemsSource = _itemsFiltrados;
+            return true;
+        }).ToList();
+
+        DgPrevisualizacion.ItemsSource = null;
+        DgPrevisualizacion.ItemsSource = _itemsFiltrados;
 
         ActualizarMetricas();
     }
 
     private void ActualizarMetricas()
     {
-        int total = _itemsCompletos.Count;
-        int filtrados = _itemsFiltrados.Count;
-        int onceTotal = _itemsCompletos.Count(i => i.EsDeMayoristaElOnce);
-        int seleccionados = _itemsCompletos.Count(i => i.Seleccionado);
-        decimal stockTotal = _itemsCompletos.Where(i => i.Seleccionado).Sum(i => i.StockImportar);
+        var total = _itemsCompletos.Count;
+        var filtrados = _itemsFiltrados.Count;
+        var seleccionados = _itemsFiltrados.Count(i => i.Seleccionado);
+        var once = _itemsFiltrados.Count(i => i.EsDeMayoristaElOnce);
 
         TxtTotalFilas.Text = $"Filtrados: {filtrados:N0} / {total:N0}";
-        TxtOnceCount.Text = $"🏷️ El Once: {onceTotal:N0}";
-        TxtSeleccionadosCount.Text = $"Seleccionados: {seleccionados:N0} (Stock: {stockTotal:N0})";
+        TxtOnceCount.Text = $"🏷️ El Once: {once:N0}";
+        TxtSeleccionadosCount.Text = $"Seleccionados: {seleccionados:N0}";
 
         BtnImportar.IsEnabled = seleccionados > 0;
-        BtnImportar.Content = $"🚀 Comenzar Importación Seleccionados ({seleccionados:N0} artículos)";
-    }
-
-    private void BtnLimpiarFiltros_Click(object sender, RoutedEventArgs e)
-    {
-        if (TxtFiltroTexto != null) TxtFiltroTexto.Text = string.Empty;
-        if (DpFechaAltaDesde != null) DpFechaAltaDesde.SelectedDate = null;
-        if (DpFechaPrecioDesde != null) DpFechaPrecioDesde.SelectedDate = null;
-        if (CmbFiltroProveedor != null) CmbFiltroProveedor.SelectedIndex = 0;
-        AplicarFiltros();
-    }
-
-    private void ChkSeleccionarTodoHeader_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is CheckBox chk)
-        {
-            bool isChecked = chk.IsChecked == true;
-            foreach (var item in _itemsFiltrados)
-            {
-                item.Seleccionado = isChecked;
-            }
-            GridPreview.Items.Refresh();
-            ActualizarMetricas();
-        }
+        BtnImportar.Content = $"🚀 Importar {seleccionados:N0} Artículos Seleccionados al Inventario";
     }
 
     private void BtnSeleccionarTodos_Click(object sender, RoutedEventArgs e)
     {
-        foreach (var item in _itemsFiltrados)
-        {
-            item.Seleccionado = true;
-        }
-        if (ChkSeleccionarTodoHeader != null) ChkSeleccionarTodoHeader.IsChecked = true;
-        GridPreview.Items.Refresh();
+        foreach (var i in _itemsFiltrados) i.Seleccionado = true;
+        DgPrevisualizacion.Items.Refresh();
         ActualizarMetricas();
     }
 
     private void BtnDeseleccionarTodos_Click(object sender, RoutedEventArgs e)
     {
-        foreach (var item in _itemsFiltrados)
-        {
-            item.Seleccionado = false;
-        }
-        if (ChkSeleccionarTodoHeader != null) ChkSeleccionarTodoHeader.IsChecked = false;
-        GridPreview.Items.Refresh();
+        foreach (var i in _itemsFiltrados) i.Seleccionado = false;
+        DgPrevisualizacion.Items.Refresh();
         ActualizarMetricas();
     }
 
     private void BtnAplicarStockMasivo_Click(object sender, RoutedEventArgs e)
     {
-        if (!decimal.TryParse(TxtStockMasivo.Text.Trim().Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var stockVal) || stockVal < 0)
+        if (decimal.TryParse(TxtStockMasivo.Text.Replace(',', '.'), System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var stock))
         {
-            MessageBox.Show("Ingrese una cantidad de stock válida (número positivo).", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
+            int aplicados = 0;
+            foreach (var i in _itemsFiltrados.Where(x => x.Seleccionado))
+            {
+                i.StockImportar = stock;
+                aplicados++;
+            }
+            DgPrevisualizacion.Items.Refresh();
+            MessageBox.Show($"Se aplicó un stock inicial de {stock:N0} unidades a los {aplicados} artículos seleccionados.", "Stock Aplicado", MessageBoxButton.OK, MessageBoxImage.Information);
         }
-
-        var seleccionados = _itemsFiltrados.Where(i => i.Seleccionado).ToList();
-        if (seleccionados.Count == 0)
+        else
         {
-            MessageBox.Show("No hay artículos seleccionados en la vista actual.", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
+            MessageBox.Show("Por favor ingrese un valor numérico válido para el stock.", "Valor Inválido", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
-
-        foreach (var item in seleccionados)
-        {
-            item.StockImportar = stockVal;
-        }
-
-        GridPreview.Items.Refresh();
-        ActualizarMetricas();
-        MessageBox.Show($"Se asignó stock de {stockVal:G29} unidades a {seleccionados.Count:N0} artículos seleccionados.", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
-    private void ChkItem_Checked(object sender, RoutedEventArgs e)
+    private void BtnLimpiarFiltros_Click(object sender, RoutedEventArgs e)
     {
-        ActualizarMetricas();
-    }
-
-    private void ChkItem_Unchecked(object sender, RoutedEventArgs e)
-    {
-        ActualizarMetricas();
+        TxtFiltroTexto.Text = string.Empty;
+        DpFechaAltaDesde.SelectedDate = null;
+        DpFechaPrecioDesde.SelectedDate = null;
+        CmbFiltroProveedor.SelectedIndex = 0;
+        AplicarFiltros();
     }
 
     private async void BtnImportar_Click(object sender, RoutedEventArgs e)
@@ -284,69 +357,61 @@ public partial class MigracionAlmaLibreModalWindow : Window
         var seleccionados = _itemsCompletos.Where(i => i.Seleccionado).ToList();
         if (seleccionados.Count == 0)
         {
-            MessageBox.Show("No ha seleccionado ningún artículo para importar.", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("No hay ningún artículo seleccionado para importar.", "Atención", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        decimal totalStock = seleccionados.Sum(i => i.StockImportar);
-        var res = MessageBox.Show(
-            $"¿Confirma la importación de {seleccionados.Count:N0} artículos seleccionados?\n\n" +
-            $"• Total Stock inicial a ingresar: {totalStock:N0} unidades\n" +
-            $"• Los artículos del Mayorista El Once se asociarán automáticamente.\n" +
-            $"• Los existentes se actualizarán con los costos, precios y stock ingresado.",
-            "Confirmar Importación Selectiva", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        var confirm = MessageBox.Show(
+            $"¿Confirma la importación de {seleccionados.Count:N0} artículos al inventario?\n\nLos artículos existentes se actualizarán con los precios y stock cargados, y los nuevos se registrarán con su rubro y código correspondiente.",
+            "Confirmar Importación Masiva",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
 
-        if (res != MessageBoxResult.Yes) return;
+        if (confirm != MessageBoxResult.Yes) return;
 
         PbProgreso.Visibility = Visibility.Visible;
         BtnImportar.IsEnabled = false;
         BtnAnalizar.IsEnabled = false;
 
-        Guid? proveedorId = null;
-        if (CmbProveedor.SelectedItem is ProveedorDto p && p.Id != Guid.Empty)
-        {
-            proveedorId = p.Id;
-        }
-
         try
         {
-            var resultado = await _inventarioService.ImportarCatalogoSeleccionadoAsync(seleccionados, proveedorId);
+            Guid? provId = null;
+            if (CmbProveedor.SelectedValue is Guid id && id != Guid.Empty)
+            {
+                provId = id;
+            }
 
-            MigracionRealizada = true;
-            TxtMensajeResultado.Text = $"✅ Creados: {resultado.ArticulosCreados:N0} | Actualizados: {resultado.ArticulosActualizados:N0} | Stock cargado: {resultado.TotalStockIngresado:N0} un.";
-            TxtMensajeResultado.Foreground = System.Windows.Media.Brushes.Green;
-
-            GridPreview.Items.Refresh();
-            ActualizarMetricas();
+            var resultado = await _inventarioService.ImportarCatalogoSeleccionadoAsync(seleccionados, provId);
 
             MessageBox.Show(
-                $"¡Importación completada con éxito!\n\n" +
-                $"• Artículos seleccionados procesados: {resultado.TotalFilasProcesadas:N0}\n" +
-                $"• Nuevos artículos cargados: {resultado.ArticulosCreados:N0}\n" +
-                $"• Artículos actualizados: {resultado.ArticulosActualizados:N0}\n" +
-                $"• Total Stock inicial ingresado: {resultado.TotalStockIngresado:N0} unidades\n" +
-                $"• Errores / omitidos: {resultado.Errores:N0}",
-                "MR SYS - Migración Exitosa",
+                $"¡IMPORTACIÓN COMPLETADA CON ÉXITO!\n\n" +
+                $"• Total Artículos Nuevos Creados: {resultado.ArticulosCreados:N0}\n" +
+                $"• Artículos Existentes Actualizados: {resultado.ArticulosActualizados:N0}\n" +
+                $"• Rubros / Categorías Creadas: {resultado.CategoriasCreadas:N0}\n\n" +
+                $"Todos los productos ya están disponibles en el mostrador para venta y control de stock.",
+                "Importación Exitosa",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information);
 
+            MigracionRealizada = true;
             DialogResult = true;
             Close();
         }
         catch (Exception ex)
         {
             MessageBox.Show($"Error durante la importación:\n\n{ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            BtnImportar.IsEnabled = true;
         }
         finally
         {
             PbProgreso.Visibility = Visibility.Collapsed;
+            BtnImportar.IsEnabled = true;
             BtnAnalizar.IsEnabled = true;
         }
     }
 
-    private void BtnCerrar_Click(object sender, RoutedEventArgs e)
+    private void BtnCancelar_Click(object sender, RoutedEventArgs e)
     {
+        DialogResult = false;
         Close();
     }
 }
