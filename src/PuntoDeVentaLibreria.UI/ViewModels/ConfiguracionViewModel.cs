@@ -371,6 +371,8 @@ public partial class ConfiguracionViewModel : ObservableObject
         }
     }
 
+    public static event Func<Task>? LicenciaActualizadaGlobal;
+
     [RelayCommand]
     private async Task ActivarLicenciaAsync()
     {
@@ -378,6 +380,11 @@ public partial class ConfiguracionViewModel : ObservableObject
         MensajeActivacion = res.Mensaje;
         EstadoLicencia = await _licenseService.ValidarLicenciaAsync();
         ClaveActivacionInput = string.Empty;
+
+        if (LicenciaActualizadaGlobal != null)
+        {
+            await LicenciaActualizadaGlobal.Invoke();
+        }
     }
 
     [RelayCommand]

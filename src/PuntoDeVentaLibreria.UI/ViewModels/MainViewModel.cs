@@ -24,10 +24,10 @@ public partial class MainViewModel : ObservableObject
     private string _colorFondoEstadoCaja = "#10B981"; // Verde por defecto
 
     [ObservableProperty]
-    private string _licenciaBadgeTexto = "PLAN PRO ACTIVO";
+    private string _licenciaBadgeTexto = "PLAN ESTÁNDAR";
 
     [ObservableProperty]
-    private string _licenciaBadgeColor = "#2563EB"; // Azul
+    private string _licenciaBadgeColor = "#0D9488";
 
     [ObservableProperty]
     private string _usuarioActivoTexto = "Cajero: Mostrador Principal";
@@ -68,6 +68,7 @@ public partial class MainViewModel : ObservableObject
         _updateService = updateService ?? throw new ArgumentNullException(nameof(updateService));
 
         StatusBarDerechaTexto = $"MR SYS v{_updateService.ObtenerVersionActual()} · ONLINE";
+        ConfiguracionViewModel.LicenciaActualizadaGlobal += ActualizarLicenciaAsync;
     }
 
     public void EstablecerSesion(PuntoDeVentaLibreria.Application.DTOs.Seguridad.SesionUsuarioDto sesion)
@@ -138,8 +139,9 @@ public partial class MainViewModel : ObservableObject
             var lic = await _licenseService.ValidarLicenciaAsync();
             if (lic.EsValida)
             {
-                LicenciaBadgeTexto = $"PRO ({lic.DiasRestantes} días)";
-                LicenciaBadgeColor = lic.DiasRestantes <= 5 ? "#F59E0B" : "#2563EB";
+                var prefijo = lic.EsPlanPro ? "PRO" : "Estándar";
+                LicenciaBadgeTexto = $"{prefijo} ({lic.DiasRestantes} días)";
+                LicenciaBadgeColor = lic.DiasRestantes <= 5 ? "#F59E0B" : (lic.EsPlanPro ? "#2563EB" : "#0D9488");
             }
             else
             {
