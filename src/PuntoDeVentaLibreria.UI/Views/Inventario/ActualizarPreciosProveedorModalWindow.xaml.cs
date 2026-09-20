@@ -24,29 +24,7 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         Loaded += async (s, e) =>
         {
             await CargarProveedoresAsync();
-            DetectarArchivoPorDefecto();
         };
-    }
-
-    private void DetectarArchivoPorDefecto()
-    {
-        var candidatos = new[]
-        {
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "lista de precio proveedor El Once_2026-09-17 (Con Cod.Barra).xls"),
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "lista de precio proveedor El Once_2026-09-17 (Con Cod.Barra).xls"),
-            @"C:\Proyectos\PuntoDeVentaLibreria\lista de precio proveedor El Once_2026-09-17 (Con Cod.Barra).xls",
-            @"C:\Proyectos\PuntoDeVentaLibreria\lista de precio proveedor El Once_2026-09-17 (Con Cod.Producto).xls"
-        };
-
-        foreach (var c in candidatos)
-        {
-            if (File.Exists(c))
-            {
-                _rutaArchivo = Path.GetFullPath(c);
-                TxtRutaArchivo.Text = _rutaArchivo;
-                break;
-            }
-        }
     }
 
     private async Task CargarProveedoresAsync()
@@ -71,7 +49,7 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         var ofd = new OpenFileDialog
         {
             Filter = "Listas de Precios (*.xls;*.xlsx)|*.xls;*.xlsx|Todos los archivos (*.*)|*.*",
-            Title = "Seleccione la lista de precios descargada del proveedor (ej. El Once)"
+            Title = "Seleccione la lista de precios del proveedor"
         };
 
         if (ofd.ShowDialog() == true)

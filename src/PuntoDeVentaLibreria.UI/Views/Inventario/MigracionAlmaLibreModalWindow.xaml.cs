@@ -27,28 +27,7 @@ public partial class MigracionAlmaLibreModalWindow : Window
         Loaded += async (s, e) =>
         {
             await CargarProveedoresAsync();
-            DetectarArchivoPorDefecto();
         };
-    }
-
-    private void DetectarArchivoPorDefecto()
-    {
-        var candidatos = new[]
-        {
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Lista de precios ALMA LIBRE.xlsx"),
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", "..", "Lista de precios ALMA LIBRE.xlsx"),
-            @"C:\Proyectos\PuntoDeVentaLibreria\Lista de precios ALMA LIBRE.xlsx"
-        };
-
-        foreach (var c in candidatos)
-        {
-            if (File.Exists(c))
-            {
-                _rutaArchivo = Path.GetFullPath(c);
-                TxtRutaArchivo.Text = _rutaArchivo;
-                break;
-            }
-        }
     }
 
     private async Task CargarProveedoresAsync()
@@ -269,20 +248,20 @@ public partial class MigracionAlmaLibreModalWindow : Window
                     return false;
             }
 
-            // 4. Filtro Proveedor / Origen
+            // 4. Filtro por Estado / Códigos
             switch (filtroProvIdx)
             {
-                case 1: // Solo El Once
-                    if (!i.EsDeMayoristaElOnce) return false;
-                    break;
-                case 2: // Otros
-                    if (i.EsDeMayoristaElOnce) return false;
-                    break;
-                case 3: // Solo Nuevos
+                case 1: // Solo Nuevos
                     if (i.EsYaImportado) return false;
                     break;
-                case 4: // Solo Ya Importados
+                case 2: // Solo Existentes
                     if (!i.EsYaImportado) return false;
+                    break;
+                case 3: // Con Código de Barras
+                    if (string.IsNullOrWhiteSpace(i.CodigoBarras)) return false;
+                    break;
+                case 4: // Sin Código de Barras
+                    if (!string.IsNullOrWhiteSpace(i.CodigoBarras)) return false;
                     break;
             }
 
@@ -300,10 +279,10 @@ public partial class MigracionAlmaLibreModalWindow : Window
         var total = _itemsCompletos.Count;
         var filtrados = _itemsFiltrados.Count;
         var seleccionados = _itemsFiltrados.Count(i => i.Seleccionado);
-        var once = _itemsFiltrados.Count(i => i.EsDeMayoristaElOnce);
+        var nuevos = _itemsFiltrados.Count(i => !i.EsYaImportado);
 
         TxtTotalFilas.Text = $"Filtrados: {filtrados:N0} / {total:N0}";
-        TxtOnceCount.Text = $"🏷️ El Once: {once:N0}";
+        TxtNuevosCount.Text = $"✨ Nuevos: {nuevos:N0}";
         TxtSeleccionadosCount.Text = $"Seleccionados: {seleccionados:N0}";
 
         BtnImportar.IsEnabled = seleccionados > 0;

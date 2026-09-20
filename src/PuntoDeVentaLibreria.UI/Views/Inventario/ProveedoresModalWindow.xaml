@@ -57,7 +57,7 @@
                     <StackPanel>
                         <TextBlock x:Name="TxtTituloForm" Text="DATOS DEL PROVEEDOR" FontSize="13" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,12"/>
 
-                        <TextBlock Text="Nombre Comercial (ej. El Once, Rivadavia):" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                        <TextBlock Text="Nombre Comercial (ej. Distribuidora Central, Rivadavia):" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,3"/>
                         <TextBox x:Name="TxtNombre" FontSize="13" Padding="6,4" Margin="0,0,0,10"/>
 
                         <Grid Margin="0,0,0,10">

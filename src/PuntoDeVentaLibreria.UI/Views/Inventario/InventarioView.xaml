@@ -82,10 +82,10 @@
                                 ToolTip="Importador universal: cargue listas de precios o catálogos Excel de cualquier sistema anterior con mapeo de columnas y control de stock"/>
 
 
-                        <Button Content="📈 Actualizar Precios (El Once)" Click="BtnActualizarPrecios_Click"
+                        <Button Content="📈 Actualizar Precios por Proveedor" Click="BtnActualizarPrecios_Click"
                                 Background="#F5F3FF" Foreground="#6D28D9" BorderBrush="#DDD6FE" BorderThickness="1.5"
                                 Padding="12,6" FontWeight="Bold" FontSize="12" Margin="0,0,8,0" Cursor="Hand"
-                                ToolTip="Actualice costos y precios en lote según la lista de precios descargada del proveedor El Once"/>
+                                ToolTip="Actualice costos y precios en lote según la lista de precios descargada de cualquier proveedor"/>
 
                         <Button Content="🏭 Proveedores" Click="BtnProveedores_Click"
                                 Background="#F8FAFC" Foreground="#334155" BorderBrush="#CBD5E1" BorderThickness="1"

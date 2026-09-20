@@ -23,8 +23,8 @@
         <!-- Cabecera -->
         <Border Grid.Row="0" Margin="0,0,0,14">
             <StackPanel>
-                <TextBlock Text="ACTUALIZACIÓN INTELIGENTE DE PRECIOS MAYORISTAS" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
-                <TextBlock Text="Cargue la lista de precios descargada del proveedor (ej. El Once) para comparar aumentos de costos y recalcular los precios de venta en segundos." FontSize="12" Foreground="#64748B"/>
+                <TextBlock Text="ACTUALIZACIÓN INTELIGENTE DE PRECIOS DE PROVEEDORES" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
+                <TextBlock Text="Cargue la lista de precios descargada de su proveedor para comparar variaciones de costos y recalcular los precios de venta en segundos." FontSize="12" Foreground="#64748B"/>
             </StackPanel>
         </Border>
 
@@ -43,7 +43,7 @@
 
                 <!-- Archivo Excel -->
                 <StackPanel Grid.Row="0" Grid.Column="0" Margin="0,0,12,0">
-                    <TextBlock Text="Archivo de Precios Mayorista (.xls o .xlsx de El Once / Proveedor):" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="Archivo de Precios del Proveedor (.xls o .xlsx):" FontSize="11.5" FontWeight="SemiBold" Margin="0,0,0,4"/>
                     <DockPanel>
                         <Button DockPanel.Dock="Right" Content="📁 Examinar..." Click="BtnExaminar_Click"
                                 Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" Padding="12,6" FontWeight="SemiBold" Cursor="Hand" Margin="6,0,0,0"/>
@@ -109,7 +109,7 @@
                     </DataGrid.Columns>
                 </DataGrid>
 
-                <TextBlock x:Name="TxtEstadoVacio" Text="Seleccione el archivo descargado de El Once y presione 'Comparar Precios' para ver la comparativa de aumentos."
+                <TextBlock x:Name="TxtEstadoVacio" Text="Seleccione la lista de precios del proveedor y presione 'Comparar Precios' para ver la comparativa de aumentos."
                            HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="13" Foreground="#94A3B8" FontWeight="Medium"/>
             </Grid>
         </Border>

@@ -175,15 +175,15 @@
                         <DatePicker x:Name="DpFechaPrecioDesde" SelectedDateChanged="Filtros_Changed" FontSize="11.5"/>
                     </StackPanel>
 
-                    <!-- Filtro de Proveedor / Cruce Once -->
+                    <!-- Filtro por Estado / Códigos -->
                     <StackPanel Grid.Column="3" Margin="0,0,10,0">
-                        <TextBlock Text="🏷️ Origen / Estado:" FontSize="11" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,3"/>
+                        <TextBlock Text="🏷️ Filtro por Estado / Código:" FontSize="11" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,3"/>
                         <ComboBox x:Name="CmbFiltroProveedor" SelectionChanged="Filtros_Changed" FontSize="11.5" Padding="6,4">
                             <ComboBoxItem Content="Todos los artículos" IsSelected="True"/>
-                            <ComboBoxItem Content="🏷️ Solo Mayorista El Once"/>
-                            <ComboBoxItem Content="Otros artículos"/>
-                            <ComboBoxItem Content="Solo Nuevos (No en sistema)"/>
-                            <ComboBoxItem Content="Solo Ya Importados"/>
+                            <ComboBoxItem Content="✨ Solo Nuevos (No en sistema)"/>
+                            <ComboBoxItem Content="🔄 Solo Existentes (A actualizar)"/>
+                            <ComboBoxItem Content="📊 Con Código de Barras"/>
+                            <ComboBoxItem Content="⚠️ Sin Código de Barras"/>
                         </ComboBox>
                     </StackPanel>
 
@@ -215,7 +215,7 @@
                             <TextBlock x:Name="TxtTotalFilas" Text="Filtrados: 0 / 0" FontWeight="Bold" Foreground="#166534" FontSize="11.5"/>
                         </Border>
                         <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="6" Padding="8,3" Margin="0,0,6,0">
-                            <TextBlock x:Name="TxtOnceCount" Text="🏷️ El Once: 0" FontWeight="Bold" Foreground="#1D4ED8" FontSize="11.5"/>
+                            <TextBlock x:Name="TxtNuevosCount" Text="✨ Nuevos: 0" FontWeight="Bold" Foreground="#1D4ED8" FontSize="11.5"/>
                         </Border>
                         <Border Background="#FEF3C7" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="6" Padding="8,3">
                             <TextBlock x:Name="TxtSeleccionadosCount" Text="Seleccionados: 0" FontWeight="Bold" Foreground="#92400E" FontSize="11.5"/>
@@ -251,7 +251,7 @@
                         <!-- SKU / Código Interno -->
                         <DataGridTextColumn Header="Código / SKU" Binding="{Binding SKU}" Width="100" IsReadOnly="True"/>
 
-                        <!-- Código Proveedor / El Once -->
+                        <!-- Código Proveedor -->
                         <DataGridTextColumn Header="Cód. Prov." Binding="{Binding CodigoProveedor}" Width="85" IsReadOnly="True">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
@@ -325,18 +325,18 @@
                         <DataGridTextColumn Header="F. Carga" Binding="{Binding FechaAlta, StringFormat='dd/MM/yy'}" Width="75" IsReadOnly="True"/>
                         <DataGridTextColumn Header="F. Precio" Binding="{Binding FechaUltimaActualizacionPrecio, StringFormat='dd/MM/yy'}" Width="75" IsReadOnly="True"/>
 
-                        <!-- Estado / Origen -->
-                        <DataGridTemplateColumn Header="Origen / Estado" Width="120">
+                        <!-- Estado en Catálogo -->
+                        <DataGridTemplateColumn Header="Estado" Width="110">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="4" Padding="4,1" Margin="0,0,4,0"
-                                                Visibility="{Binding EsDeMayoristaElOnce, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                            <TextBlock Text="🏷️ El Once" FontSize="10" FontWeight="Bold" Foreground="#1D4ED8"/>
-                                        </Border>
                                         <Border Background="#F1F5F9" CornerRadius="4" Padding="4,1"
                                                 Visibility="{Binding EsYaImportado, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                            <TextBlock Text="Ya en Sistema" FontSize="10" Foreground="#64748B"/>
+                                            <TextBlock Text="🔄 Existente" FontSize="10" FontWeight="SemiBold" Foreground="#475569"/>
+                                        </Border>
+                                        <Border Background="#F0FDF4" CornerRadius="4" Padding="4,1"
+                                                Visibility="{Binding EsYaImportado, Converter={StaticResource InverseBooleanToVisibilityConverter}}">
+                                            <TextBlock Text="✨ Nuevo" FontSize="10" FontWeight="Bold" Foreground="#16A34A"/>
                                         </Border>
                                     </StackPanel>
                                 </DataTemplate>

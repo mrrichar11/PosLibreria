@@ -185,7 +185,7 @@ public class LibreriaProveedoresYMigracionTests
     }
 
     [Fact]
-    public async Task InventarioService_MigracionAlmaLibre_ConStockFechasTarjetaYMayoristaOnce_ProcesaCorrectamente()
+    public async Task InventarioService_MigracionGenerica_ConStockFechasYTarjetas_ProcesaCorrectamente()
     {
         var rutaArchivo = @"C:\Proyectos\PuntoDeVentaLibreria\Lista de precios ALMA LIBRE.xlsx";
         if (!File.Exists(rutaArchivo)) return;
@@ -208,11 +208,7 @@ public class LibreriaProveedoresYMigracionTests
         ejemploTarjeta.PrecioTarjeta.Should().BeGreaterThan(0);
         ejemploTarjeta.RecargoTarjetaPorcentaje.Should().BeGreaterThan(0);
 
-        // 3. Validar cruce con Mayorista El Once
-        var itemsElOnce = preview.Where(i => i.EsDeMayoristaElOnce).ToList();
-        itemsElOnce.Should().NotBeEmpty();
-
-        // 4. Probar importación selectiva con asignación de stock inicial
+        // 3. Probar importación selectiva con asignación de stock inicial
         var muestraImportar = preview.Take(5).ToList();
         foreach (var m in muestraImportar)
         {

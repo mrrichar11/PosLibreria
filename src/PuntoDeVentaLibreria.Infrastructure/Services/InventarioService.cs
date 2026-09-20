@@ -339,60 +339,8 @@ public class InventarioService : IInventarioService
     }
 
     // =========================================================================
-    // MIGRACIÓN E IMPORTACIÓN MASIVA (ej. Lista de Precios ALMA LIBRE)
+    // IMPORTACIÓN Y MIGRACIÓN UNIVERSAL DE CATÁLOGO (EXCEL / CSV)
     // =========================================================================
-
-    private (HashSet<string> CodigosOnce, HashSet<string> BarrasOnce) CargarCatalogosOnceEnMemoria()
-    {
-        var codigosOnce = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var barrasOnce = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        try
-        {
-            var directoriosCandidatos = new[]
-            {
-                AppDomain.CurrentDomain.BaseDirectory,
-                Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "..", "..", "..", ".."),
-                @"C:\Proyectos\PuntoDeVentaLibreria"
-            };
-
-            var archivosEncontrados = new List<string>();
-            foreach (var dir in directoriosCandidatos)
-            {
-                if (Directory.Exists(dir))
-                {
-                    var files = Directory.GetFiles(dir, "*Once*.xls*", SearchOption.TopDirectoryOnly);
-                    archivosEncontrados.AddRange(files);
-                }
-            }
-
-            foreach (var archivoPath in archivosEncontrados.Distinct(StringComparer.OrdinalIgnoreCase))
-            {
-                try
-                {
-                    using var fileStream = File.OpenRead(archivoPath);
-                    var (_, onceRows) = LeerExcelSimple(fileStream);
-                    foreach (var r in onceRows)
-                    {
-                        var cod = ObtenerValorColumna(r, "codigo", "cod", "codigoproducto")?.Trim();
-                        var bar = ObtenerValorColumna(r, "codigodebarra", "codigobarra", "barra", "barcode")?.Trim();
-                        if (!string.IsNullOrWhiteSpace(cod) && cod != "0")
-                        {
-                            codigosOnce.Add(cod);
-                        }
-                        if (!string.IsNullOrWhiteSpace(bar) && bar != "0")
-                        {
-                            barrasOnce.Add(bar);
-                        }
-                    }
-                }
-                catch { }
-            }
-        }
-        catch { }
-
-        return (codigosOnce, barrasOnce);
-    }
 
     private static DateTime? ParseFechaExcel(string? valor)
     {
@@ -444,7 +392,6 @@ public class InventarioService : IInventarioService
 
         var skusExistentes = (await _context.Articulos.AsNoTracking().Select(a => a.SKU).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
         var barrasExistentes = (await _context.Articulos.AsNoTracking().Where(a => a.CodigoBarras != null).Select(a => a.CodigoBarras!).ToListAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var (codigosOnce, barrasOnce) = CargarCatalogosOnceEnMemoria();
 
         var items = new List<ItemPrevisualizacionAlmaLibreDto>();
 
@@ -495,25 +442,6 @@ public class InventarioService : IInventarioService
             var fechaAlta = ParseFechaExcel(fchAltaStr);
             var fechaUltPrecio = ParseFechaExcel(fchUltPreStr);
 
-            // Cruce con El Once
-            bool esOnce = false;
-            string? codOnceMatch = null;
-            if (!string.IsNullOrWhiteSpace(codProv) && codigosOnce.Contains(codProv))
-            {
-                esOnce = true;
-                codOnceMatch = codProv;
-            }
-            else if (!string.IsNullOrWhiteSpace(sku) && codigosOnce.Contains(sku))
-            {
-                esOnce = true;
-                codOnceMatch = sku;
-            }
-            else if (!string.IsNullOrWhiteSpace(codBarra) && barrasOnce.Contains(codBarra))
-            {
-                esOnce = true;
-                codOnceMatch = codBarra;
-            }
-
             var existe = (!string.IsNullOrWhiteSpace(sku) && skusExistentes.Contains(sku)) ||
                          (!string.IsNullOrWhiteSpace(codBarra) && barrasExistentes.Contains(codBarra));
 
@@ -534,8 +462,8 @@ public class InventarioService : IInventarioService
                 FechaAlta = fechaAlta,
                 FechaUltimaActualizacionPrecio = fechaUltPrecio,
                 StockImportar = stockExcel,
-                EsDeMayoristaElOnce = esOnce,
-                CodigoOnceDetectado = codOnceMatch,
+                EsDeMayoristaElOnce = false,
+                CodigoOnceDetectado = null,
                 EsYaImportado = existe
             });
         }
@@ -633,23 +561,6 @@ public class InventarioService : IInventarioService
         var categorias = await _context.Categorias.ToListAsync(ct);
         var dictCategorias = categorias.ToDictionary(c => c.Nombre.Trim().ToUpperInvariant(), c => c.Id);
 
-        // Precargar proveedores y buscar/crear 'Mayorista El Once' si es necesario
-        var proveedores = await _context.Proveedores.ToListAsync(ct);
-        var onceProveedor = proveedores.FirstOrDefault(p => p.Nombre.Contains("Once", StringComparison.OrdinalIgnoreCase));
-        if (onceProveedor == null && itemsSeleccionados.Any(i => i.EsDeMayoristaElOnce))
-        {
-            onceProveedor = new PuntoDeVentaLibreria.Domain.Entities.Proveedores.Proveedor
-            {
-                Id = Guid.NewGuid(),
-                Nombre = "Mayorista El Once",
-                Telefono = "011-4951-0000",
-                Email = "ventas@eloncemayorista.com.ar",
-                Activo = true
-            };
-            _context.Proveedores.Add(onceProveedor);
-            proveedores.Add(onceProveedor);
-        }
-
         // Precargar artículos existentes por SKU y Barras
         var articulosExistentes = await _context.Articulos.Include(a => a.MovimientosStock).ToListAsync(ct);
         var dictPorSku = articulosExistentes.Where(a => !string.IsNullOrEmpty(a.SKU))
@@ -695,12 +606,8 @@ public class InventarioService : IInventarioService
                     }
                 }
 
-                // Resolver Proveedor: si el usuario seleccionó uno, usar ese; sino si es de El Once, asignar Once
+                // Asignar Proveedor por defecto si el usuario lo seleccionó
                 Guid? provId = proveedorIdPorDefecto;
-                if (!provId.HasValue && item.EsDeMayoristaElOnce && onceProveedor != null)
-                {
-                    provId = onceProveedor.Id;
-                }
 
                 // Buscar si ya existe por SKU o Código de Barra
                 Articulo? articulo = null;
