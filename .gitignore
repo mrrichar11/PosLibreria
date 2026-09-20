@@ -496,5 +496,7 @@ dist/
 *.xlsx
 *.xls
 *.csv
-!tests/**
+**/bin/
+**/obj/
+
 
