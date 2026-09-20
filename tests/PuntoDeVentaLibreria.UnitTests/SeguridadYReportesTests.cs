@@ -217,10 +217,11 @@ public class SeguridadYReportesTests
     }
 
     [Fact]
-    public async Task LicenseService_TrialEstandar_Y_ClavePro_ValidaCorrectamente()
+    public async Task LicenseService_TrialEstandar_Y_ClaveCriptograficaPro_ValidaCorrectamente()
     {
         using var context = CrearContextoEnMemoria();
         var licenseService = new LicenseService(context);
+        var idInstalacion = licenseService.ObtenerCodigoInstalacion();
 
         // 1. Validar Trial inicial de cortesía (Plan Estándar)
         var trial = await licenseService.ValidarLicenciaAsync();
@@ -228,16 +229,26 @@ public class SeguridadYReportesTests
         trial.EsPlanPro.Should().BeFalse();
         trial.PlanNombre.Should().Contain("Estándar");
 
-        // 2. Activar Clave PRO
-        var resultadoActivacion = await licenseService.ActivarLicenciaAsync("MRSYS-PRO-2026-X99");
+        // 2. Intentar activar una clave trucha o de otra máquina
+        var claveTrucha = "MRSYS-PRO-365-OTRA-12345678";
+        var resFallo = await licenseService.ActivarLicenciaAsync(claveTrucha);
+        resFallo.Exitoso.Should().BeFalse();
+
+        // 3. Generar clave criptográfica válida para esta máquina (Plan PRO, 365 días)
+        var claveValidaPro = PuntoDeVentaLibreria.Application.Services.LicenseCryptography.GenerarClave(idInstalacion, "PRO", 365);
+        claveValidaPro.Should().StartWith("MRSYS-PRO-365-");
+
+        // 4. Activar la clave generada
+        var resultadoActivacion = await licenseService.ActivarLicenciaAsync(claveValidaPro);
         resultadoActivacion.Exitoso.Should().BeTrue();
         resultadoActivacion.EsPlanPro.Should().BeTrue();
 
-        // 3. Validar que ahora es Plan PRO
+        // 5. Validar que el sistema ahora está en Plan PRO
         var pro = await licenseService.ValidarLicenciaAsync();
         pro.EsValida.Should().BeTrue();
         pro.EsPlanPro.Should().BeTrue();
         pro.PlanNombre.Should().Contain("PRO");
     }
 }
+
 

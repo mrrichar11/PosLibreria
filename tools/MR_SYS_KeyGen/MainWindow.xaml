@@ -1,0 +1,104 @@
+<Window x:Class="MR_SYS_KeyGen.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="MR SYS · Generador Maestro de Licencias"
+        Height="560" Width="680"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="CanMinimize"
+        Background="#0F172A"
+        FontFamily="Segoe UI, Tahoma, sans-serif">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Cabecera -->
+        <Border Grid.Row="0" Background="#1E293B" CornerRadius="12" Padding="16" Margin="0,0,0,20">
+            <DockPanel LastChildFill="True">
+                <TextBlock Text="🛡️" FontSize="32" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock Text="MR SYS · GENERADOR DE LICENCIAS" FontSize="18" FontWeight="Bold" Foreground="#F8FAFC"/>
+                    <TextBlock Text="Generación de claves criptográficas firmadas por ID de equipo (HMAC-SHA256)" FontSize="12" Foreground="#94A3B8"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- Formulario Principal -->
+        <Border Grid.Row="1" Background="#1E293B" CornerRadius="12" Padding="20">
+            <StackPanel>
+                <!-- ID de Máquina -->
+                <TextBlock Text="1. ID de Máquina del Cliente (enviado por WhatsApp):" FontSize="12" FontWeight="SemiBold" Foreground="#E2E8F0" Margin="0,0,0,6"/>
+                <Grid Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="TxtCodigoInstalacion" FontSize="14" FontFamily="Consolas" FontWeight="Bold"
+                             Padding="10,8" Background="#0F172A" Foreground="#38BDF8" BorderBrush="#334155" BorderThickness="1.5"/>
+                    <Button Grid.Column="1" Content="📋 Pegar" Click="BtnPegar_Click"
+                            Background="#334155" Foreground="#F8FAFC" FontWeight="Bold" Padding="14,8" Margin="8,0,0,0" Cursor="Hand"/>
+                </Grid>
+
+                <!-- Nombre del Comercio -->
+                <TextBlock Text="2. Nombre del Comercio / Cliente (Opcional):" FontSize="12" FontWeight="SemiBold" Foreground="#E2E8F0" Margin="0,0,0,6"/>
+                <TextBox x:Name="TxtNombreComercio" FontSize="13" Padding="10,8" Margin="0,0,0,14"
+                         Background="#0F172A" Foreground="#F8FAFC" BorderBrush="#334155" BorderThickness="1.5"/>
+
+                <!-- Opciones de Plan y Duración -->
+                <Grid Margin="0,0,0,18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Plan -->
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="3. Plan a Activar:" FontSize="12" FontWeight="SemiBold" Foreground="#E2E8F0" Margin="0,0,0,6"/>
+                        <ComboBox x:Name="CmbPlan" SelectedIndex="0" FontSize="13" Padding="8,8" Background="#0F172A" Foreground="#0F172A">
+                            <ComboBoxItem Content="Plan PRO (Multi-PC + Nube)"/>
+                            <ComboBoxItem Content="Plan Estándar (1 PC Local)"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <!-- Duración -->
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                        <TextBlock Text="4. Duración de la Suscripción:" FontSize="12" FontWeight="SemiBold" Foreground="#E2E8F0" Margin="0,0,0,6"/>
+                        <ComboBox x:Name="CmbDuracion" SelectedIndex="3" FontSize="13" Padding="8,8" Background="#0F172A" Foreground="#0F172A">
+                            <ComboBoxItem Content="30 Días (1 Mes)"/>
+                            <ComboBoxItem Content="90 Días (3 Meses / Trimestre)"/>
+                            <ComboBoxItem Content="180 Días (6 Meses / Semestre)"/>
+                            <ComboBoxItem Content="365 Días (1 Año / Anual)"/>
+                        </ComboBox>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Botón Generar -->
+                <Button Content="⚡ GENERAR CLAVE DE ACTIVACIÓN" Click="BtnGenerar_Click"
+                        Background="#2563EB" Foreground="White" FontWeight="Bold" FontSize="14" Padding="0,12" Cursor="Hand" Margin="0,0,0,16"/>
+
+                <!-- Resultado Clave Generada -->
+                <Border Background="#0F172A" BorderBrush="#3B82F6" BorderThickness="1.5" CornerRadius="8" Padding="12">
+                    <StackPanel>
+                        <TextBlock Text="Clave Criptográfica Generada:" FontSize="11" FontWeight="SemiBold" Foreground="#94A3B8" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtClaveGenerada" FontSize="16" FontFamily="Consolas" FontWeight="Black"
+                                 IsReadOnly="True" Background="Transparent" Foreground="#4ADE80" BorderThickness="0" Margin="0,0,0,10"/>
+
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="📋 Copiar Solo Clave" Click="BtnCopiarClave_Click"
+                                    Background="#334155" Foreground="#F8FAFC" FontWeight="SemiBold" Padding="12,6" FontSize="12" Margin="0,0,8,0" Cursor="Hand"/>
+                            <Button Content="📲 Copiar Mensaje para WhatsApp" Click="BtnCopiarWhatsApp_Click"
+                                    Background="#16A34A" Foreground="White" FontWeight="Bold" Padding="14,6" FontSize="12" Cursor="Hand"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
+
+        <!-- Pie -->
+        <TextBlock Grid.Row="2" Text="MR SYS Software · Herramienta exclusiva de administración y licenciamiento"
+                   FontSize="11" Foreground="#64748B" HorizontalAlignment="Center" Margin="0,14,0,0"/>
+    </Grid>
+</Window>

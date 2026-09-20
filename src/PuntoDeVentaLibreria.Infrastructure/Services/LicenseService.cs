@@ -69,30 +69,39 @@ public class LicenseService : ILicenseService
         if (string.IsNullOrWhiteSpace(clave))
             return new ResultadoActivacionDto { Exitoso = false, Mensaje = "La clave no puede estar vacía." };
 
+        var codigoInstalacion = ObtenerCodigoInstalacion();
         var licencia = await _context.Licencias.FirstOrDefaultAsync(cancellationToken);
         if (licencia == null)
         {
             licencia = new LicenciaSistema
             {
-                CodigoInstalacion = ObtenerCodigoInstalacion()
+                CodigoInstalacion = codigoInstalacion
             };
             _context.Licencias.Add(licencia);
         }
 
-        // Validación de duración según clave
-        int diasAAgregar = 30;
-        if (clave.Contains("ANUAL") || clave.EndsWith("-365"))
-            diasAAgregar = 365;
-        else if (clave.Contains("SEMESTRE") || clave.EndsWith("-180"))
-            diasAAgregar = 180;
-        else if (clave.Contains("TRIMESTRE") || clave.EndsWith("-90"))
-            diasAAgregar = 90;
+        // Validación criptográfica por ID de máquina
+        var (esValida, plan, dias, mensaje) = LicenseCryptography.ValidarClave(clave, codigoInstalacion);
+        if (!esValida && !string.IsNullOrWhiteSpace(licencia.CodigoInstalacion) && licencia.CodigoInstalacion != codigoInstalacion)
+        {
+            // Probar también contra el código de instalación registrado en la base compartida
+            (esValida, plan, dias, mensaje) = LicenseCryptography.ValidarClave(clave, licencia.CodigoInstalacion);
+        }
 
-        bool esPro = clave.Contains("PRO");
+        if (!esValida)
+        {
+            return new ResultadoActivacionDto
+            {
+                Exitoso = false,
+                Mensaje = mensaje
+            };
+        }
+
+        bool esPro = plan == "PRO";
         licencia.TieneModuloIA = esPro;
         licencia.ClaveActivacion = clave;
         licencia.FechaActivacion = DateTime.UtcNow;
-        licencia.FechaExpiracion = (licencia.FechaExpiracion > DateTime.UtcNow ? licencia.FechaExpiracion : DateTime.UtcNow).AddDays(diasAAgregar);
+        licencia.FechaExpiracion = (licencia.FechaExpiracion > DateTime.UtcNow ? licencia.FechaExpiracion : DateTime.UtcNow).AddDays(dias);
 
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -101,7 +110,7 @@ public class LicenseService : ILicenseService
         return new ResultadoActivacionDto
         {
             Exitoso = true,
-            Mensaje = $"¡{nombrePlan} activado con éxito por {diasAAgregar} días! Vigente hasta el {licencia.FechaExpiracion:dd/MM/yyyy}.",
+            Mensaje = $"¡{nombrePlan} activado con éxito por {dias} días! Vigente hasta el {licencia.FechaExpiracion:dd/MM/yyyy}.",
             NuevaFechaExpiracion = licencia.FechaExpiracion,
             EsPlanPro = esPro
         };
