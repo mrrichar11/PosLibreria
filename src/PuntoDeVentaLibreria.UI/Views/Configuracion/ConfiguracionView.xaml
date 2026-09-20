@@ -293,7 +293,11 @@
                                     </Border>
                                 </Grid>
                                 <TextBlock Text="{Binding EstadoLicencia.Mensaje}" FontSize="12" Foreground="#475569" Margin="0,0,0,6"/>
-                                <TextBlock Text="{Binding EstadoLicencia.CodigoInstalacion, StringFormat='ID de Máquina: {0}'}" FontFamily="Consolas" FontSize="12" Foreground="#64748B" Margin="0,0,0,12"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,12" VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding EstadoLicencia.CodigoInstalacion, StringFormat='ID de Máquina: {0}'}" FontFamily="Consolas" FontWeight="SemiBold" FontSize="12" Foreground="#334155" VerticalAlignment="Center"/>
+                                    <Button Content="📋 Copiar ID" Command="{Binding CopiarCodigoInstalacionCommand}"
+                                            Background="#F1F5F9" Foreground="#0F172A" BorderBrush="#CBD5E1" FontWeight="SemiBold" FontSize="11" Padding="8,2" Margin="10,0,0,0" Cursor="Hand" ToolTip="Copiar código al portapapeles"/>
+                                </StackPanel>
 
                                 <!-- Contacto WhatsApp -->
                                 <Border Background="#ECFDF5" BorderBrush="#A7F3D0" BorderThickness="1" CornerRadius="8" Padding="12">

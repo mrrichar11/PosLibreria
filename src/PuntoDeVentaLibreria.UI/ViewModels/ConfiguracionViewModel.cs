@@ -829,11 +829,33 @@ public partial class ConfiguracionViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void CopiarCodigoInstalacion()
+    {
+        try
+        {
+            if (!string.IsNullOrWhiteSpace(EstadoLicencia?.CodigoInstalacion))
+            {
+                System.Windows.Clipboard.SetText(EstadoLicencia.CodigoInstalacion);
+                System.Windows.MessageBox.Show(
+                    $"ID de Máquina copiado al portapapeles:\n\n{EstadoLicencia.CodigoInstalacion}\n\nPuede pegarlo en su mensaje de WhatsApp.",
+                    "MR SYS Licencia",
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+            }
+        }
+        catch { }
+    }
+
+    [RelayCommand]
     private void AbrirWhatsAppSoporte()
     {
         try
         {
-            var url = "https://wa.me/5493493495801?text=Hola,%20quisiera%20activar/renovar%20el%20Plan%20PRO%20Multi-Terminal%20de%20MR%20SYS%20Librer%C3%ADa";
+            var comercio = string.IsNullOrWhiteSpace(Config.NombreComercio) ? "Mi Comercio" : Config.NombreComercio.Trim();
+            var idMaquina = EstadoLicencia?.CodigoInstalacion ?? "N/A";
+            var texto = $"Hola! Quisiera activar/renovar el Plan PRO Multi-Terminal para mi negocio '{comercio}' (ID de Máquina: {idMaquina})";
+            var url = $"https://wa.me/5493493495801?text={Uri.EscapeDataString(texto)}";
+
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
                 FileName = url,
