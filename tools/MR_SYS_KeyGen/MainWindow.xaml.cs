@@ -10,6 +10,36 @@ public partial class MainWindow : Window
         InitializeComponent();
     }
 
+    private string LimpiarCodigoInstalacion(string texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return string.Empty;
+
+        var limpio = texto.Trim();
+
+        // Si contiene formato "ID de Máquina: LIB-..." o "ID: LIB-..."
+        if (limpio.Contains("ID de Máquina:", StringComparison.OrdinalIgnoreCase))
+        {
+            var partes = limpio.Split("ID de Máquina:", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            if (partes.Length > 1)
+                limpio = partes[1].Trim();
+        }
+        else if (limpio.Contains("ID:", StringComparison.OrdinalIgnoreCase))
+        {
+            var partes = limpio.Split("ID:", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+            if (partes.Length > 1)
+                limpio = partes[1].Trim();
+        }
+
+        // Buscar patrón LIB-XXXX-XXXX-XXXX-XXXX
+        var idx = limpio.IndexOf("LIB-", StringComparison.OrdinalIgnoreCase);
+        if (idx >= 0 && limpio.Length >= idx + 24)
+        {
+            limpio = limpio.Substring(idx, 24).Trim();
+        }
+
+        return limpio.Trim();
+    }
+
     private void BtnPegar_Click(object sender, RoutedEventArgs e)
     {
         try
@@ -17,28 +47,7 @@ public partial class MainWindow : Window
             var texto = Clipboard.GetText();
             if (!string.IsNullOrWhiteSpace(texto))
             {
-                // Limpiar si vino en formato "ID de Máquina: LIB-..."
-                if (texto.Contains("ID de Máquina:", StringComparison.OrdinalIgnoreCase))
-                {
-                    var partes = texto.Split("ID de Máquina:", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-                    if (partes.Length > 1)
-                        texto = partes[1].Trim();
-                }
-                else if (texto.Contains("ID:", StringComparison.OrdinalIgnoreCase))
-                {
-                    var partes = texto.Split("ID:", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-                    if (partes.Length > 1)
-                        texto = partes[1].Trim();
-                }
-
-                // Extraer solo LIB-XXXX-XXXX-... si hay texto alrededor
-                var idx = texto.IndexOf("LIB-", StringComparison.OrdinalIgnoreCase);
-                if (idx >= 0 && texto.Length >= idx + 24)
-                {
-                    texto = texto.Substring(idx, 24).Trim();
-                }
-
-                TxtCodigoInstalacion.Text = texto.Trim();
+                TxtCodigoInstalacion.Text = LimpiarCodigoInstalacion(texto);
             }
         }
         catch { }
@@ -46,14 +55,16 @@ public partial class MainWindow : Window
 
     private void BtnGenerar_Click(object sender, RoutedEventArgs e)
     {
-        var codigo = TxtCodigoInstalacion.Text.Trim();
+        var codigo = LimpiarCodigoInstalacion(TxtCodigoInstalacion.Text);
         if (string.IsNullOrWhiteSpace(codigo))
         {
-            MessageBox.Show("Por favor, ingrese o pegue el ID de Máquina del cliente.", "Falta Información", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("Por favor, ingrese o pegue el ID de Máquina del cliente (ej: LIB-ADE3-4C83-62AA-E72B).", "Falta ID de Máquina", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        string plan = CmbPlan.SelectedIndex == 0 ? "PRO" : "ESTANDAR";
+        TxtCodigoInstalacion.Text = codigo;
+
+        string plan = (CmbPlan.SelectedIndex == 1) ? "ESTANDAR" : "PRO";
         int dias = CmbDuracion.SelectedIndex switch
         {
             0 => 30,
@@ -67,17 +78,30 @@ public partial class MainWindow : Window
         {
             var clave = LicenseCryptography.GenerarClave(codigo, plan, dias);
             TxtClaveGenerada.Text = clave;
+
+            // Copiar automáticamente al portapapeles
+            Clipboard.SetText(clave);
+
+            MessageBox.Show(
+                $"¡Clave de activación generada con éxito!\n\n🔑 Clave: {clave}\n\n📋 Ha sido copiada automáticamente a tu portapapeles.",
+                "MR SYS · Clave Generada",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error al generar clave: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show($"Error al generar la clave: {ex.Message}", "Error en KeyGen", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     private void BtnCopiarClave_Click(object sender, RoutedEventArgs e)
     {
         var clave = TxtClaveGenerada.Text.Trim();
-        if (string.IsNullOrWhiteSpace(clave)) return;
+        if (string.IsNullOrWhiteSpace(clave))
+        {
+            MessageBox.Show("Primero genere una clave de activación.", "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
 
         Clipboard.SetText(clave);
         MessageBox.Show("¡Clave copiada al portapapeles!", "MR SYS KeyGen", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -86,10 +110,14 @@ public partial class MainWindow : Window
     private void BtnCopiarWhatsApp_Click(object sender, RoutedEventArgs e)
     {
         var clave = TxtClaveGenerada.Text.Trim();
-        if (string.IsNullOrWhiteSpace(clave)) return;
+        if (string.IsNullOrWhiteSpace(clave))
+        {
+            MessageBox.Show("Primero genere una clave de activación.", "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
 
         var comercio = string.IsNullOrWhiteSpace(TxtNombreComercio.Text) ? "tu negocio" : TxtNombreComercio.Text.Trim();
-        string planNombre = CmbPlan.SelectedIndex == 0 ? "Plan PRO Multi-Terminal" : "Plan Estándar";
+        string planNombre = (CmbPlan.SelectedIndex == 1) ? "Plan Estándar" : "Plan PRO Multi-Terminal";
         int dias = CmbDuracion.SelectedIndex switch
         {
             0 => 30,
