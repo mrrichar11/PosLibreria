@@ -492,3 +492,9 @@ Backups/
 /Tickets/
 Logos/
 dist/
+*.zip
+*.xlsx
+*.xls
+*.csv
+!tests/**
+
