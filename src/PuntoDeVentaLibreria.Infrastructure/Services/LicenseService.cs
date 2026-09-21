@@ -98,10 +98,35 @@ public class LicenseService : ILicenseService
         }
 
         bool esPro = plan == "PRO";
+        bool eraTrial = string.IsNullOrWhiteSpace(licencia.ClaveActivacion) || 
+                        licencia.ClaveActivacion.StartsWith("TRIAL", StringComparison.OrdinalIgnoreCase);
+        bool eraMismoPlan = !eraTrial && (licencia.TieneModuloIA == esPro);
+
+        // Evitar re-activar la misma clave exacta que ya está activa
+        if (!eraTrial && string.Equals(licencia.ClaveActivacion, clave, StringComparison.OrdinalIgnoreCase))
+        {
+            return new ResultadoActivacionDto
+            {
+                Exitoso = false,
+                Mensaje = "Esta clave de activación ya se encuentra activa en este equipo."
+            };
+        }
+
         licencia.TieneModuloIA = esPro;
         licencia.ClaveActivacion = clave;
         licencia.FechaActivacion = DateTime.UtcNow;
-        licencia.FechaExpiracion = (licencia.FechaExpiracion > DateTime.UtcNow ? licencia.FechaExpiracion : DateTime.UtcNow).AddDays(dias);
+
+        if (eraTrial || !eraMismoPlan || licencia.FechaExpiracion <= DateTime.UtcNow)
+        {
+            // Nueva suscripción, salida de prueba o cambio de plan (ej. Estándar a PRO):
+            // Inicia una cuenta nueva limpia a partir de hoy por la cantidad de días del plan adquirido.
+            licencia.FechaExpiracion = DateTime.UtcNow.AddDays(dias);
+        }
+        else
+        {
+            // Renovación anticipada del mismo plan pago: suma los días a la vigencia actual.
+            licencia.FechaExpiracion = licencia.FechaExpiracion.AddDays(dias);
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 

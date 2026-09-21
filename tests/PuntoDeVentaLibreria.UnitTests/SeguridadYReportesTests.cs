@@ -223,31 +223,38 @@ public class SeguridadYReportesTests
         var licenseService = new LicenseService(context);
         var idInstalacion = licenseService.ObtenerCodigoInstalacion();
 
-        // 1. Validar Trial inicial de cortesía (Plan Estándar)
+        // 1. Validar Trial inicial de cortesía (Plan Estándar, 30 días)
         var trial = await licenseService.ValidarLicenciaAsync();
         trial.EsValida.Should().BeTrue();
         trial.EsPlanPro.Should().BeFalse();
         trial.PlanNombre.Should().Contain("Estándar");
+        trial.DiasRestantes.Should().Be(30);
 
         // 2. Intentar activar una clave trucha o de otra máquina
         var claveTrucha = "MRSYS-PRO-365-OTRA-12345678";
         var resFallo = await licenseService.ActivarLicenciaAsync(claveTrucha);
         resFallo.Exitoso.Should().BeFalse();
 
-        // 3. Generar clave criptográfica válida para esta máquina (Plan PRO, 365 días)
-        var claveValidaPro = PuntoDeVentaLibreria.Application.Services.LicenseCryptography.GenerarClave(idInstalacion, "PRO", 365);
-        claveValidaPro.Should().StartWith("MRSYS-PRO-365-");
+        // 3. Generar clave criptográfica válida para esta máquina (Plan PRO, 30 días)
+        var claveValidaPro30 = PuntoDeVentaLibreria.Application.Services.LicenseCryptography.GenerarClave(idInstalacion, "PRO", 30);
+        claveValidaPro30.Should().StartWith("MRSYS-PRO-30-");
 
         // 4. Activar la clave generada
-        var resultadoActivacion = await licenseService.ActivarLicenciaAsync(claveValidaPro);
+        var resultadoActivacion = await licenseService.ActivarLicenciaAsync(claveValidaPro30);
         resultadoActivacion.Exitoso.Should().BeTrue();
         resultadoActivacion.EsPlanPro.Should().BeTrue();
 
-        // 5. Validar que el sistema ahora está en Plan PRO
+        // 5. Validar que el sistema ahora está en Plan PRO con 30 días (NO 60 días acumulados con el Trial)
         var pro = await licenseService.ValidarLicenciaAsync();
         pro.EsValida.Should().BeTrue();
         pro.EsPlanPro.Should().BeTrue();
         pro.PlanNombre.Should().Contain("PRO");
+        pro.DiasRestantes.Should().Be(30);
+
+        // 6. Intentar reactivar la misma clave exacta (debe rechazar duplicados)
+        var resReactivacion = await licenseService.ActivarLicenciaAsync(claveValidaPro30);
+        resReactivacion.Exitoso.Should().BeFalse();
+        resReactivacion.Mensaje.Should().Contain("ya se encuentra activa");
     }
 }
 
