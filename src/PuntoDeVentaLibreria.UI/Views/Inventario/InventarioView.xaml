@@ -87,6 +87,11 @@
                                 Padding="12,6" FontWeight="Bold" FontSize="12" Margin="0,0,8,0" Cursor="Hand"
                                 ToolTip="Actualice costos y precios en lote según la lista de precios descargada de cualquier proveedor"/>
 
+                        <Button Content="📋 Conteo / Auditoría de Stock" Click="BtnConteoStock_Click"
+                                Background="#EFF6FF" Foreground="#1D4ED8" BorderBrush="#BFDBFE" BorderThickness="1.5"
+                                Padding="12,6" FontWeight="Bold" FontSize="12" Margin="0,0,8,0" Cursor="Hand"
+                                ToolTip="Auditar y contar existencias físicas por góndola o estantería con escáner"/>
+
                         <Button Content="🏭 Proveedores" Click="BtnProveedores_Click"
                                 Background="#F8FAFC" Foreground="#334155" BorderBrush="#CBD5E1" BorderThickness="1"
                                 Padding="12,6" FontWeight="SemiBold" FontSize="12" Margin="0,0,8,0" Cursor="Hand"
@@ -122,6 +127,7 @@
                       BorderThickness="0">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="Código / ISBN" Binding="{Binding CodigoBarras}" Width="120"/>
+                    <DataGridTextColumn Header="Rubro" Binding="{Binding Rubro}" Width="90"/>
                     <DataGridTextColumn Header="SKU" Binding="{Binding SKU}" Width="95"/>
                     <DataGridTextColumn Header="Cód. Prov." Binding="{Binding CodigoProveedor}" Width="85"/>
                     <DataGridTextColumn Header="Descripción del Artículo / Útil" Binding="{Binding Nombre}" Width="*">

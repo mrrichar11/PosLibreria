@@ -78,6 +78,29 @@ public partial class PosView : UserControl
             return Task.CompletedTask;
         };
 
+        ViewModel.SolicitarAltaRapidaArticulo = (codigoInicial) =>
+        {
+            var modal = new ArticuloRapidoModalWindow(ViewModel.InventarioService, codigoInicial)
+            {
+                Owner = Window.GetWindow(this)
+            };
+
+            var dialogResult = modal.ShowDialog();
+            TxtCodigoBarras.Focus();
+            return Task.FromResult(dialogResult == true ? modal.ArticuloCreado : null);
+        };
+
+        ViewModel.SolicitarConfirmacionAltaRapida = (codigo) =>
+        {
+            var ventana = Window.GetWindow(this);
+            var res = MessageBox.Show(ventana,
+                $"El producto con código '{codigo}' no está registrado en el sistema.\n\n¿Desea darlo de alta rápidamente ahora para agregarlo al ticket?",
+                "Producto No Registrado",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            return Task.FromResult(res == MessageBoxResult.Yes);
+        };
+
         Loaded += async (s, e) =>
         {
             await ViewModel.InicializarAsync();
@@ -115,9 +138,9 @@ public partial class PosView : UserControl
             }
             else if (e.Key == Key.F3)
             {
-                if (ViewModel.AgregarVentaManualCommand.CanExecute(null))
+                if (ViewModel.AbrirAltaRapidaCommand.CanExecute(null))
                 {
-                    await ViewModel.AgregarVentaManualCommand.ExecuteAsync(null);
+                    await ViewModel.AbrirAltaRapidaCommand.ExecuteAsync(null);
                     e.Handled = true;
                 }
             }
@@ -126,6 +149,14 @@ public partial class PosView : UserControl
                 if (ViewModel.PausarVentaActualCommand.CanExecute(null))
                 {
                     ViewModel.PausarVentaActualCommand.Execute(null);
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.F6)
+            {
+                if (ViewModel.AgregarVentaManualCommand.CanExecute(null))
+                {
+                    await ViewModel.AgregarVentaManualCommand.ExecuteAsync(null);
                     e.Handled = true;
                 }
             }

@@ -115,7 +115,7 @@
                     </StackPanel>
                 </Grid>
 
-                <!-- Tipo de Artículo y Ubicación -->
+                <!-- Rubro Comercial y Tipo de Artículo -->
                 <Grid Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -123,6 +123,14 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="Rubro Comercial:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                        <ComboBox x:Name="CmbRubro" FontSize="13" Padding="8,6" SelectionChanged="CmbRubro_SelectionChanged">
+                            <ComboBoxItem Content="📚 Librería (Escolar / Comercial / Libros)" Tag="Librería" IsSelected="True"/>
+                            <ComboBoxItem Content="🎁 Regalería (Bazar / Accesorios / Marroquinería)" Tag="Regalería"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
                         <TextBlock Text="Tipo de Artículo:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
                         <ComboBox x:Name="CmbTipo" FontSize="13" Padding="8,6" SelectionChanged="CmbTipo_SelectionChanged">
                             <ComboBoxItem Content="📦 Artículo Físico Estándar" Tag="Estandar" IsSelected="True"/>
@@ -130,12 +138,45 @@
                             <ComboBoxItem Content="🖨️ Servicio / Fotocopias / Impresión" Tag="Servicio"/>
                         </ComboBox>
                     </StackPanel>
+                </Grid>
 
-                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                <!-- Ubicación en Local -->
+                <Grid Margin="0,0,0,12">
+                    <StackPanel>
                         <TextBlock Text="Ubicación en Local / Estantería:" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,4"/>
                         <TextBox Text="{Binding Ubicacion, UpdateSourceTrigger=PropertyChanged}" FontSize="13" Padding="8,6"/>
                     </StackPanel>
                 </Grid>
+
+                <!-- SECCIÓN PACK / CAJA FRACCIONABLE -->
+                <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
+                    <StackPanel>
+                        <CheckBox x:Name="ChkEsPack" Content="📦 Es un Pack / Caja cerrada (descuenta unidades de un artículo base)"
+                                  IsChecked="{Binding EsPack, Mode=TwoWay}" FontWeight="Bold" FontSize="12.5" Foreground="#1E293B"
+                                  Checked="ChkEsPack_Checked" Unchecked="ChkEsPack_Unchecked"/>
+                        <TextBlock Text="Al vender esta caja/pack, descuenta automáticamente las unidades del artículo base seleccionado."
+                                   FontSize="11" Foreground="#64748B" Margin="24,2,0,8"/>
+
+                        <Grid x:Name="PanelDetallePack" Visibility="Collapsed" Margin="24,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="140"/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                <TextBlock Text="Artículo Base Suelto vinculado (*):" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <ComboBox x:Name="CmbArticuloBase" DisplayMemberPath="Nombre" SelectedValuePath="Id"
+                                          FontSize="12" Padding="6,4"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="Unidades por Pack (*):" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                <TextBox x:Name="TxtCantidadPorPack" Text="{Binding CantidadPorPack, UpdateSourceTrigger=PropertyChanged}"
+                                         FontSize="13" FontWeight="Bold" HorizontalContentAlignment="Center" Padding="6,4"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
 
                 <!-- PANEL DE COMPONENTES DE COMBO / KIT ESCOLAR -->
                 <Border x:Name="BrdComponentesCombo" Visibility="Collapsed"

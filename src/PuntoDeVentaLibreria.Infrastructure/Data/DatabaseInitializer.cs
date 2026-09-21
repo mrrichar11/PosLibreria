@@ -206,6 +206,37 @@ public static class DatabaseInitializer
         }
         catch { }
 
+        // 2.2 Columnas para Rubro Librería/Regalería, Packs Fraccionables y Auditoría de Stock (v1.2.3)
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Articulos ADD COLUMN Rubro TEXT NOT NULL DEFAULT 'Librería';", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Articulos ADD COLUMN EsPack INTEGER NOT NULL DEFAULT 0;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Articulos ADD COLUMN ArticuloBaseId TEXT NULL;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Articulos ADD COLUMN CantidadPorPack NUMERIC NOT NULL DEFAULT 1;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Articulos ADD COLUMN UltimaAuditoriaStock TEXT NULL;", cancellationToken);
+        }
+        catch { }
+
         // 3. Optimización WAL para SQLite
         try
         {

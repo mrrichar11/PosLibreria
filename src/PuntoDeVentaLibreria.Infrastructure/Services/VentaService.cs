@@ -105,9 +105,32 @@ public class VentaService : IVentaService
                             }
                         }
                     }
+                    else if (articulo.EsPack && articulo.ArticuloBaseId.HasValue)
+                    {
+                        // Artículo configurado como Pack o Caja fraccionable: descuenta las unidades del artículo base
+                        var baseArt = await _context.Articulos.FirstOrDefaultAsync(a => a.Id == articulo.ArticuloBaseId.Value, ct);
+                        if (baseArt != null)
+                        {
+                            decimal factor = articulo.CantidadPorPack > 0 ? articulo.CantidadPorPack : 1;
+                            decimal unidadesADescontar = factor * item.Cantidad;
+                            decimal prev = baseArt.StockActual;
+                            baseArt.StockActual -= unidadesADescontar;
+
+                            _context.MovimientosStock.Add(new MovimientoStock
+                            {
+                                ArticuloId = baseArt.Id,
+                                Tipo = TipoMovimientoStock.Venta,
+                                Cantidad = -unidadesADescontar,
+                                StockPrevio = prev,
+                                StockPosterior = baseArt.StockActual,
+                                Motivo = $"Venta Pack {articulo.Nombre} (x{item.Cantidad}) - Descuento base ({numeroComprobante})",
+                                UsuarioNombre = dto.VendedoraNombre
+                            });
+                        }
+                    }
                     else if (articulo.Tipo != TipoArticulo.Servicio)
                     {
-                        // Artículo físico estándar o fraccionable: descontar directamente
+                        // Artículo físico estándar: descontar directamente
                         decimal prev = articulo.StockActual;
                         articulo.StockActual -= item.Cantidad;
 

@@ -73,4 +73,15 @@ public partial class InventarioView : UserControl
             await ViewModel.CargarDatosAsync();
         }
     }
+
+    private async void BtnConteoStock_Click(object sender, RoutedEventArgs e)
+    {
+        var modal = new ConteoStockModalWindow(_inventarioService)
+        {
+            Owner = Window.GetWindow(this)
+        };
+
+        modal.ShowDialog();
+        await ViewModel.CargarDatosAsync();
+    }
 }

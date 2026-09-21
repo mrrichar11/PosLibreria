@@ -27,6 +27,7 @@ public class InventarioService : IInventarioService
                 .Include(a => a.Categoria)
                 .Include(a => a.Marca)
                 .Include(a => a.Proveedor)
+                .Include(a => a.ArticuloBase)
                 .Where(a => a.Activo)
                 .OrderBy(a => a.Nombre)
                 .Take(50)
@@ -43,6 +44,7 @@ public class InventarioService : IInventarioService
             .Include(a => a.Categoria)
             .Include(a => a.Marca)
             .Include(a => a.Proveedor)
+            .Include(a => a.ArticuloBase)
             .FirstOrDefaultAsync(a => a.Activo && (
                 a.CodigoBarras == limpio ||
                 a.SKU == limpio ||
@@ -61,6 +63,7 @@ public class InventarioService : IInventarioService
             .Include(a => a.Categoria)
             .Include(a => a.Marca)
             .Include(a => a.Proveedor)
+            .Include(a => a.ArticuloBase)
             .Where(a => a.Activo);
 
         foreach (var token in tokens)
@@ -73,7 +76,8 @@ public class InventarioService : IInventarioService
                 (a.CodigosBarrasSecundarios != null && a.CodigosBarrasSecundarios.Contains(token)) ||
                 (a.Marca != null && a.Marca.Nombre.ToUpper().Contains(token)) ||
                 (a.Categoria != null && a.Categoria.Nombre.ToUpper().Contains(token)) ||
-                (a.Proveedor != null && a.Proveedor.Nombre.ToUpper().Contains(token)));
+                (a.Proveedor != null && a.Proveedor.Nombre.ToUpper().Contains(token)) ||
+                (a.Rubro != null && a.Rubro.ToUpper().Contains(token)));
         }
 
         var lista = await query.Take(50).ToListAsync(ct);
@@ -90,6 +94,7 @@ public class InventarioService : IInventarioService
             .Include(a => a.Categoria)
             .Include(a => a.Marca)
             .Include(a => a.Proveedor)
+            .Include(a => a.ArticuloBase)
             .Include(a => a.ItemsDelCombo)
                 .ThenInclude(c => c.ComponenteArticulo)
             .FirstOrDefaultAsync(a => a.Activo && (
@@ -108,6 +113,7 @@ public class InventarioService : IInventarioService
             .Include(a => a.Categoria)
             .Include(a => a.Marca)
             .Include(a => a.Proveedor)
+            .Include(a => a.ArticuloBase)
             .Where(a => a.Activo && a.EsBotonRapido)
             .OrderBy(a => a.Nombre)
             .ToListAsync(ct);
@@ -148,6 +154,11 @@ public class InventarioService : IInventarioService
         entidad.Ubicacion = dto.Ubicacion;
         entidad.EsBotonRapido = dto.EsBotonRapido;
         entidad.ColorBoton = dto.ColorBoton;
+        entidad.Rubro = string.IsNullOrWhiteSpace(dto.Rubro) ? "Librería" : dto.Rubro.Trim();
+        entidad.EsPack = dto.EsPack;
+        entidad.ArticuloBaseId = dto.ArticuloBaseId;
+        entidad.CantidadPorPack = dto.CantidadPorPack > 0 ? dto.CantidadPorPack : 1;
+        entidad.UltimaAuditoriaStock = dto.UltimaAuditoriaStock;
 
         if (dto.Tipo == TipoArticulo.ComboKit)
         {
@@ -853,6 +864,49 @@ public class InventarioService : IInventarioService
         };
     }
 
+    public async Task<ArticuloDto> AjustarStockRapidoAsync(Guid articuloId, decimal nuevoStock, string motivo = "Auditoría de Stock", string usuarioNombre = "Administrador", CancellationToken ct = default)
+    {
+        var art = await _context.Articulos
+            .Include(a => a.Categoria)
+            .Include(a => a.Marca)
+            .Include(a => a.Proveedor)
+            .Include(a => a.ArticuloBase)
+            .FirstOrDefaultAsync(a => a.Id == articuloId, ct)
+            ?? throw new InvalidOperationException("Artículo no encontrado.");
+
+        decimal stockPrevio = art.StockActual;
+        decimal delta = nuevoStock - stockPrevio;
+
+        art.StockActual = nuevoStock;
+        art.UltimaAuditoriaStock = DateTime.UtcNow;
+
+        _context.MovimientosStock.Add(new MovimientoStock
+        {
+            ArticuloId = art.Id,
+            Tipo = delta >= 0 ? TipoMovimientoStock.AjusteManualPositivo : TipoMovimientoStock.AjusteManualNegativo,
+            Cantidad = delta,
+            StockPrevio = stockPrevio,
+            StockPosterior = nuevoStock,
+            Motivo = string.IsNullOrWhiteSpace(motivo) ? "Auditoría de Stock (Conteo Rápido)" : motivo,
+            UsuarioNombre = string.IsNullOrWhiteSpace(usuarioNombre) ? "Administrador" : usuarioNombre
+        });
+
+        await _context.SaveChangesAsync(ct);
+        return MapToDto(art);
+    }
+
+    public async Task<AuditoriaStockProgresoDto> ObtenerProgresoAuditoriaAsync(CancellationToken ct = default)
+    {
+        var total = await _context.Articulos.CountAsync(a => a.Activo, ct);
+        var auditados = await _context.Articulos.CountAsync(a => a.Activo && a.UltimaAuditoriaStock != null, ct);
+
+        return new AuditoriaStockProgresoDto
+        {
+            TotalArticulos = total,
+            ArticulosAuditados = auditados
+        };
+    }
+
     // =========================================================================
     // UTILIDADES PRIVADAS
     // =========================================================================
@@ -883,6 +937,12 @@ public class InventarioService : IInventarioService
         Ubicacion = a.Ubicacion,
         EsBotonRapido = a.EsBotonRapido,
         ColorBoton = a.ColorBoton,
+        Rubro = a.Rubro ?? "Librería",
+        EsPack = a.EsPack,
+        ArticuloBaseId = a.ArticuloBaseId,
+        ArticuloBaseNombre = a.ArticuloBase?.Nombre ?? "",
+        CantidadPorPack = a.CantidadPorPack > 0 ? a.CantidadPorPack : 1,
+        UltimaAuditoriaStock = a.UltimaAuditoriaStock,
         ComponentesDelCombo = new System.Collections.ObjectModel.ObservableCollection<ComboComponenteDto>(
             a.ItemsDelCombo.Select(c => new ComboComponenteDto
             {

@@ -37,6 +37,7 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0">
@@ -51,8 +52,13 @@
                              VerticalAlignment="Center"/>
 
                     <Button Grid.Column="2" Content="Buscar [Enter]" Command="{Binding EscanearCodigoCommand}"
-                            Margin="10,0,0,0" Padding="14,6" FontWeight="Bold" Cursor="Hand"
+                            Margin="8,0,0,0" Padding="14,6" FontWeight="Bold" Cursor="Hand"
                             Background="#2563EB" Foreground="White"/>
+
+                    <Button Grid.Column="3" Content="➕ Alta Rápida [F3]" Command="{Binding AbrirAltaRapidaCommand}"
+                            Margin="8,0,0,0" Padding="12,6" FontWeight="Bold" Cursor="Hand"
+                            Background="#10B981" Foreground="White"
+                            ToolTip="Dar de alta un artículo no registrado e insertarlo directamente al ticket [F3]"/>
                 </Grid>
             </Border>
 
@@ -217,6 +223,7 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <!-- [F2] COBRAR TICKET -->
@@ -225,20 +232,26 @@
                         Padding="16,12" Margin="0,0,8,0" Cursor="Hand"
                         ToolTip="Finalizar venta y abrir ventana de cobro [F2] o [Espacio]"/>
 
-                <!-- [F3] VENTA MANUAL -->
-                <Button Grid.Column="1" Content="📝 [F3] Manual" Command="{Binding AgregarVentaManualCommand}"
+                <!-- [F3] ALTA RÁPIDA -->
+                <Button Grid.Column="1" Content="➕ [F3] Alta Rápida" Command="{Binding AbrirAltaRapidaCommand}"
+                        Background="#10B981" Foreground="White" FontSize="13" FontWeight="Bold"
+                        Padding="14,12" Margin="0,0,8,0" Cursor="Hand"
+                        ToolTip="Registrar artículo no existente e insertarlo al ticket [F3]"/>
+
+                <!-- [F6] VENTA MANUAL -->
+                <Button Grid.Column="2" Content="📝 [F6] Manual" Command="{Binding AgregarVentaManualCommand}"
                         Background="#2563EB" Foreground="White" FontSize="13" FontWeight="Bold"
                         Padding="14,12" Margin="0,0,8,0" Cursor="Hand"
-                        ToolTip="Agregar artículo o servicio manual con monto editable [F3]"/>
+                        ToolTip="Agregar concepto o servicio manual libre [F6]"/>
 
                 <!-- [F4] EN ESPERA / MULTI-TICKET -->
-                <Button Grid.Column="2" Content="⏸️ [F4] En Espera" Command="{Binding PausarVentaActualCommand}"
+                <Button Grid.Column="3" Content="⏸️ [F4] En Espera" Command="{Binding PausarVentaActualCommand}"
                         Background="#D97706" Foreground="White" FontSize="13" FontWeight="Bold"
                         Padding="14,12" Margin="0,0,8,0" Cursor="Hand"
                         ToolTip="Poner venta en espera para atender a otro cliente [F4]"/>
 
                 <!-- [F12] VACIAR TICKET -->
-                <Button Grid.Column="3" Content="🗑 [F12] Vaciar" Command="{Binding LimpiarTicketConConfirmacionCommand}"
+                <Button Grid.Column="4" Content="🗑 [F12] Vaciar" Command="{Binding LimpiarTicketConConfirmacionCommand}"
                         Background="#DC2626" Foreground="White" FontSize="13" FontWeight="Bold"
                         Padding="14,12" Cursor="Hand"
                         ToolTip="Cancelar y vaciar todos los artículos del ticket actual [F12]"/>

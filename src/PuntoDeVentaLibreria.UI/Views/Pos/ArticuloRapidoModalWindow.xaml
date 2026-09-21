@@ -1,0 +1,121 @@
+<Window x:Class="PuntoDeVentaLibreria.UI.Views.Pos.ArticuloRapidoModalWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="➕ Alta Rápida de Artículo en Mostrador [F3]"
+        Height="480" Width="520"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#F8FAFC"
+        FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
+
+    <Border Padding="20">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/> <!-- Cabecera -->
+                <RowDefinition Height="*"/>    <!-- Campos -->
+                <RowDefinition Height="Auto"/> <!-- Botonera -->
+            </Grid.RowDefinitions>
+
+            <!-- Cabecera -->
+            <Border Grid.Row="0" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,0,0,16">
+                <DockPanel LastChildFill="True">
+                    <TextBlock Text="⚡" FontSize="26" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock Text="ALTA RÁPIDA EN MOSTRADOR" FontWeight="Bold" FontSize="14" Foreground="#1E3A8A"/>
+                        <TextBlock Text="Guarda el producto en el catálogo y lo añade al ticket en curso de inmediato." FontSize="11" Foreground="#3B82F6"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <!-- Campos del Formulario -->
+            <StackPanel Grid.Row="1">
+                <!-- Código de Barras -->
+                <TextBlock Text="Código de Barras / EAN:" FontSize="12" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,4"/>
+                <Grid Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="TxtCodigoBarras" FontSize="14" FontFamily="Consolas" Padding="8,5"
+                             Text="{Binding CodigoBarras, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="⚡ Auto" Click="BtnAutoCodigo_Click"
+                            Background="#E2E8F0" Foreground="#334155" FontWeight="Bold" Padding="10,5" Margin="6,0,0,0" Cursor="Hand"/>
+                </Grid>
+
+                <!-- Nombre / Descripción (Foco Inicial) -->
+                <TextBlock Text="Descripción / Nombre del Artículo (*):" FontSize="12" FontWeight="Bold" Foreground="#1E293B" Margin="0,0,0,4"/>
+                <TextBox x:Name="TxtNombre" FontSize="14" Padding="8,6" Margin="0,0,0,14"
+                         Text="{Binding Nombre, UpdateSourceTrigger=PropertyChanged}"
+                         KeyDown="TxtNombre_KeyDown"/>
+
+                <!-- Rubro Comercial (Librería vs Regalería) -->
+                <TextBlock Text="Rubro Comercial:" FontSize="12" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,6"/>
+                <Grid Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <RadioButton x:Name="RbLibreria" Content="📚 Librería / Útiles" IsChecked="True"
+                                 FontWeight="Bold" FontSize="12.5" Foreground="#047857"
+                                 Checked="RbLibreria_Checked"/>
+                    <RadioButton x:Name="RbRegaleria" Grid.Column="1" Content="🎁 Regalería / Bazar"
+                                 FontWeight="Bold" FontSize="12.5" Foreground="#7C3AED"
+                                 Checked="RbRegaleria_Checked"/>
+                </Grid>
+
+                <!-- Precios: Venta y Costo -->
+                <Grid Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="Precio de Venta ($) (*):" FontSize="12" FontWeight="Bold" Foreground="#15803D" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtPrecioVenta" FontSize="16" FontWeight="Black" Padding="8,5" Foreground="#15803D"
+                                 Text="{Binding PrecioVentaTexto, UpdateSourceTrigger=PropertyChanged}"
+                                 KeyDown="TxtPrecioVenta_KeyDown"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                        <TextBlock Text="Precio Costo ($) (Opcional):" FontSize="12" FontWeight="SemiBold" Foreground="#64748B" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtPrecioCosto" FontSize="14" Padding="8,5"
+                                 Text="{Binding PrecioCostoTexto, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Stock Inicial Opcional -->
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                        <TextBlock Text="Stock Físico Inicial:" FontSize="11.5" FontWeight="SemiBold" Foreground="#64748B" Margin="0,0,0,4"/>
+                        <TextBox x:Name="TxtStockInicial" FontSize="13" Padding="6,4" Text="1"/>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="💡 Podrá editar más detalles en Inventario en cualquier momento." FontSize="10" Foreground="#94A3B8" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+
+            <!-- Botonera Inferior -->
+            <Grid Grid.Row="2" Margin="0,10,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="1" Content="✕ Cancelar [Esc]" Click="BtnCancelar_Click"
+                        Background="#F1F5F9" Foreground="#475569" FontWeight="SemiBold" Padding="14,10" Margin="0,0,10,0" Cursor="Hand"/>
+
+                <Button Grid.Column="2" Content="✔ Guardar y Agregar al Ticket [Enter]" Click="BtnGuardar_Click"
+                        Background="#16A34A" Foreground="White" FontWeight="Bold" FontSize="13" Padding="18,10" Cursor="Hand" IsDefault="True"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

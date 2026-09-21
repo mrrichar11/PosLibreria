@@ -24,6 +24,7 @@ public class ReporteService : IReporteService
         var ventas = await _context.Ventas
             .AsNoTracking()
             .Include(v => v.LineasVenta)
+                .ThenInclude(l => l.Articulo)
             .Include(v => v.Pagos)
             .Where(v => v.FechaVenta >= fechaDesde && v.FechaVenta <= fechaHasta)
             .ToListAsync(ct);
@@ -52,8 +53,29 @@ public class ReporteService : IReporteService
             .OrderByDescending(m => m.Total)
             .ToList();
 
-        // Top 10 Artículos Más Vendidos
+        // Top 10 Artículos Más Vendidos y Desglose por Rubro
         var todasLineas = ventas.SelectMany(v => v.LineasVenta).ToList();
+
+        decimal facturacionLibreria = 0;
+        decimal facturacionRegaleria = 0;
+        decimal cantidadLibreria = 0;
+        decimal cantidadRegaleria = 0;
+
+        foreach (var l in todasLineas)
+        {
+            bool esRegaleria = l.Articulo != null && string.Equals(l.Articulo.Rubro, "Regalería", StringComparison.OrdinalIgnoreCase);
+            if (esRegaleria)
+            {
+                facturacionRegaleria += l.Subtotal;
+                cantidadRegaleria += l.Cantidad;
+            }
+            else
+            {
+                facturacionLibreria += l.Subtotal;
+                cantidadLibreria += l.Cantidad;
+            }
+        }
+
         var topArticulos = todasLineas
             .GroupBy(l => l.Descripcion)
             .Select(g => new ArticuloMasVendidoDto
@@ -77,6 +99,10 @@ public class ReporteService : IReporteService
             CostoTotalEstimado = costoTotal,
             CantidadVentas = cantidadVentas,
             CantidadArticulosVendidos = cantidadArticulosVendidos,
+            FacturacionLibreria = facturacionLibreria,
+            FacturacionRegaleria = facturacionRegaleria,
+            CantidadArticulosLibreria = cantidadLibreria,
+            CantidadArticulosRegaleria = cantidadRegaleria,
             VentasPorMedioPago = mediosGroup,
             TopArticulos = topArticulos
         };

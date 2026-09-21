@@ -63,6 +63,10 @@ public partial class PosViewModel : ObservableObject
     public Func<Task<(string descripcion, decimal precio, decimal cantidad)?>>? SolicitarVentaManualDialogo { get; set; }
     public Func<string, string, Task<bool>>? SolicitarConfirmacionDialogo { get; set; }
     public Func<string, string, int, string, Task>? SolicitarVistaPreviaTicket { get; set; }
+    public Func<string, Task<ArticuloDto?>>? SolicitarAltaRapidaArticulo { get; set; }
+    public Func<string, Task<bool>>? SolicitarConfirmacionAltaRapida { get; set; }
+
+    public IInventarioService InventarioService => _inventarioService;
 
     public PosViewModel(
         IInventarioService inventarioService,
@@ -134,7 +138,15 @@ public partial class PosViewModel : ObservableObject
 
         if (coincidencias == null || coincidencias.Count == 0)
         {
-            MensajeEstado = $"No se encontró ningún artículo para: '{query}'";
+            MensajeEstado = $"No se encontró '{query}'. Presione [F3] o use Alta Rápida para registrarlo.";
+            if (SolicitarConfirmacionAltaRapida != null)
+            {
+                bool abrir = await SolicitarConfirmacionAltaRapida(query);
+                if (abrir)
+                {
+                    await AbrirAltaRapidaAsync(query);
+                }
+            }
             return;
         }
 
@@ -169,6 +181,21 @@ public partial class PosViewModel : ObservableObject
     {
         if (articulo == null) return;
         AgregarArticuloAlTicket(articulo);
+    }
+
+    [RelayCommand]
+    public async Task AbrirAltaRapidaAsync(string? codigoInicial = null)
+    {
+        if (SolicitarAltaRapidaArticulo != null)
+        {
+            var art = await SolicitarAltaRapidaArticulo(codigoInicial ?? CodigoBarrasInput);
+            if (art != null)
+            {
+                AgregarArticuloAlTicket(art);
+                CodigoBarrasInput = string.Empty;
+                MensajeEstado = $"Artículo registrado y añadido al ticket: {art.Nombre}";
+            }
+        }
     }
 
     private void AgregarArticuloAlTicket(ArticuloDto art)

@@ -50,6 +50,18 @@ public class Articulo : BaseEntity
     public bool EsBotonRapido { get; set; }
     public string? ColorBoton { get; set; }
 
+    /// <summary>Rubro comercial principal: 'Librería' o 'Regalería'</summary>
+    public string Rubro { get; set; } = "Librería";
+
+    /// <summary>Indica si este artículo es un pack o caja cerrada que fracciona existencias de un artículo base</summary>
+    public bool EsPack { get; set; } = false;
+    public Guid? ArticuloBaseId { get; set; }
+    public Articulo? ArticuloBase { get; set; }
+    public decimal CantidadPorPack { get; set; } = 1;
+
+    /// <summary>Fecha y hora en que se realizó la última auditoría o conteo físico de stock</summary>
+    public DateTime? UltimaAuditoriaStock { get; set; }
+
     // Relaciones
     public ICollection<MovimientoStock> MovimientosStock { get; set; } = new List<MovimientoStock>();
     public ICollection<ComboItem> ComoComponenteEnCombos { get; set; } = new List<ComboItem>();

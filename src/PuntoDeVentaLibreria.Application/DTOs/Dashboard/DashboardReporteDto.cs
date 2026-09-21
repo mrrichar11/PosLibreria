@@ -32,6 +32,14 @@ public class DashboardReporteDto
     public decimal TicketPromedio => CantidadVentas > 0 ? Math.Round(FacturacionTotal / CantidadVentas, 2) : 0;
     public decimal CantidadArticulosVendidos { get; set; }
 
+    // Desglose por Rubro (Librería vs Regalería)
+    public decimal FacturacionLibreria { get; set; }
+    public decimal FacturacionRegaleria { get; set; }
+    public double PorcentajeLibreria => FacturacionTotal > 0 ? Math.Round((double)(FacturacionLibreria / FacturacionTotal) * 100.0, 1) : 0;
+    public double PorcentajeRegaleria => FacturacionTotal > 0 ? Math.Round((double)(FacturacionRegaleria / FacturacionTotal) * 100.0, 1) : 0;
+    public decimal CantidadArticulosLibreria { get; set; }
+    public decimal CantidadArticulosRegaleria { get; set; }
+
     // Desgloses
     public List<MetricaMedioPagoDto> VentasPorMedioPago { get; set; } = new();
     public List<ArticuloMasVendidoDto> TopArticulos { get; set; } = new();

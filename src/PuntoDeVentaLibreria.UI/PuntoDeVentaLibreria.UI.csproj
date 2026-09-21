@@ -23,9 +23,9 @@
     <Product>MR SYS Retail - LibrerÃ­a &amp; RegalerÃ­a</Product>
     <Company>MR SYS</Company>
     <Copyright>Â© 2026 MR SYS. Todos los derechos reservados.</Copyright>
-    <AssemblyVersion>1.2.2.0</AssemblyVersion>
-    <FileVersion>1.2.2.0</FileVersion>
-    <Version>1.2.2</Version>
+    <AssemblyVersion>1.2.3.0</AssemblyVersion>
+    <FileVersion>1.2.3.0</FileVersion>
+    <Version>1.2.3</Version>
   </PropertyGroup>
 
   <ItemGroup>
@@ -33,6 +33,8 @@
   </ItemGroup>
 
 </Project>
+
+
 
 
 

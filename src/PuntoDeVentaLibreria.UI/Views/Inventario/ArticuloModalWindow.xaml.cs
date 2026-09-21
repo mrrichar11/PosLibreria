@@ -67,6 +67,15 @@ public partial class ArticuloModalWindow : Window
         }
 
         SincronizarTipoUI();
+        SincronizarRubroUI();
+
+        if (Articulo.EsPack)
+        {
+            ChkEsPack.IsChecked = true;
+            PanelDetallePack.Visibility = Visibility.Visible;
+            TxtCantidadPorPack.Text = Articulo.CantidadPorPack > 0 ? Articulo.CantidadPorPack.ToString("0.##", CultureInfo.InvariantCulture) : "1";
+        }
+
         CargarArticulosDisponibles();
         CargarProveedoresAsync();
         CargarConfiguracionNegocioAsync();
@@ -77,6 +86,28 @@ public partial class ArticuloModalWindow : Window
         }
 
         TxtNombre.Focus();
+    }
+
+    private void SincronizarRubroUI()
+    {
+        if (CmbRubro == null) return;
+        CmbRubro.SelectedIndex = string.Equals(Articulo.Rubro, "Regalería", StringComparison.OrdinalIgnoreCase) ? 1 : 0;
+    }
+
+    private void CmbRubro_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (Articulo == null || CmbRubro?.SelectedItem is not ComboBoxItem item) return;
+        Articulo.Rubro = item.Tag?.ToString() ?? "Librería";
+    }
+
+    private void ChkEsPack_Checked(object sender, RoutedEventArgs e)
+    {
+        if (PanelDetallePack != null) PanelDetallePack.Visibility = Visibility.Visible;
+    }
+
+    private void ChkEsPack_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (PanelDetallePack != null) PanelDetallePack.Visibility = Visibility.Collapsed;
     }
 
     private async void CargarConfiguracionNegocioAsync()
@@ -115,13 +146,18 @@ public partial class ArticuloModalWindow : Window
 
     private void SincronizarTipoUI()
     {
-        foreach (ComboBoxItem item in CmbTipo.Items)
+        if (CmbTipo == null) return;
+        switch (Articulo.Tipo)
         {
-            if (item.Tag is string tag && tag == Articulo.Tipo.ToString())
-            {
-                CmbTipo.SelectedItem = item;
+            case TipoArticulo.Estandar:
+                CmbTipo.SelectedIndex = 0;
                 break;
-            }
+            case TipoArticulo.ComboKit:
+                CmbTipo.SelectedIndex = 1;
+                break;
+            case TipoArticulo.Servicio:
+                CmbTipo.SelectedIndex = 2;
+                break;
         }
         ActualizarVisibilidadCombo();
     }
@@ -140,6 +176,16 @@ public partial class ArticuloModalWindow : Window
             if (articulosFisicos.Count > 0)
             {
                 CmbArticuloParaCombo.SelectedIndex = 0;
+            }
+
+            CmbArticuloBase.ItemsSource = articulosFisicos;
+            if (Articulo.ArticuloBaseId.HasValue)
+            {
+                CmbArticuloBase.SelectedValue = Articulo.ArticuloBaseId.Value;
+            }
+            else if (articulosFisicos.Count > 0)
+            {
+                CmbArticuloBase.SelectedIndex = 0;
             }
         }
         catch { }
@@ -477,6 +523,33 @@ public partial class ArticuloModalWindow : Window
                 "Ha seleccionado tipo 'Combo Escolar' pero aún no agregó ningún artículo componente.\n¿Desea guardarlo de todas formas?",
                 "MR SYS Confirmación", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (res != MessageBoxResult.Yes) return;
+        }
+
+        if (CmbRubro?.SelectedItem is ComboBoxItem selectedRubro)
+        {
+            Articulo.Rubro = selectedRubro.Tag?.ToString() ?? "Librería";
+        }
+
+        Articulo.EsPack = ChkEsPack.IsChecked == true;
+        if (Articulo.EsPack)
+        {
+            if (CmbArticuloBase.SelectedValue is Guid baseId)
+            {
+                Articulo.ArticuloBaseId = baseId;
+            }
+            if (TryParseMonto(TxtCantidadPorPack.Text, out var cantPack) && cantPack > 0)
+            {
+                Articulo.CantidadPorPack = cantPack;
+            }
+            else
+            {
+                Articulo.CantidadPorPack = 1;
+            }
+        }
+        else
+        {
+            Articulo.ArticuloBaseId = null;
+            Articulo.CantidadPorPack = 1;
         }
 
         Articulo.CodigosBarrasSecundarios = CodigosSecundariosLista.Count > 0 ? string.Join(", ", CodigosSecundariosLista) : null;

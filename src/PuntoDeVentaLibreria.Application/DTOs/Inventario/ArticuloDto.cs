@@ -28,6 +28,20 @@ public class ArticuloDto
     public string? Ubicacion { get; set; }
     public bool EsBotonRapido { get; set; }
     public string? ColorBoton { get; set; }
+
+    // Rubro (Librería vs Regalería)
+    public string Rubro { get; set; } = "Librería";
+
+    // Pack / Caja Fraccionable
+    public bool EsPack { get; set; } = false;
+    public Guid? ArticuloBaseId { get; set; }
+    public string ArticuloBaseNombre { get; set; } = string.Empty;
+    public decimal CantidadPorPack { get; set; } = 1;
+
+    // Auditoría / Conteo de Stock
+    public DateTime? UltimaAuditoriaStock { get; set; }
+    public bool YaAuditado => UltimaAuditoriaStock.HasValue;
+
     public System.Collections.ObjectModel.ObservableCollection<ComboComponenteDto> ComponentesDelCombo { get; set; } = new();
 }
 
