@@ -26,6 +26,30 @@ public partial class InventarioViewModel : ObservableObject
     [ObservableProperty]
     private decimal _valorTotalStock;
 
+    [ObservableProperty]
+    private int _paginaActual = 1;
+
+    [ObservableProperty]
+    private int _totalPaginas = 1;
+
+    [ObservableProperty]
+    private int _cantidadPorPagina = 50;
+
+    [ObservableProperty]
+    private string _rubroSeleccionado = "Todos";
+
+    [ObservableProperty]
+    private string _textoPaginacion = "Cargando artículos...";
+
+    [ObservableProperty]
+    private bool _puedeIrAnterior;
+
+    [ObservableProperty]
+    private bool _puedeIrSiguiente;
+
+    [ObservableProperty]
+    private int _totalRegistrosFiltrados;
+
     public ObservableCollection<ArticuloDto> Articulos { get; } = new();
 
     public Func<ArticuloDto, Task<bool>>? SolicitarEditorArticulo { get; set; }
@@ -41,16 +65,43 @@ public partial class InventarioViewModel : ObservableObject
         EstaCargando = true;
         try
         {
-            var lista = await _inventarioService.BuscarArticulosAsync(CriterioBusqueda);
+            var consulta = new ConsultaInventarioPaginadaDto
+            {
+                CriterioBusqueda = CriterioBusqueda,
+                Rubro = RubroSeleccionado,
+                Pagina = PaginaActual,
+                CantidadPorPagina = CantidadPorPagina
+            };
+
+            var resultado = await _inventarioService.ObtenerArticulosPaginadosAsync(consulta);
+
             Articulos.Clear();
-            decimal totalValor = 0;
-            foreach (var item in lista)
+            foreach (var item in resultado.Items)
             {
                 Articulos.Add(item);
-                totalValor += item.PrecioVenta * item.StockActual;
             }
-            TotalArticulos = Articulos.Count;
-            ValorTotalStock = totalValor;
+
+            PaginaActual = resultado.PaginaActual;
+            TotalPaginas = resultado.TotalPaginas;
+            TotalArticulos = resultado.TotalArticulosGlobal;
+            TotalRegistrosFiltrados = resultado.TotalRegistros;
+            ValorTotalStock = resultado.ValorTotalStockGlobal;
+
+            PuedeIrAnterior = PaginaActual > 1;
+            PuedeIrSiguiente = PaginaActual < TotalPaginas;
+
+            if (resultado.TotalRegistros == 0)
+            {
+                TextoPaginacion = "No se encontraron artículos.";
+            }
+            else if (CantidadPorPagina <= 0)
+            {
+                TextoPaginacion = $"Mostrando todos los {resultado.TotalRegistros:N0} artículos filtrados";
+            }
+            else
+            {
+                TextoPaginacion = $"Mostrando {resultado.RegistroDesde:N0} - {resultado.RegistroHasta:N0} de {resultado.TotalRegistros:N0} artículos";
+            }
         }
         finally
         {
@@ -61,6 +112,58 @@ public partial class InventarioViewModel : ObservableObject
     [RelayCommand]
     private async Task BuscarAsync()
     {
+        PaginaActual = 1;
+        await CargarDatosAsync();
+    }
+
+    [RelayCommand]
+    private async Task PrimeraPaginaAsync()
+    {
+        if (PaginaActual <= 1) return;
+        PaginaActual = 1;
+        await CargarDatosAsync();
+    }
+
+    [RelayCommand]
+    private async Task PaginaAnteriorAsync()
+    {
+        if (PaginaActual <= 1) return;
+        PaginaActual--;
+        await CargarDatosAsync();
+    }
+
+    [RelayCommand]
+    private async Task PaginaSiguienteAsync()
+    {
+        if (PaginaActual >= TotalPaginas) return;
+        PaginaActual++;
+        await CargarDatosAsync();
+    }
+
+    [RelayCommand]
+    private async Task UltimaPaginaAsync()
+    {
+        if (PaginaActual >= TotalPaginas) return;
+        PaginaActual = TotalPaginas;
+        await CargarDatosAsync();
+    }
+
+    [RelayCommand]
+    private async Task CambiarCantidadPorPaginaAsync(string cantidadStr)
+    {
+        if (int.TryParse(cantidadStr, out int cant))
+        {
+            CantidadPorPagina = cant;
+            PaginaActual = 1;
+            await CargarDatosAsync();
+        }
+    }
+
+    [RelayCommand]
+    private async Task CambiarRubroAsync(string rubro)
+    {
+        RubroSeleccionado = rubro;
+        PaginaActual = 1;
         await CargarDatosAsync();
     }
 

@@ -84,4 +84,27 @@ public partial class InventarioView : UserControl
         modal.ShowDialog();
         await ViewModel.CargarDatosAsync();
     }
+
+    private async void CmbPorPagina_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModel == null || CmbPorPagina?.SelectedItem is not ComboBoxItem item) return;
+        var texto = item.Content?.ToString() ?? "50";
+        var cant = texto.Equals("Todos", StringComparison.OrdinalIgnoreCase) ? 0 : (int.TryParse(texto, out int n) ? n : 50);
+        await ViewModel.CambiarCantidadPorPaginaCommand.ExecuteAsync(cant.ToString());
+    }
+
+    private async void CmbRubro_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModel == null || sender is not ComboBox cmb || cmb.SelectedItem is not ComboBoxItem item) return;
+        var rubro = item.Tag?.ToString() ?? "Todos";
+        await ViewModel.CambiarRubroCommand.ExecuteAsync(rubro);
+    }
+
+    private async void TxtBuscar_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key == System.Windows.Input.Key.Enter)
+        {
+            await ViewModel.BuscarCommand.ExecuteAsync(null);
+        }
+    }
 }

@@ -218,4 +218,86 @@ public class LibreriaOperativaTests
         resultado.Items.Should().NotBeEmpty();
         resultado.ColumnasDetectadas.Should().NotBeEmpty();
     }
+
+    [Fact]
+    public async Task InventarioService_ObtenerArticulosPaginados_NavegaYFiltraCorrectamente()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        // Crear 120 artículos (70 Librería, 50 Regalería)
+        for (int i = 1; i <= 120; i++)
+        {
+            context.Articulos.Add(new Articulo
+            {
+                Id = Guid.NewGuid(),
+                Nombre = $"Artículo Prueba {i:D3}",
+                SKU = $"SKU-{i:D3}",
+                CodigoBarras = $"779000{i:D6}",
+                PrecioCosto = 100m,
+                PrecioVenta = 200m,
+                StockActual = 5m,
+                Rubro = i <= 70 ? "Librería" : "Regalería",
+                Activo = true
+            });
+        }
+        await context.SaveChangesAsync();
+
+        // 1. Página 1 con tamaño 50
+        var pag1 = await inventarioService.ObtenerArticulosPaginadosAsync(new ConsultaInventarioPaginadaDto
+        {
+            Pagina = 1,
+            CantidadPorPagina = 50,
+            Rubro = "Todos"
+        });
+
+        pag1.TotalArticulosGlobal.Should().Be(120);
+        pag1.TotalRegistros.Should().Be(120);
+        pag1.TotalPaginas.Should().Be(3);
+        pag1.PaginaActual.Should().Be(1);
+        pag1.Items.Should().HaveCount(50);
+        pag1.RegistroDesde.Should().Be(1);
+        pag1.RegistroHasta.Should().Be(50);
+        pag1.ValorTotalStockGlobal.Should().Be(120 * 200m * 5m);
+
+        // 2. Página 2
+        var pag2 = await inventarioService.ObtenerArticulosPaginadosAsync(new ConsultaInventarioPaginadaDto
+        {
+            Pagina = 2,
+            CantidadPorPagina = 50,
+            Rubro = "Todos"
+        });
+
+        pag2.PaginaActual.Should().Be(2);
+        pag2.Items.Should().HaveCount(50);
+        pag2.RegistroDesde.Should().Be(51);
+        pag2.RegistroHasta.Should().Be(100);
+
+        // 3. Página 3 (restante de 20)
+        var pag3 = await inventarioService.ObtenerArticulosPaginadosAsync(new ConsultaInventarioPaginadaDto
+        {
+            Pagina = 3,
+            CantidadPorPagina = 50,
+            Rubro = "Todos"
+        });
+
+        pag3.PaginaActual.Should().Be(3);
+        pag3.Items.Should().HaveCount(20);
+        pag3.RegistroDesde.Should().Be(101);
+        pag3.RegistroHasta.Should().Be(120);
+
+        // 4. Filtrado por Rubro "Regalería"
+        var regaleria = await inventarioService.ObtenerArticulosPaginadosAsync(new ConsultaInventarioPaginadaDto
+        {
+            Pagina = 1,
+            CantidadPorPagina = 50,
+            Rubro = "Regalería"
+        });
+
+        regaleria.TotalArticulosGlobal.Should().Be(120);
+        regaleria.TotalRegistros.Should().Be(50);
+        regaleria.TotalPaginas.Should().Be(1);
+        regaleria.Items.Should().HaveCount(50);
+        regaleria.Items.All(a => a.Rubro == "Regalería").Should().BeTrue();
+    }
 }

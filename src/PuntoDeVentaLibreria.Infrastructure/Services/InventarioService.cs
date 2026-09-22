@@ -84,6 +84,88 @@ public class InventarioService : IInventarioService
         return lista.Select(MapToDto).ToList();
     }
 
+    public async Task<ArticulosPaginadosResultadoDto> ObtenerArticulosPaginadosAsync(ConsultaInventarioPaginadaDto consulta, CancellationToken ct = default)
+    {
+        var queryBase = _context.Articulos.AsNoTracking().Where(a => a.Activo);
+
+        // Métricas de stock globales
+        var totalGlobal = await queryBase.CountAsync(ct);
+        var valorGlobal = await queryBase.SumAsync(a => (decimal?)(a.PrecioVenta * a.StockActual), ct) ?? 0m;
+
+        var query = queryBase
+            .Include(a => a.Categoria)
+            .Include(a => a.Marca)
+            .Include(a => a.Proveedor)
+            .Include(a => a.ArticuloBase)
+            .Include(a => a.ItemsDelCombo)
+                .ThenInclude(c => c.ComponenteArticulo)
+            .AsQueryable();
+
+        // Filtro por Rubro si aplica
+        if (!string.IsNullOrWhiteSpace(consulta.Rubro) && !consulta.Rubro.Equals("Todos", StringComparison.OrdinalIgnoreCase))
+        {
+            var rubroNorm = consulta.Rubro.Trim().ToUpper();
+            query = query.Where(a => a.Rubro != null && a.Rubro.ToUpper() == rubroNorm);
+        }
+
+        // Filtro por Criterio de búsqueda si aplica
+        if (!string.IsNullOrWhiteSpace(consulta.CriterioBusqueda))
+        {
+            var limpio = consulta.CriterioBusqueda.Trim().ToUpper();
+            var tokens = limpio.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            foreach (var token in tokens)
+            {
+                query = query.Where(a =>
+                    a.Nombre.ToUpper().Contains(token) ||
+                    a.SKU.ToUpper().Contains(token) ||
+                    (a.CodigoBarras != null && a.CodigoBarras.Contains(token)) ||
+                    (a.CodigoProveedor != null && a.CodigoProveedor.Contains(token)) ||
+                    (a.CodigosBarrasSecundarios != null && a.CodigosBarrasSecundarios.Contains(token)) ||
+                    (a.Marca != null && a.Marca.Nombre.ToUpper().Contains(token)) ||
+                    (a.Categoria != null && a.Categoria.Nombre.ToUpper().Contains(token)) ||
+                    (a.Proveedor != null && a.Proveedor.Nombre.ToUpper().Contains(token)) ||
+                    (a.Rubro != null && a.Rubro.ToUpper().Contains(token)));
+            }
+        }
+
+        var totalFiltrados = await query.CountAsync(ct);
+        var pagina = consulta.Pagina < 1 ? 1 : consulta.Pagina;
+        var pageSize = consulta.CantidadPorPagina;
+
+        List<Articulo> lista;
+        int totalPaginas;
+
+        if (pageSize <= 0) // "Ver Todos"
+        {
+            lista = await query.OrderBy(a => a.Nombre).ToListAsync(ct);
+            totalPaginas = 1;
+            pagina = 1;
+        }
+        else
+        {
+            totalPaginas = (int)Math.Ceiling((double)totalFiltrados / pageSize);
+            if (totalPaginas == 0) totalPaginas = 1;
+            if (pagina > totalPaginas) pagina = totalPaginas;
+
+            lista = await query
+                .OrderBy(a => a.Nombre)
+                .Skip((pagina - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+        }
+
+        return new ArticulosPaginadosResultadoDto
+        {
+            Items = lista.Select(MapToDto).ToList(),
+            TotalRegistros = totalFiltrados,
+            PaginaActual = pagina,
+            CantidadPorPagina = pageSize,
+            TotalPaginas = totalPaginas,
+            TotalArticulosGlobal = totalGlobal,
+            ValorTotalStockGlobal = valorGlobal
+        };
+    }
+
     public async Task<ArticuloDto?> BuscarPorCodigoBarrasAsync(string codigoBarras, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(codigoBarras)) return null;
