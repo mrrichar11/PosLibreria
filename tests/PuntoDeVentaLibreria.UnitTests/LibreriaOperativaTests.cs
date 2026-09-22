@@ -300,4 +300,159 @@ public class LibreriaOperativaTests
         regaleria.Items.Should().HaveCount(50);
         regaleria.Items.All(a => a.Rubro == "Regalería").Should().BeTrue();
     }
+
+    [Fact]
+    public async Task InventarioService_ArticuloConVariantes_GuardaVariantesYSincronizaStock()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        var articuloDto = new ArticuloDto
+        {
+            Nombre = "Cuaderno Éxito E4 48h Rayado",
+            SKU = "CUAD-EXITO-E4",
+            CodigoBarras = "779123450000",
+            PrecioCosto = 2000m,
+            PrecioVenta = 3500m,
+            Rubro = "Librería",
+            Variantes = new List<ArticuloVarianteDto>
+            {
+                new() { Nombre = "Azul", CodigoBarras = "779123450001", StockActual = 10, StockMinimo = 2 },
+                new() { Nombre = "Rojo", CodigoBarras = "779123450002", StockActual = 5, StockMinimo = 2 },
+                new() { Nombre = "Verde", CodigoBarras = "779123450003", StockActual = 0, StockMinimo = 2 }
+            }
+        };
+
+        var guardado = await inventarioService.GuardarArticuloAsync(articuloDto);
+
+        guardado.Should().NotBeNull();
+        guardado.TieneVariantes.Should().BeTrue();
+        guardado.StockActual.Should().Be(15m); // 10 + 5 + 0
+        guardado.Variantes.Should().HaveCount(3);
+
+        // Búsqueda por código de barras de variante específica
+        var encontradoAzul = await inventarioService.BuscarPorCodigoBarrasAsync("779123450001");
+        encontradoAzul.Should().NotBeNull();
+        encontradoAzul!.VarianteEscaneada.Should().NotBeNull();
+        encontradoAzul.VarianteEscaneada!.Nombre.Should().Be("Azul");
+        encontradoAzul.VarianteEscaneada.StockActual.Should().Be(10m);
+
+        // Búsqueda por código de barras del producto principal
+        var encontradoPrincipal = await inventarioService.BuscarPorCodigoBarrasAsync("779123450000");
+        encontradoPrincipal.Should().NotBeNull();
+        encontradoPrincipal!.VarianteEscaneada.Should().BeNull();
+        encontradoPrincipal.TieneVariantes.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task VentaService_VentaDeVariante_DescuentaStockDeVarianteYDelArticulo()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+        var ventaService = new VentaService(context);
+
+        var turno = new TurnoCaja { MontoInicialEfectivo = 1000m, UsuarioApertura = "Cajera Turno" };
+        context.TurnosCaja.Add(turno);
+        await context.SaveChangesAsync();
+
+        var articuloDto = new ArticuloDto
+        {
+            Nombre = "Cartulina Escolar",
+            SKU = "CART-ESC",
+            CodigoBarras = "779999900000",
+            PrecioCosto = 300m,
+            PrecioVenta = 600m,
+            Rubro = "Librería",
+            Variantes = new List<ArticuloVarianteDto>
+            {
+                new() { Nombre = "Amarillo", CodigoBarras = "779999900001", StockActual = 20, StockMinimo = 5 },
+                new() { Nombre = "Celeste", CodigoBarras = "779999900002", StockActual = 15, StockMinimo = 5 }
+            }
+        };
+
+        var guardado = await inventarioService.GuardarArticuloAsync(articuloDto);
+        var varianteAmarillo = guardado.Variantes.First(v => v.Nombre == "Amarillo");
+
+        // Vender 3 unidades de Amarillo
+        var ventaDto = new RegistrarVentaDto
+        {
+            TurnoCajaId = turno.Id,
+            VendedoraNombre = "Cajera Turno",
+            MetodoPago = "Efectivo",
+            MontoEntregado = 1800m,
+            Items = new List<ItemCarritoDto>
+            {
+                new()
+                {
+                    ArticuloId = guardado.Id,
+                    ArticuloVarianteId = varianteAmarillo.Id,
+                    VarianteNombre = varianteAmarillo.Nombre,
+                    Cantidad = 3,
+                    PrecioUnitario = 600m,
+                    PrecioCosto = 300m,
+                    Descripcion = $"{guardado.Nombre} (Amarillo)",
+                    SKU = guardado.SKU
+                }
+            }
+        };
+
+        var ventaResultado = await ventaService.ProcesarVentaAsync(ventaDto);
+        ventaResultado.Should().NotBeNull();
+        ventaResultado.TotalCobrado.Should().Be(1800m);
+
+        // Verificar stock de variante en BD: 20 - 3 = 17
+        var varianteDb = await context.ArticuloVariantes.FindAsync(varianteAmarillo.Id);
+        varianteDb.Should().NotBeNull();
+        varianteDb!.StockActual.Should().Be(17m);
+
+        // Verificar stock del artículo general en BD: 35 - 3 = 32
+        var articuloDb = await context.Articulos.FindAsync(guardado.Id);
+        articuloDb.Should().NotBeNull();
+        articuloDb!.StockActual.Should().Be(32m);
+
+        // Verificar kardex
+        var kardex = await context.MovimientosStock.FirstOrDefaultAsync(m => m.ArticuloVarianteId == varianteAmarillo.Id);
+        kardex.Should().NotBeNull();
+        kardex!.Cantidad.Should().Be(-3m);
+        kardex.StockPrevio.Should().Be(20m);
+    }
+
+    [Fact]
+    public async Task InventarioService_AjustarStockRapido_AjustaVarianteYArticuloTotal()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        var articuloDto = new ArticuloDto
+        {
+            Nombre = "Témpera Alba 250ml",
+            SKU = "TEMP-ALBA-250",
+            CodigoBarras = "779888800000",
+            PrecioCosto = 1500m,
+            PrecioVenta = 2800m,
+            Rubro = "Librería",
+            Variantes = new List<ArticuloVarianteDto>
+            {
+                new() { Nombre = "Negro", CodigoBarras = "779888800001", StockActual = 4, StockMinimo = 2 },
+                new() { Nombre = "Blanco", CodigoBarras = "779888800002", StockActual = 6, StockMinimo = 2 }
+            }
+        };
+
+        var guardado = await inventarioService.GuardarArticuloAsync(articuloDto);
+        var varianteBlanco = guardado.Variantes.First(v => v.Nombre == "Blanco");
+
+        // Ajustar stock rápido en auditoría física de góndola: se cuentan 10 unidades de Blanco (tenía 6)
+        var actualizado = await inventarioService.AjustarStockRapidoAsync(
+            guardado.Id,
+            10m,
+            "Auditoría Góndola: Blanco",
+            "Auditor",
+            articuloVarianteId: varianteBlanco.Id);
+
+        actualizado.Should().NotBeNull();
+        actualizado.StockActual.Should().Be(14m); // 4 Negro + 10 Blanco
+
+        var varianteBlancoActualizada = actualizado.Variantes.First(v => v.Id == varianteBlanco.Id);
+        varianteBlancoActualizada.StockActual.Should().Be(10m);
+    }
 }

@@ -44,6 +44,18 @@ public partial class PosView : UserControl
             return Task.FromResult(dialogResult == true ? modal.ArticuloSeleccionado : null);
         };
 
+        ViewModel.SolicitarSeleccionVariante = (articulo) =>
+        {
+            var modal = new SeleccionarVarianteModalWindow(articulo)
+            {
+                Owner = Window.GetWindow(this)
+            };
+
+            var dialogResult = modal.ShowDialog();
+            TxtCodigoBarras.Focus();
+            return Task.FromResult(dialogResult == true ? modal.VarianteSeleccionada : null);
+        };
+
         ViewModel.SolicitarVentaManualDialogo = () =>
         {
             var modal = new VentaManualModalWindow

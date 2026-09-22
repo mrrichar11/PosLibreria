@@ -25,6 +25,7 @@ public partial class ConteoStockModalWindow : Window
 {
     private readonly IInventarioService _inventarioService;
     private ArticuloDto? _articuloSeleccionado;
+    private ArticuloVarianteDto? _varianteSeleccionada;
     public ObservableCollection<ItemAuditoriaSesionModel> HistorialSesion { get; } = new();
 
     public ConteoStockModalWindow(IInventarioService inventarioService)
@@ -120,24 +121,44 @@ public partial class ConteoStockModalWindow : Window
         }
 
         _articuloSeleccionado = art;
+        _varianteSeleccionada = art.VarianteEscaneada;
+
+        // Si tiene variantes y no fue escaneado por código de variante específico, solicitar selección
+        if (art.TieneVariantes && _varianteSeleccionada == null && art.Variantes.Count > 0)
+        {
+            var selector = new SeleccionarVarianteModalWindow(art)
+            {
+                Owner = this
+            };
+            if (selector.ShowDialog() == true && selector.VarianteSeleccionada != null)
+            {
+                _varianteSeleccionada = selector.VarianteSeleccionada;
+            }
+            else
+            {
+                TxtEscaneo.Focus();
+                return;
+            }
+        }
 
         // Si está en Modo Continuo (+1 por escaneo)
         if (RbModoContinuo.IsChecked == true)
         {
-            decimal nuevoStock = art.StockActual + 1;
-            await AplicarAjusteAsync(art, nuevoStock);
+            decimal stockActualRef = _varianteSeleccionada != null ? _varianteSeleccionada.StockActual : art.StockActual;
+            decimal nuevoStock = stockActualRef + 1;
+            await AplicarAjusteAsync(art, nuevoStock, _varianteSeleccionada);
             TxtEscaneo.Text = string.Empty;
             TxtEscaneo.Focus();
             return;
         }
 
         // Modo Manual: Mostrar Ficha y enfocar cantidad
-        MostrarFichaArticulo(art);
+        MostrarFichaArticulo(art, _varianteSeleccionada);
     }
 
-    private void MostrarFichaArticulo(ArticuloDto art)
+    private void MostrarFichaArticulo(ArticuloDto art, ArticuloVarianteDto? variante = null)
     {
-        TxtArticuloNombre.Text = art.Nombre;
+        TxtArticuloNombre.Text = variante != null ? $"{art.Nombre} ({variante.Nombre})" : art.Nombre;
         TxtArticuloRubro.Text = art.Rubro ?? "Librería";
 
         if (string.Equals(art.Rubro, "Regalería", StringComparison.OrdinalIgnoreCase))
@@ -151,11 +172,13 @@ public partial class ConteoStockModalWindow : Window
             TxtArticuloRubro.Foreground = new SolidColorBrush(Color.FromRgb(55, 48, 163));
         }
 
-        TxtArticuloCodigos.Text = $"SKU: {art.SKU} | Barras: {art.CodigoBarras ?? "Sin código"}";
+        string codigoMostrar = variante != null ? $"Variante: {variante.CodigoBarras}" : $"Barras: {art.CodigoBarras ?? "Sin código"}";
+        TxtArticuloCodigos.Text = $"SKU: {art.SKU} | {codigoMostrar}";
         TxtArticuloPrecio.Text = $"Precio Venta: ${art.PrecioVenta:N2}";
-        TxtStockSistema.Text = $"{art.StockActual:N0}";
 
-        TxtNuevoStock.Text = $"{art.StockActual:N0}";
+        decimal stockRef = variante != null ? variante.StockActual : art.StockActual;
+        TxtStockSistema.Text = $"{stockRef:N0}";
+        TxtNuevoStock.Text = $"{stockRef:N0}";
         BrdFichaArticulo.Visibility = Visibility.Visible;
 
         TxtNuevoStock.Focus();
@@ -196,32 +219,35 @@ public partial class ConteoStockModalWindow : Window
             return;
         }
 
-        await AplicarAjusteAsync(_articuloSeleccionado, nuevoStock);
+        await AplicarAjusteAsync(_articuloSeleccionado, nuevoStock, _varianteSeleccionada);
 
         BrdFichaArticulo.Visibility = Visibility.Collapsed;
         _articuloSeleccionado = null;
+        _varianteSeleccionada = null;
         TxtEscaneo.Text = string.Empty;
         TxtEscaneo.Focus();
     }
 
-    private async Task AplicarAjusteAsync(ArticuloDto art, decimal nuevoStock)
+    private async Task AplicarAjusteAsync(ArticuloDto art, decimal nuevoStock, ArticuloVarianteDto? variante = null)
     {
-        decimal previo = art.StockActual;
+        decimal previo = variante != null ? variante.StockActual : art.StockActual;
+        string nombreMostrar = variante != null ? $"{art.Nombre} ({variante.Nombre})" : art.Nombre;
 
         try
         {
             var actualizado = await _inventarioService.AjustarStockRapidoAsync(
                 art.Id,
                 nuevoStock,
-                "Auditoría de Stock por Góndola",
-                "Operador");
+                variante != null ? $"Auditoría Góndola: {variante.Nombre}" : "Auditoría de Stock por Góndola",
+                "Operador",
+                articuloVarianteId: variante?.Id);
 
             HistorialSesion.Insert(0, new ItemAuditoriaSesionModel
             {
                 HoraTexto = DateTime.Now.ToString("HH:mm:ss"),
                 Rubro = actualizado.Rubro,
                 SKU = actualizado.SKU,
-                Nombre = actualizado.Nombre,
+                Nombre = nombreMostrar,
                 StockAnterior = previo,
                 NuevoStock = nuevoStock
             });

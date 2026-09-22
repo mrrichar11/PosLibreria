@@ -237,6 +237,52 @@ public static class DatabaseInitializer
         }
         catch { }
 
+        // 2.3 Soporte para Artículos con Variantes (Colores/Modelos) (v1.2.6)
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS ArticuloVariantes (
+                    Id TEXT PRIMARY KEY,
+                    ArticuloId TEXT NOT NULL,
+                    Nombre TEXT NOT NULL,
+                    CodigoBarras TEXT NULL,
+                    CodigoProveedor TEXT NULL,
+                    StockActual NUMERIC NOT NULL DEFAULT 0,
+                    StockMinimo NUMERIC NOT NULL DEFAULT 2,
+                    Activo INTEGER NOT NULL DEFAULT 1,
+                    UltimaAuditoriaStock TEXT NULL,
+                    FechaCreacion TEXT NOT NULL DEFAULT (CURRENT_TIMESTAMP),
+                    FechaModificacion TEXT NULL,
+                    FOREIGN KEY(ArticuloId) REFERENCES Articulos(Id) ON DELETE CASCADE
+                );", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_ArticuloVariantes_ArticuloId ON ArticuloVariantes(ArticuloId);", cancellationToken);
+            await context.Database.ExecuteSqlRawAsync("CREATE INDEX IF NOT EXISTS IX_ArticuloVariantes_CodigoBarras ON ArticuloVariantes(CodigoBarras);", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE LineasVenta ADD COLUMN ArticuloVarianteId TEXT NULL;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE LineasVenta ADD COLUMN VarianteNombre TEXT NULL;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE MovimientosStock ADD COLUMN ArticuloVarianteId TEXT NULL;", cancellationToken);
+        }
+        catch { }
+
         // 3. Optimización WAL para SQLite
         try
         {

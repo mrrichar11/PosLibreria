@@ -19,7 +19,7 @@ public partial class ArticuloModalWindow : Window
     private decimal _margenConfigurado = 40m;
     private bool _isCalculating;
 
-    public ObservableCollection<string> CodigosSecundariosLista { get; } = new();
+    public ObservableCollection<ArticuloVarianteDto> VariantesLista { get; } = new();
     public ArticuloDto Articulo { get; }
     public bool GuardadoExitoso { get; private set; }
 
@@ -38,16 +38,44 @@ public partial class ArticuloModalWindow : Window
             Articulo.ColorBoton = "#3B82F6";
         }
 
-        // Cargar códigos secundarios existentes
-        if (!string.IsNullOrWhiteSpace(Articulo.CodigosBarrasSecundarios))
+        // Cargar variantes existentes
+        if (Articulo.Variantes != null && Articulo.Variantes.Count > 0)
         {
+            foreach (var v in Articulo.Variantes)
+            {
+                VariantesLista.Add(new ArticuloVarianteDto
+                {
+                    Id = v.Id,
+                    ArticuloId = v.ArticuloId,
+                    Nombre = v.Nombre,
+                    CodigoBarras = v.CodigoBarras,
+                    CodigoProveedor = v.CodigoProveedor,
+                    StockActual = v.StockActual,
+                    StockMinimo = v.StockMinimo,
+                    Activo = v.Activo
+                });
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(Articulo.CodigosBarrasSecundarios))
+        {
+            // Migración automática de códigos secundarios antiguos a variantes con nombre
             var cods = Articulo.CodigosBarrasSecundarios.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            int idx = 1;
             foreach (var c in cods)
             {
                 var clean = c.Trim();
-                if (!string.IsNullOrWhiteSpace(clean) && !CodigosSecundariosLista.Contains(clean))
+                if (!string.IsNullOrWhiteSpace(clean) && !VariantesLista.Any(v => v.CodigoBarras == clean))
                 {
-                    CodigosSecundariosLista.Add(clean);
+                    VariantesLista.Add(new ArticuloVarianteDto
+                    {
+                        Id = Guid.NewGuid(),
+                        ArticuloId = Articulo.Id,
+                        Nombre = $"Color/Variante {idx++}",
+                        CodigoBarras = clean,
+                        StockActual = 0,
+                        StockMinimo = 0,
+                        Activo = true
+                    });
                 }
             }
         }
@@ -84,6 +112,8 @@ public partial class ArticuloModalWindow : Window
         {
             BtnEliminar.Visibility = Visibility.Visible;
         }
+
+        ActualizarResumenVariantesYStockUI();
 
         TxtNombre.Focus();
     }
@@ -346,47 +376,124 @@ public partial class ArticuloModalWindow : Window
         }
     }
 
-    private void BtnAgregarCodigoSecundario_Click(object sender, RoutedEventArgs e)
+    private void BtnGenerarCodigoVariante_Click(object sender, RoutedEventArgs e)
     {
-        AgregarCodigoSecundario();
+        var rnd = new Random();
+        TxtCodigoBarrasVariante.Text = $"VAR-{DateTime.Now:yyMMddHHmm}{rnd.Next(10, 99)}";
     }
 
-    private void TxtNuevoCodigoSecundario_KeyDown(object sender, KeyEventArgs e)
+    private void TxtVariante_KeyDown(object sender, KeyEventArgs e)
     {
         if (e.Key == Key.Enter)
         {
-            AgregarCodigoSecundario();
+            BtnAgregarVariante_Click(sender, e);
             e.Handled = true;
         }
     }
 
-    private void AgregarCodigoSecundario()
+    private void BtnAgregarVariante_Click(object sender, RoutedEventArgs e)
     {
-        var nuevo = TxtNuevoCodigoSecundario.Text.Trim();
-        if (string.IsNullOrWhiteSpace(nuevo)) return;
+        var nombre = TxtColorVariante.Text.Trim();
+        var codigo = TxtCodigoBarrasVariante.Text.Trim();
 
-        if (nuevo == Articulo.CodigoBarras)
+        if (string.IsNullOrWhiteSpace(nombre))
         {
-            MessageBox.Show("Este código ya es el código de barra principal del producto.", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("Por favor ingrese el Color o Modelo de la variante (ej: Azul, Rojo, Tapa Dura).", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Warning);
+            TxtColorVariante.Focus();
             return;
         }
 
-        if (!CodigosSecundariosLista.Contains(nuevo))
+        if (string.IsNullOrWhiteSpace(codigo))
         {
-            CodigosSecundariosLista.Add(nuevo);
-            Articulo.CodigosBarrasSecundarios = string.Join(", ", CodigosSecundariosLista);
+            var rnd = new Random();
+            codigo = $"VAR-{DateTime.Now:yyMMddHHmm}{rnd.Next(10, 99)}";
+            TxtCodigoBarrasVariante.Text = codigo;
         }
 
-        TxtNuevoCodigoSecundario.Clear();
-        TxtNuevoCodigoSecundario.Focus();
+        if (string.Equals(codigo, Articulo.CodigoBarras, StringComparison.OrdinalIgnoreCase))
+        {
+            MessageBox.Show("Este código de barras ya está asignado al artículo principal. Por favor use un código distinto o genere uno nuevo.", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Warning);
+            TxtCodigoBarrasVariante.Focus();
+            return;
+        }
+
+        if (VariantesLista.Any(v => string.Equals(v.CodigoBarras, codigo, StringComparison.OrdinalIgnoreCase)))
+        {
+            MessageBox.Show("Ya existe una variante con este código de barras.", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Warning);
+            TxtCodigoBarrasVariante.Focus();
+            return;
+        }
+
+        TryParseMonto(TxtStockVariante.Text, out var stock);
+        TryParseMonto(TxtStockMinVariante.Text, out var stockMin);
+
+        VariantesLista.Add(new ArticuloVarianteDto
+        {
+            Id = Guid.NewGuid(),
+            ArticuloId = Articulo.Id,
+            Nombre = nombre,
+            CodigoBarras = codigo,
+            StockActual = stock,
+            StockMinimo = stockMin,
+            Activo = true
+        });
+
+        TxtColorVariante.Clear();
+        TxtCodigoBarrasVariante.Clear();
+        TxtStockVariante.Text = "0";
+        TxtStockMinVariante.Text = "0";
+        TxtColorVariante.Focus();
+
+        ActualizarResumenVariantesYStockUI();
     }
 
-    private void BtnQuitarCodigoSecundario_Click(object sender, RoutedEventArgs e)
+    private void BtnEliminarVariante_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button btn && btn.Tag is string cod)
+        if (sender is Button btn && btn.Tag is ArticuloVarianteDto variante)
         {
-            CodigosSecundariosLista.Remove(cod);
-            Articulo.CodigosBarrasSecundarios = CodigosSecundariosLista.Count > 0 ? string.Join(", ", CodigosSecundariosLista) : null;
+            VariantesLista.Remove(variante);
+            ActualizarResumenVariantesYStockUI();
+        }
+    }
+
+    private void ActualizarResumenVariantesYStockUI()
+    {
+        if (TxtResumenVariantes != null)
+        {
+            TxtResumenVariantes.Text = $"{VariantesLista.Count} color(es) registrado(s)";
+        }
+
+        if (VariantesLista.Count > 0)
+        {
+            var totalStock = VariantesLista.Sum(v => v.StockActual);
+            var totalStockMin = VariantesLista.Sum(v => v.StockMinimo);
+            Articulo.StockActual = totalStock;
+            Articulo.StockMinimo = totalStockMin;
+
+            if (TxtStockActual != null)
+            {
+                TxtStockActual.Text = totalStock.ToString("N0", CultureInfo.InvariantCulture);
+                TxtStockActual.IsEnabled = false;
+            }
+            if (TxtStockMinimo != null)
+            {
+                TxtStockMinimo.Text = totalStockMin.ToString("N0", CultureInfo.InvariantCulture);
+            }
+            if (TxtStockVarianteAviso != null)
+            {
+                TxtStockVarianteAviso.Text = $"ℹ️ Calculado automáticamente sumando {VariantesLista.Count} variantes/colores.";
+            }
+        }
+        else
+        {
+            if (TxtStockActual != null)
+            {
+                TxtStockActual.IsEnabled = true;
+            }
+            if (TxtStockVarianteAviso != null)
+            {
+                TxtStockVarianteAviso.Text = "💡 Si el producto no tiene variantes de color, ingrese el stock directamente aquí.";
+            }
         }
     }
 
@@ -552,7 +659,17 @@ public partial class ArticuloModalWindow : Window
             Articulo.CantidadPorPack = 1;
         }
 
-        Articulo.CodigosBarrasSecundarios = CodigosSecundariosLista.Count > 0 ? string.Join(", ", CodigosSecundariosLista) : null;
+        Articulo.Variantes = VariantesLista.ToList();
+        if (Articulo.Variantes.Count > 0)
+        {
+            Articulo.StockActual = Articulo.Variantes.Sum(v => v.StockActual);
+            Articulo.StockMinimo = Articulo.Variantes.Sum(v => v.StockMinimo);
+            Articulo.CodigosBarrasSecundarios = string.Join(", ", Articulo.Variantes.Select(v => v.CodigoBarras).Where(c => !string.IsNullOrWhiteSpace(c)));
+        }
+        else
+        {
+            Articulo.CodigosBarrasSecundarios = null;
+        }
 
         try
         {

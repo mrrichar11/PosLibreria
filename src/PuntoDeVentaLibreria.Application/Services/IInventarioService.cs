@@ -27,7 +27,7 @@ public interface IInventarioService
     Task<ActualizacionPreciosResultadoDto> AplicarActualizacionPreciosAsync(IEnumerable<ArticuloAumentoPrecioItemDto> items, CancellationToken ct = default);
 
     // Auditoría y Conteo rápido de Stock por Góndola (Sunday-Ready & Gradual)
-    Task<ArticuloDto> AjustarStockRapidoAsync(Guid articuloId, decimal nuevoStock, string motivo = "Auditoría de Stock", string usuarioNombre = "Administrador", CancellationToken ct = default);
+    Task<ArticuloDto> AjustarStockRapidoAsync(Guid articuloId, decimal nuevoStock, string motivo = "Auditoría de Stock", string usuarioNombre = "Administrador", Guid? articuloVarianteId = null, CancellationToken ct = default);
     Task<AuditoriaStockProgresoDto> ObtenerProgresoAuditoriaAsync(CancellationToken ct = default);
 }
 

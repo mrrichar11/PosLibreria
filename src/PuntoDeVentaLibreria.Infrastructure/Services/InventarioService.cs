@@ -28,6 +28,7 @@ public class InventarioService : IInventarioService
                 .Include(a => a.Marca)
                 .Include(a => a.Proveedor)
                 .Include(a => a.ArticuloBase)
+                .Include(a => a.Variantes)
                 .Where(a => a.Activo)
                 .OrderBy(a => a.Nombre)
                 .Take(50)
@@ -38,25 +39,30 @@ public class InventarioService : IInventarioService
 
         var limpio = criterio.Trim().ToUpper();
 
-        // 1. Coincidencia exacta de Código de Barras, SKU, Código de Proveedor o Código Secundario (prioridad escáner)
+        // 1. Coincidencia exacta de Código de Barras (artículo o variante), SKU, Código de Proveedor o Código Secundario
         var exacto = await _context.Articulos
             .AsNoTracking()
             .Include(a => a.Categoria)
             .Include(a => a.Marca)
             .Include(a => a.Proveedor)
             .Include(a => a.ArticuloBase)
+            .Include(a => a.Variantes)
             .FirstOrDefaultAsync(a => a.Activo && (
                 a.CodigoBarras == limpio ||
                 a.SKU == limpio ||
                 a.CodigoProveedor == limpio ||
-                (a.CodigosBarrasSecundarios != null && a.CodigosBarrasSecundarios.Contains(limpio))), ct);
+                (a.CodigosBarrasSecundarios != null && a.CodigosBarrasSecundarios.Contains(limpio)) ||
+                a.Variantes.Any(v => v.Activo && v.CodigoBarras == limpio)), ct);
 
         if (exacto != null)
         {
-            return new List<ArticuloDto> { MapToDto(exacto) };
+            var dto = MapToDto(exacto);
+            var vMatch = dto.Variantes.FirstOrDefault(v => v.CodigoBarras != null && v.CodigoBarras.Equals(limpio, StringComparison.OrdinalIgnoreCase));
+            if (vMatch != null) dto.VarianteEscaneada = vMatch;
+            return new List<ArticuloDto> { dto };
         }
 
-        // 2. Coincidencia por múltiples términos
+        // 2. Coincidencia por múltiples términos (incluyendo nombres y códigos de variantes)
         var tokens = limpio.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var query = _context.Articulos
             .AsNoTracking()
@@ -64,6 +70,7 @@ public class InventarioService : IInventarioService
             .Include(a => a.Marca)
             .Include(a => a.Proveedor)
             .Include(a => a.ArticuloBase)
+            .Include(a => a.Variantes)
             .Where(a => a.Activo);
 
         foreach (var token in tokens)
@@ -77,7 +84,8 @@ public class InventarioService : IInventarioService
                 (a.Marca != null && a.Marca.Nombre.ToUpper().Contains(token)) ||
                 (a.Categoria != null && a.Categoria.Nombre.ToUpper().Contains(token)) ||
                 (a.Proveedor != null && a.Proveedor.Nombre.ToUpper().Contains(token)) ||
-                (a.Rubro != null && a.Rubro.ToUpper().Contains(token)));
+                (a.Rubro != null && a.Rubro.ToUpper().Contains(token)) ||
+                a.Variantes.Any(v => v.Activo && (v.Nombre.ToUpper().Contains(token) || (v.CodigoBarras != null && v.CodigoBarras.Contains(token)))));
         }
 
         var lista = await query.Take(50).ToListAsync(ct);
@@ -100,6 +108,7 @@ public class InventarioService : IInventarioService
             .Include(a => a.Marca)
             .Include(a => a.Proveedor)
             .Include(a => a.ArticuloBase)
+            .Include(a => a.Variantes)
             .Include(a => a.ItemsDelCombo)
                 .ThenInclude(c => c.ComponenteArticulo)
             .AsQueryable();
@@ -127,7 +136,8 @@ public class InventarioService : IInventarioService
                     (a.Marca != null && a.Marca.Nombre.ToUpper().Contains(token)) ||
                     (a.Categoria != null && a.Categoria.Nombre.ToUpper().Contains(token)) ||
                     (a.Proveedor != null && a.Proveedor.Nombre.ToUpper().Contains(token)) ||
-                    (a.Rubro != null && a.Rubro.ToUpper().Contains(token)));
+                    (a.Rubro != null && a.Rubro.ToUpper().Contains(token)) ||
+                    a.Variantes.Any(v => v.Activo && (v.Nombre.ToUpper().Contains(token) || (v.CodigoBarras != null && v.CodigoBarras.Contains(token)))));
             }
         }
 
@@ -180,15 +190,26 @@ public class InventarioService : IInventarioService
             .Include(a => a.Marca)
             .Include(a => a.Proveedor)
             .Include(a => a.ArticuloBase)
+            .Include(a => a.Variantes)
             .Include(a => a.ItemsDelCombo)
                 .ThenInclude(c => c.ComponenteArticulo)
             .FirstOrDefaultAsync(a => a.Activo && (
                 a.CodigoBarras == limpio ||
                 a.SKU == limpio ||
                 a.CodigoProveedor == limpio ||
-                (a.CodigosBarrasSecundarios != null && a.CodigosBarrasSecundarios.Contains(limpio))), ct);
+                (a.CodigosBarrasSecundarios != null && a.CodigosBarrasSecundarios.Contains(limpio)) ||
+                a.Variantes.Any(v => v.Activo && v.CodigoBarras == limpio)), ct);
 
-        return art != null ? MapToDto(art) : null;
+        if (art == null) return null;
+
+        var dto = MapToDto(art);
+        var vMatch = dto.Variantes.FirstOrDefault(v => v.CodigoBarras != null && v.CodigoBarras.Equals(limpio, StringComparison.OrdinalIgnoreCase));
+        if (vMatch != null)
+        {
+            dto.VarianteEscaneada = vMatch;
+        }
+
+        return dto;
     }
 
     public async Task<IReadOnlyList<ArticuloDto>> ObtenerBotonesRapidosAsync(CancellationToken ct = default)
@@ -199,6 +220,7 @@ public class InventarioService : IInventarioService
             .Include(a => a.Marca)
             .Include(a => a.Proveedor)
             .Include(a => a.ArticuloBase)
+            .Include(a => a.Variantes)
             .Where(a => a.Activo && a.EsBotonRapido)
             .OrderBy(a => a.Nombre)
             .ToListAsync(ct);
@@ -262,6 +284,72 @@ public class InventarioService : IInventarioService
                     Cantidad = c.Cantidad
                 });
             }
+        }
+
+        // Gestión y persistencia de Variantes (Colores / Modelos con stock propio)
+        if (dto.Id != Guid.Empty)
+        {
+            await _context.Entry(entidad).Collection(a => a.Variantes).LoadAsync(ct);
+        }
+
+        if (dto.Variantes != null && dto.Variantes.Count > 0)
+        {
+            var dtoVarIds = dto.Variantes.Where(v => v.Id != Guid.Empty).Select(v => v.Id).ToHashSet();
+
+            foreach (var existingVar in entidad.Variantes.ToList())
+            {
+                if (!dtoVarIds.Contains(existingVar.Id))
+                {
+                    existingVar.Activo = false;
+                }
+            }
+
+            foreach (var vDto in dto.Variantes)
+            {
+                var existing = entidad.Variantes.FirstOrDefault(v => v.Id == vDto.Id && vDto.Id != Guid.Empty);
+                if (existing != null)
+                {
+                    existing.Nombre = vDto.Nombre.Trim();
+                    existing.CodigoBarras = string.IsNullOrWhiteSpace(vDto.CodigoBarras) ? null : vDto.CodigoBarras.Trim();
+                    existing.CodigoProveedor = string.IsNullOrWhiteSpace(vDto.CodigoProveedor) ? null : vDto.CodigoProveedor.Trim();
+                    existing.StockActual = vDto.StockActual;
+                    existing.StockMinimo = vDto.StockMinimo;
+                    existing.Activo = true;
+                }
+                else
+                {
+                    entidad.Variantes.Add(new ArticuloVariante
+                    {
+                        Id = Guid.NewGuid(),
+                        ArticuloId = entidad.Id,
+                        Nombre = vDto.Nombre.Trim(),
+                        CodigoBarras = string.IsNullOrWhiteSpace(vDto.CodigoBarras) ? null : vDto.CodigoBarras.Trim(),
+                        CodigoProveedor = string.IsNullOrWhiteSpace(vDto.CodigoProveedor) ? null : vDto.CodigoProveedor.Trim(),
+                        StockActual = vDto.StockActual,
+                        StockMinimo = vDto.StockMinimo,
+                        Activo = true
+                    });
+                }
+            }
+
+            // Sincronizar el stock acumulado del artículo principal
+            entidad.StockActual = entidad.Variantes.Where(v => v.Activo).Sum(v => v.StockActual);
+
+            // Mantener códigos secundarios en sync para interoperabilidad
+            var codigosVariantes = entidad.Variantes
+                .Where(v => v.Activo && !string.IsNullOrWhiteSpace(v.CodigoBarras))
+                .Select(v => v.CodigoBarras!)
+                .Distinct();
+            entidad.CodigosBarrasSecundarios = string.Join(", ", codigosVariantes);
+        }
+        else
+        {
+            // Sin variantes: desactivar si tenía anteriores y respetar stock directo
+            foreach (var existingVar in entidad.Variantes)
+            {
+                existingVar.Activo = false;
+            }
+            entidad.StockActual = dto.StockActual;
         }
 
         await _context.SaveChangesAsync(ct);
@@ -949,32 +1037,62 @@ public class InventarioService : IInventarioService
         };
     }
 
-    public async Task<ArticuloDto> AjustarStockRapidoAsync(Guid articuloId, decimal nuevoStock, string motivo = "Auditoría de Stock", string usuarioNombre = "Administrador", CancellationToken ct = default)
+    public async Task<ArticuloDto> AjustarStockRapidoAsync(Guid articuloId, decimal nuevoStock, string motivo = "Auditoría de Stock", string usuarioNombre = "Administrador", Guid? articuloVarianteId = null, CancellationToken ct = default)
     {
         var art = await _context.Articulos
             .Include(a => a.Categoria)
             .Include(a => a.Marca)
             .Include(a => a.Proveedor)
             .Include(a => a.ArticuloBase)
+            .Include(a => a.Variantes)
             .FirstOrDefaultAsync(a => a.Id == articuloId, ct)
             ?? throw new InvalidOperationException("Artículo no encontrado.");
 
-        decimal stockPrevio = art.StockActual;
-        decimal delta = nuevoStock - stockPrevio;
-
-        art.StockActual = nuevoStock;
-        art.UltimaAuditoriaStock = DateTime.UtcNow;
-
-        _context.MovimientosStock.Add(new MovimientoStock
+        if (articuloVarianteId.HasValue)
         {
-            ArticuloId = art.Id,
-            Tipo = delta >= 0 ? TipoMovimientoStock.AjusteManualPositivo : TipoMovimientoStock.AjusteManualNegativo,
-            Cantidad = delta,
-            StockPrevio = stockPrevio,
-            StockPosterior = nuevoStock,
-            Motivo = string.IsNullOrWhiteSpace(motivo) ? "Auditoría de Stock (Conteo Rápido)" : motivo,
-            UsuarioNombre = string.IsNullOrWhiteSpace(usuarioNombre) ? "Administrador" : usuarioNombre
-        });
+            var variante = art.Variantes.FirstOrDefault(v => v.Id == articuloVarianteId.Value)
+                ?? throw new InvalidOperationException("Variante de artículo no encontrada.");
+
+            decimal stockPrevioVar = variante.StockActual;
+            decimal deltaVar = nuevoStock - stockPrevioVar;
+
+            variante.StockActual = nuevoStock;
+            variante.UltimaAuditoriaStock = DateTime.UtcNow;
+
+            art.UltimaAuditoriaStock = DateTime.UtcNow;
+            art.StockActual = art.Variantes.Where(v => v.Activo).Sum(v => v.StockActual);
+
+            _context.MovimientosStock.Add(new MovimientoStock
+            {
+                ArticuloId = art.Id,
+                ArticuloVarianteId = variante.Id,
+                Tipo = deltaVar >= 0 ? TipoMovimientoStock.AjusteManualPositivo : TipoMovimientoStock.AjusteManualNegativo,
+                Cantidad = deltaVar,
+                StockPrevio = stockPrevioVar,
+                StockPosterior = nuevoStock,
+                Motivo = string.IsNullOrWhiteSpace(motivo) ? $"Auditoría de Stock - Color: {variante.Nombre}" : $"{motivo} ({variante.Nombre})",
+                UsuarioNombre = string.IsNullOrWhiteSpace(usuarioNombre) ? "Administrador" : usuarioNombre
+            });
+        }
+        else
+        {
+            decimal stockPrevio = art.StockActual;
+            decimal delta = nuevoStock - stockPrevio;
+
+            art.StockActual = nuevoStock;
+            art.UltimaAuditoriaStock = DateTime.UtcNow;
+
+            _context.MovimientosStock.Add(new MovimientoStock
+            {
+                ArticuloId = art.Id,
+                Tipo = delta >= 0 ? TipoMovimientoStock.AjusteManualPositivo : TipoMovimientoStock.AjusteManualNegativo,
+                Cantidad = delta,
+                StockPrevio = stockPrevio,
+                StockPosterior = nuevoStock,
+                Motivo = string.IsNullOrWhiteSpace(motivo) ? "Auditoría de Stock (Conteo Rápido)" : motivo,
+                UsuarioNombre = string.IsNullOrWhiteSpace(usuarioNombre) ? "Administrador" : usuarioNombre
+            });
+        }
 
         await _context.SaveChangesAsync(ct);
         return MapToDto(art);
@@ -1016,7 +1134,9 @@ public class InventarioService : IInventarioService
         IvaPorcentaje = a.IvaPorcentaje,
         PorcentajeGanancia = a.PorcentajeGanancia,
         PrecioVenta = a.PrecioVenta,
-        StockActual = a.StockActual,
+        StockActual = a.Variantes != null && a.Variantes.Any(v => v.Activo)
+            ? a.Variantes.Where(v => v.Activo).Sum(v => v.StockActual)
+            : a.StockActual,
         StockMinimo = a.StockMinimo,
         UnidadMedida = a.UnidadMedida,
         Ubicacion = a.Ubicacion,
@@ -1028,6 +1148,20 @@ public class InventarioService : IInventarioService
         ArticuloBaseNombre = a.ArticuloBase?.Nombre ?? "",
         CantidadPorPack = a.CantidadPorPack > 0 ? a.CantidadPorPack : 1,
         UltimaAuditoriaStock = a.UltimaAuditoriaStock,
+        Variantes = a.Variantes != null
+            ? a.Variantes.Where(v => v.Activo).Select(v => new ArticuloVarianteDto
+            {
+                Id = v.Id,
+                ArticuloId = v.ArticuloId,
+                Nombre = v.Nombre,
+                CodigoBarras = v.CodigoBarras,
+                CodigoProveedor = v.CodigoProveedor,
+                StockActual = v.StockActual,
+                StockMinimo = v.StockMinimo,
+                Activo = v.Activo,
+                UltimaAuditoriaStock = v.UltimaAuditoriaStock
+            }).ToList()
+            : new List<ArticuloVarianteDto>(),
         ComponentesDelCombo = new System.Collections.ObjectModel.ObservableCollection<ComboComponenteDto>(
             a.ItemsDelCombo.Select(c => new ComboComponenteDto
             {

@@ -42,6 +42,20 @@ public class ArticuloDto
     public DateTime? UltimaAuditoriaStock { get; set; }
     public bool YaAuditado => UltimaAuditoriaStock.HasValue;
 
+    // Variantes / Colores con stock propio
+    public List<ArticuloVarianteDto> Variantes { get; set; } = new();
+    public bool TieneVariantes => Variantes != null && Variantes.Any(v => v.Activo);
+    public ArticuloVarianteDto? VarianteEscaneada { get; set; }
+    public string VariantesResumenTexto
+    {
+        get
+        {
+            if (!TieneVariantes) return string.Empty;
+            var activos = Variantes.Where(v => v.Activo).ToList();
+            return $"{activos.Count} colores: " + string.Join(", ", activos.Select(v => $"{v.StockActual:N0} {v.Nombre}"));
+        }
+    }
+
     public System.Collections.ObjectModel.ObservableCollection<ComboComponenteDto> ComponentesDelCombo { get; set; } = new();
 }
 

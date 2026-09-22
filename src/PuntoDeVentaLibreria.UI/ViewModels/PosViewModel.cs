@@ -60,6 +60,7 @@ public partial class PosViewModel : ObservableObject
     // Delegados para interacción modal con la View
     public Func<CobroModalViewModel, Task<bool>>? SolicitarCobroDialogo { get; set; }
     public Func<IReadOnlyList<ArticuloDto>, string, Task<ArticuloDto?>>? SolicitarSeleccionArticulo { get; set; }
+    public Func<ArticuloDto, Task<ArticuloVarianteDto?>>? SolicitarSeleccionVariante { get; set; }
     public Func<Task<(string descripcion, decimal precio, decimal cantidad)?>>? SolicitarVentaManualDialogo { get; set; }
     public Func<string, string, Task<bool>>? SolicitarConfirmacionDialogo { get; set; }
     public Func<string, string, int, string, Task>? SolicitarVistaPreviaTicket { get; set; }
@@ -125,11 +126,11 @@ public partial class PosViewModel : ObservableObject
         if (string.IsNullOrWhiteSpace(query))
             return;
 
-        // 1. Buscar por código de barras exacto
+        // 1. Buscar por código de barras exacto (puede ser del artículo o de una variante específica)
         var art = await _inventarioService.BuscarPorCodigoBarrasAsync(query);
         if (art != null)
         {
-            AgregarArticuloAlTicket(art);
+            await AgregarArticuloAlTicketAsync(art);
             return;
         }
 
@@ -153,7 +154,7 @@ public partial class PosViewModel : ObservableObject
         // Si hay una sola coincidencia y su SKU coincide exactamente con el texto buscado
         if (coincidencias.Count == 1 && string.Equals(coincidencias[0].SKU, query, StringComparison.OrdinalIgnoreCase))
         {
-            AgregarArticuloAlTicket(coincidencias[0]);
+            await AgregarArticuloAlTicketAsync(coincidencias[0]);
             return;
         }
 
@@ -163,7 +164,7 @@ public partial class PosViewModel : ObservableObject
             var seleccionado = await SolicitarSeleccionArticulo(coincidencias, query);
             if (seleccionado != null)
             {
-                AgregarArticuloAlTicket(seleccionado);
+                await AgregarArticuloAlTicketAsync(seleccionado);
             }
             else
             {
@@ -172,15 +173,15 @@ public partial class PosViewModel : ObservableObject
         }
         else
         {
-            AgregarArticuloAlTicket(coincidencias[0]);
+            await AgregarArticuloAlTicketAsync(coincidencias[0]);
         }
     }
 
     [RelayCommand]
-    private void AgregarBotonRapido(ArticuloDto? articulo)
+    private async Task AgregarBotonRapido(ArticuloDto? articulo)
     {
         if (articulo == null) return;
-        AgregarArticuloAlTicket(articulo);
+        await AgregarArticuloAlTicketAsync(articulo);
     }
 
     [RelayCommand]
@@ -191,30 +192,56 @@ public partial class PosViewModel : ObservableObject
             var art = await SolicitarAltaRapidaArticulo(codigoInicial ?? CodigoBarrasInput);
             if (art != null)
             {
-                AgregarArticuloAlTicket(art);
+                await AgregarArticuloAlTicketAsync(art);
                 CodigoBarrasInput = string.Empty;
                 MensajeEstado = $"Artículo registrado y añadido al ticket: {art.Nombre}";
             }
         }
     }
 
-    private void AgregarArticuloAlTicket(ArticuloDto art)
+    private async Task AgregarArticuloAlTicketAsync(ArticuloDto art, ArticuloVarianteDto? varianteEspecifica = null)
     {
-        var itemExistente = Items.FirstOrDefault(i => i.ArticuloId == art.Id);
+        ArticuloVarianteDto? variante = varianteEspecifica ?? art.VarianteEscaneada;
+
+        // Si el artículo tiene variantes y no se escaneó un código de variante específico, solicitar selección al usuario
+        if (variante == null && art.TieneVariantes && art.Variantes.Count > 0)
+        {
+            if (SolicitarSeleccionVariante != null)
+            {
+                variante = await SolicitarSeleccionVariante(art);
+                if (variante == null)
+                {
+                    MensajeEstado = "Selección de variante cancelada.";
+                    return;
+                }
+            }
+            else
+            {
+                variante = art.Variantes.FirstOrDefault();
+            }
+        }
+
+        // Buscar si ya existe en el ticket con el mismo ArticuloId Y ArticuloVarianteId
+        var itemExistente = Items.FirstOrDefault(i => i.ArticuloId == art.Id && i.ArticuloVarianteId == (variante != null ? variante.Id : null));
         if (itemExistente != null)
         {
             itemExistente.Cantidad += 1;
-            MensajeEstado = $"Incrementado: {art.Nombre} (x{itemExistente.Cantidad})";
+            MensajeEstado = $"Incrementado: {itemExistente.Descripcion} (x{itemExistente.Cantidad})";
             RecalcularTotales();
             return;
         }
 
+        var descripcion = variante != null ? $"{art.Nombre} ({variante.Nombre})" : art.Nombre;
+        var codigoBarras = variante?.CodigoBarras ?? art.CodigoBarras;
+
         var nuevo = new PosItemModel
         {
             ArticuloId = art.Id,
+            ArticuloVarianteId = variante?.Id,
+            VarianteNombre = variante?.Nombre,
             SKU = art.SKU,
-            CodigoBarras = art.CodigoBarras,
-            Descripcion = art.Nombre,
+            CodigoBarras = codigoBarras,
+            Descripcion = descripcion,
             PrecioUnitario = art.PrecioVenta,
             PrecioCosto = art.PrecioCosto,
             Cantidad = 1,
@@ -224,7 +251,7 @@ public partial class PosViewModel : ObservableObject
 
         nuevo.PropertyChanged += (s, e) => RecalcularTotales();
         Items.Add(nuevo);
-        MensajeEstado = $"Agregado: {art.Nombre}";
+        MensajeEstado = $"Agregado: {descripcion}";
     }
 
     [RelayCommand]
@@ -499,6 +526,8 @@ public partial class PosViewModel : ObservableObject
                 Items = Items.Select(i => new ItemCarritoDto
                 {
                     ArticuloId = i.ArticuloId,
+                    ArticuloVarianteId = i.ArticuloVarianteId,
+                    VarianteNombre = i.VarianteNombre,
                     SKU = i.SKU,
                     CodigoBarras = i.CodigoBarras,
                     Descripcion = i.Descripcion,

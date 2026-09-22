@@ -5,6 +5,8 @@ namespace PuntoDeVentaLibreria.UI.ViewModels;
 public partial class PosItemModel : ObservableObject
 {
     public Guid? ArticuloId { get; set; }
+    public Guid? ArticuloVarianteId { get; set; }
+    public string? VarianteNombre { get; set; }
     public string SKU { get; set; } = string.Empty;
     public string? CodigoBarras { get; set; }
     public string Descripcion { get; set; } = string.Empty;

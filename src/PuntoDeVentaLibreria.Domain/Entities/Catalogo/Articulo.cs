@@ -66,4 +66,8 @@ public class Articulo : BaseEntity
     public ICollection<MovimientoStock> MovimientosStock { get; set; } = new List<MovimientoStock>();
     public ICollection<ComboItem> ComoComponenteEnCombos { get; set; } = new List<ComboItem>();
     public ICollection<ComboItem> ItemsDelCombo { get; set; } = new List<ComboItem>();
+    public ICollection<ArticuloVariante> Variantes { get; set; } = new List<ArticuloVariante>();
+
+    /// <summary>Indica si el artículo posee variantes activas con stock propio (colores, modelos)</summary>
+    public bool TieneVariantes => Variantes != null && Variantes.Any(v => v.Activo);
 }

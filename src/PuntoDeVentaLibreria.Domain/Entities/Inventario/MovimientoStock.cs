@@ -18,6 +18,9 @@ public class MovimientoStock : BaseEntity
     public Guid ArticuloId { get; set; }
     public Articulo Articulo { get; set; } = null!;
 
+    public Guid? ArticuloVarianteId { get; set; }
+    public ArticuloVariante? ArticuloVariante { get; set; }
+
     public TipoMovimientoStock Tipo { get; set; }
     public decimal Cantidad { get; set; }
     public decimal StockPrevio { get; set; }

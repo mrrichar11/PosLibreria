@@ -20,6 +20,10 @@ public class LineaVenta : BaseEntity
     public decimal PrecioCostoHistorico { get; set; }
     public decimal Subtotal => Cantidad * PrecioUnitarioVenta;
 
+    public Guid? ArticuloVarianteId { get; set; }
+    public ArticuloVariante? ArticuloVariante { get; set; }
+    public string? VarianteNombre { get; set; }
+
     /// <summary>Si es true, no exige ni descuenta existencias de inventario</summary>
     public bool EsVentaManual { get; set; }
 

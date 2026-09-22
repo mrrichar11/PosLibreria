@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
     public DbSet<Marca> Marcas => Set<Marca>();
     public DbSet<Proveedor> Proveedores => Set<Proveedor>();
     public DbSet<ComboItem> ComboItems => Set<ComboItem>();
+    public DbSet<ArticuloVariante> ArticuloVariantes => Set<ArticuloVariante>();
     public DbSet<MovimientoStock> MovimientosStock => Set<MovimientoStock>();
 
     public DbSet<TurnoCaja> TurnosCaja => Set<TurnoCaja>();
@@ -72,6 +73,19 @@ public class AppDbContext : DbContext
                   .WithMany(p => p.Articulos)
                   .HasForeignKey(a => a.ProveedorId)
                   .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        // ArticuloVariante
+        modelBuilder.Entity<ArticuloVariante>(entity =>
+        {
+            entity.HasKey(v => v.Id);
+            entity.HasIndex(v => v.CodigoBarras);
+            entity.HasIndex(v => v.ArticuloId);
+
+            entity.HasOne(v => v.Articulo)
+                  .WithMany(a => a.Variantes)
+                  .HasForeignKey(v => v.ArticuloId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

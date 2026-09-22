@@ -58,6 +58,8 @@ public class VentaService : IVentaService
             {
                 VentaId = venta.Id,
                 ArticuloId = item.ArticuloId,
+                ArticuloVarianteId = item.ArticuloVarianteId,
+                VarianteNombre = item.VarianteNombre,
                 Descripcion = item.Descripcion,
                 SKU = item.SKU,
                 CodigoBarras = item.CodigoBarras,
@@ -130,20 +132,64 @@ public class VentaService : IVentaService
                     }
                     else if (articulo.Tipo != TipoArticulo.Servicio)
                     {
-                        // Artículo físico estándar: descontar directamente
-                        decimal prev = articulo.StockActual;
-                        articulo.StockActual -= item.Cantidad;
-
-                        _context.MovimientosStock.Add(new MovimientoStock
+                        // Si se vendió una variante / color específico
+                        if (item.ArticuloVarianteId.HasValue)
                         {
-                            ArticuloId = articulo.Id,
-                            Tipo = TipoMovimientoStock.Venta,
-                            Cantidad = -item.Cantidad,
-                            StockPrevio = prev,
-                            StockPosterior = articulo.StockActual,
-                            Motivo = $"Venta mostrador {numeroComprobante}",
-                            UsuarioNombre = dto.VendedoraNombre
-                        });
+                            var variante = await _context.ArticuloVariantes.FirstOrDefaultAsync(v => v.Id == item.ArticuloVarianteId.Value, ct);
+                            if (variante != null)
+                            {
+                                decimal prevVar = variante.StockActual;
+                                variante.StockActual -= item.Cantidad;
+
+                                decimal prevArt = articulo.StockActual;
+                                articulo.StockActual -= item.Cantidad;
+
+                                _context.MovimientosStock.Add(new MovimientoStock
+                                {
+                                    ArticuloId = articulo.Id,
+                                    ArticuloVarianteId = variante.Id,
+                                    Tipo = TipoMovimientoStock.Venta,
+                                    Cantidad = -item.Cantidad,
+                                    StockPrevio = prevVar,
+                                    StockPosterior = variante.StockActual,
+                                    Motivo = $"Venta mostrador {numeroComprobante} ({variante.Nombre})",
+                                    UsuarioNombre = dto.VendedoraNombre
+                                });
+                            }
+                            else
+                            {
+                                decimal prev = articulo.StockActual;
+                                articulo.StockActual -= item.Cantidad;
+
+                                _context.MovimientosStock.Add(new MovimientoStock
+                                {
+                                    ArticuloId = articulo.Id,
+                                    Tipo = TipoMovimientoStock.Venta,
+                                    Cantidad = -item.Cantidad,
+                                    StockPrevio = prev,
+                                    StockPosterior = articulo.StockActual,
+                                    Motivo = $"Venta mostrador {numeroComprobante}",
+                                    UsuarioNombre = dto.VendedoraNombre
+                                });
+                            }
+                        }
+                        else
+                        {
+                            // Artículo físico estándar sin variantes
+                            decimal prev = articulo.StockActual;
+                            articulo.StockActual -= item.Cantidad;
+
+                            _context.MovimientosStock.Add(new MovimientoStock
+                            {
+                                ArticuloId = articulo.Id,
+                                Tipo = TipoMovimientoStock.Venta,
+                                Cantidad = -item.Cantidad,
+                                StockPrevio = prev,
+                                StockPosterior = articulo.StockActual,
+                                Motivo = $"Venta mostrador {numeroComprobante}",
+                                UsuarioNombre = dto.VendedoraNombre
+                            });
+                        }
                     }
                 }
             }

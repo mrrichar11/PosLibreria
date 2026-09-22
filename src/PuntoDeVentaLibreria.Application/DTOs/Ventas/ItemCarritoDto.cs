@@ -12,4 +12,6 @@ public class ItemCarritoDto
     public decimal Subtotal => Cantidad * PrecioUnitario;
     public bool EsVentaManual { get; set; }
     public bool EsCombo { get; set; }
+    public Guid? ArticuloVarianteId { get; set; }
+    public string? VarianteNombre { get; set; }
 }
