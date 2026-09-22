@@ -90,7 +90,10 @@ public class InventarioService : IInventarioService
 
         // Métricas de stock globales
         var totalGlobal = await queryBase.CountAsync(ct);
-        var valorGlobal = await queryBase.SumAsync(a => (decimal?)(a.PrecioVenta * a.StockActual), ct) ?? 0m;
+        var articulosValores = await queryBase
+            .Select(a => new { a.PrecioVenta, a.StockActual })
+            .ToListAsync(ct);
+        var valorGlobal = articulosValores.Sum(a => a.PrecioVenta * a.StockActual);
 
         var query = queryBase
             .Include(a => a.Categoria)
