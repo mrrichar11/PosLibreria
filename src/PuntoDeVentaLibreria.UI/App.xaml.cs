@@ -19,6 +19,7 @@ namespace PuntoDeVentaLibreria.UI;
 public partial class App : System.Windows.Application
 {
     private IHost? _host;
+    private static bool _isShowingUnhandledError = false;
 
     protected override async void OnStartup(StartupEventArgs e)
     {
@@ -26,7 +27,21 @@ public partial class App : System.Windows.Application
 
         this.DispatcherUnhandledException += (s, ev) =>
         {
-            MessageBox.Show($"Ocurrió un error en la interfaz:\n\n{ev.Exception.Message}\n\n{ev.Exception.StackTrace}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            if (_isShowingUnhandledError)
+            {
+                ev.Handled = true;
+                return;
+            }
+
+            _isShowingUnhandledError = true;
+            try
+            {
+                MessageBox.Show($"Ocurrió un error en la interfaz:\n\n{ev.Exception.Message}\n\n{ev.Exception.StackTrace}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            finally
+            {
+                _isShowingUnhandledError = false;
+            }
             ev.Handled = true;
         };
 

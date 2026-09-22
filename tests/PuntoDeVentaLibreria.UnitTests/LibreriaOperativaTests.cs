@@ -201,4 +201,21 @@ public class LibreriaOperativaTests
         reporte.CantidadArticulosLibreria.Should().Be(2m);
         reporte.CantidadArticulosRegaleria.Should().Be(1m);
     }
+
+    [Fact]
+    public async Task InventarioService_AnalizarExcelAlmaLibre_ProcesaArchivoCorrectamente()
+    {
+        var rutaArchivo = @"c:\Proyectos\PuntoDeVentaLibreria\Lista de precios ALMA LIBRE.xlsx";
+        if (!System.IO.File.Exists(rutaArchivo)) return;
+
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        using var stream = System.IO.File.OpenRead(rutaArchivo);
+        var resultado = await inventarioService.AnalizarExcelGenericoAsync(stream);
+
+        resultado.Should().NotBeNull();
+        resultado.Items.Should().NotBeEmpty();
+        resultado.ColumnasDetectadas.Should().NotBeEmpty();
+    }
 }

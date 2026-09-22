@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:converters="clr-namespace:PuntoDeVentaLibreria.UI.Converters"
         mc:Ignorable="d"
         Title="Importador Universal de Catálogo &amp; Precios desde Excel" 
         Height="700" Width="1200"
@@ -10,6 +11,11 @@
         WindowStartupLocation="CenterOwner"
         Background="#F8FAFC"
         FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        <converters:InverseBooleanToVisibilityConverter x:Key="InverseBooleanToVisibilityConverter"/>
+    </Window.Resources>
 
     <Grid Margin="16">
         <Grid.RowDefinitions>
