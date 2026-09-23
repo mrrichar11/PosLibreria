@@ -74,41 +74,19 @@ public partial class MainWindow : Window
 
     private void RestablecerEstiloBotones()
     {
-        var isDark = false;
-        try
-        {
-            isDark = Wpf.Ui.Appearance.ApplicationThemeManager.GetAppTheme() == Wpf.Ui.Appearance.ApplicationTheme.Dark;
-        }
-        catch { }
-
-        var normalBg = Brushes.Transparent;
-        var normalFg = isDark ? new SolidColorBrush(Color.FromRgb(226, 232, 240)) : new SolidColorBrush(Color.FromRgb(30, 41, 59));
-
-        BtnNavPos.Background = normalBg;
-        BtnNavPos.Foreground = normalFg;
-
-        BtnNavDashboard.Background = normalBg;
-        BtnNavDashboard.Foreground = normalFg;
-
-        BtnNavInventario.Background = normalBg;
-        BtnNavInventario.Foreground = normalFg;
-
-        BtnNavCaja.Background = normalBg;
-        BtnNavCaja.Foreground = normalFg;
-
-        BtnNavClientes.Background = normalBg;
-        BtnNavClientes.Foreground = normalFg;
-
-        BtnNavConfiguracion.Background = normalBg;
-        BtnNavConfiguracion.Foreground = normalFg;
+        BtnNavPos.Tag = null;
+        BtnNavDashboard.Tag = null;
+        BtnNavInventario.Tag = null;
+        BtnNavCaja.Tag = null;
+        BtnNavClientes.Tag = null;
+        BtnNavConfiguracion.Tag = null;
     }
 
     private void ActivarBoton(System.Windows.Controls.Button btn)
     {
         _botonActivoActual = btn;
         RestablecerEstiloBotones();
-        btn.Background = new SolidColorBrush(Color.FromRgb(37, 99, 235)); // Azul vibrante
-        btn.Foreground = Brushes.White;
+        btn.Tag = "Activo";
     }
 
     private void MostrarVistaPos()

@@ -113,6 +113,19 @@ public partial class ArticuloModalWindow : Window
             BtnEliminar.Visibility = Visibility.Visible;
         }
 
+        if (VariantesLista.Count > 0)
+        {
+            ChkTieneVariantes.IsChecked = true;
+            PanelVariantes.Visibility = Visibility.Visible;
+            if (BrdBadgeResumenVariantes != null) BrdBadgeResumenVariantes.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            ChkTieneVariantes.IsChecked = false;
+            PanelVariantes.Visibility = Visibility.Collapsed;
+            if (BrdBadgeResumenVariantes != null) BrdBadgeResumenVariantes.Visibility = Visibility.Collapsed;
+        }
+
         ActualizarResumenVariantesYStockUI();
 
         TxtNombre.Focus();
@@ -456,14 +469,52 @@ public partial class ArticuloModalWindow : Window
         }
     }
 
+    private void ChkTieneVariantes_Checked(object sender, RoutedEventArgs e)
+    {
+        if (PanelVariantes != null) PanelVariantes.Visibility = Visibility.Visible;
+        if (BrdBadgeResumenVariantes != null) BrdBadgeResumenVariantes.Visibility = Visibility.Visible;
+        ActualizarResumenVariantesYStockUI();
+    }
+
+    private void ChkTieneVariantes_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (VariantesLista.Count > 0)
+        {
+            var r = MessageBox.Show(
+                "Desmarcar esta opción quitará las variantes de color cargadas para este artículo.\n¿Desea continuar?",
+                "MR SYS Confirmación",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (r != MessageBoxResult.Yes)
+            {
+                ChkTieneVariantes.IsChecked = true;
+                return;
+            }
+
+            VariantesLista.Clear();
+        }
+
+        if (PanelVariantes != null) PanelVariantes.Visibility = Visibility.Collapsed;
+        if (BrdBadgeResumenVariantes != null) BrdBadgeResumenVariantes.Visibility = Visibility.Collapsed;
+        ActualizarResumenVariantesYStockUI();
+    }
+
     private void ActualizarResumenVariantesYStockUI()
     {
+        var tieneVariantesActivo = ChkTieneVariantes?.IsChecked == true;
+
         if (TxtResumenVariantes != null)
         {
             TxtResumenVariantes.Text = $"{VariantesLista.Count} color(es) registrado(s)";
         }
 
-        if (VariantesLista.Count > 0)
+        if (BrdBadgeResumenVariantes != null)
+        {
+            BrdBadgeResumenVariantes.Visibility = tieneVariantesActivo ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (tieneVariantesActivo && VariantesLista.Count > 0)
         {
             var totalStock = VariantesLista.Sum(v => v.StockActual);
             var totalStockMin = VariantesLista.Sum(v => v.StockMinimo);
@@ -659,16 +710,25 @@ public partial class ArticuloModalWindow : Window
             Articulo.CantidadPorPack = 1;
         }
 
-        Articulo.Variantes = VariantesLista.ToList();
-        if (Articulo.Variantes.Count > 0)
+        if (ChkTieneVariantes.IsChecked == true && VariantesLista.Count > 0)
         {
+            Articulo.Variantes = VariantesLista.ToList();
             Articulo.StockActual = Articulo.Variantes.Sum(v => v.StockActual);
             Articulo.StockMinimo = Articulo.Variantes.Sum(v => v.StockMinimo);
             Articulo.CodigosBarrasSecundarios = string.Join(", ", Articulo.Variantes.Select(v => v.CodigoBarras).Where(c => !string.IsNullOrWhiteSpace(c)));
         }
         else
         {
+            Articulo.Variantes = new List<ArticuloVarianteDto>();
             Articulo.CodigosBarrasSecundarios = null;
+            if (TryParseMonto(TxtStockActual.Text, out var stockManual))
+            {
+                Articulo.StockActual = stockManual;
+            }
+            if (TryParseMonto(TxtStockMinimo.Text, out var stockMinManual))
+            {
+                Articulo.StockMinimo = stockMinManual;
+            }
         }
 
         try

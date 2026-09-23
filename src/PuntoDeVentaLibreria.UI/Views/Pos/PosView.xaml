@@ -216,45 +216,50 @@
                 </Grid>
             </Border>
 
-            <!-- BOTONES DE ACCIÓN RÁPIDA / TECLADO [F2, F3, F4, F12] -->
+            <!-- BOTONES DE ACCIÓN Y COBRO DEL PUNTO DE VENTA -->
             <Grid Grid.Row="5">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="2*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-                <!-- [F2] COBRAR TICKET -->
-                <Button Grid.Column="0" Content="💰 [F2] COBRAR TICKET" Command="{Binding AbrirCobroCommand}"
-                        Background="#16A34A" Foreground="White" FontSize="15" FontWeight="Black"
-                        Padding="16,12" Margin="0,0,8,0" Cursor="Hand"
-                        ToolTip="Finalizar venta y abrir ventana de cobro [F2] o [Espacio]"/>
+                <!-- BOTÓN PRINCIPAL DE COBRO: 100% VISIBLE Y PROMINENTE -->
+                <Button Grid.Row="0" Command="{Binding AbrirCobroCommand}"
+                        Background="#16A34A" Foreground="White" BorderThickness="0"
+                        Padding="16,11" Margin="0,0,0,6" Cursor="Hand"
+                        ToolTip="Finalizar venta y abrir ventana de cobro [F2] o [Espacio]">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock Text="💰 COBRAR TICKET" FontSize="15" FontWeight="Black" Margin="0,0,8,0"/>
+                        <TextBlock Text="[F2] / [ESPACIO]" FontSize="13" FontWeight="Bold" Opacity="0.9" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
 
-                <!-- [F3] ALTA RÁPIDA -->
-                <Button Grid.Column="1" Content="➕ [F3] Alta Rápida" Command="{Binding AbrirAltaRapidaCommand}"
-                        Background="#10B981" Foreground="White" FontSize="13" FontWeight="Bold"
-                        Padding="14,12" Margin="0,0,8,0" Cursor="Hand"
-                        ToolTip="Registrar artículo no existente e insertarlo al ticket [F3]"/>
+                <!-- BOTONES SECUNDARIOS EN GRILLA UNIFORME EQUILIBRADA -->
+                <UniformGrid Grid.Row="1" Rows="1" Columns="4">
+                    <!-- [F3] ALTA RÁPIDA -->
+                    <Button Content="➕ Alta Rápida [F3]" Command="{Binding AbrirAltaRapidaCommand}"
+                            Background="#10B981" Foreground="White" FontSize="12" FontWeight="Bold"
+                            Padding="6,8" Margin="0,0,4,0" Cursor="Hand"
+                            ToolTip="Registrar artículo no existente e insertarlo al ticket [F3]"/>
 
-                <!-- [F6] VENTA MANUAL -->
-                <Button Grid.Column="2" Content="📝 [F6] Manual" Command="{Binding AgregarVentaManualCommand}"
-                        Background="#2563EB" Foreground="White" FontSize="13" FontWeight="Bold"
-                        Padding="14,12" Margin="0,0,8,0" Cursor="Hand"
-                        ToolTip="Agregar concepto o servicio manual libre [F6]"/>
+                    <!-- [F6] VENTA MANUAL -->
+                    <Button Content="📝 Manual [F6]" Command="{Binding AgregarVentaManualCommand}"
+                            Background="#2563EB" Foreground="White" FontSize="12" FontWeight="Bold"
+                            Padding="6,8" Margin="4,0,4,0" Cursor="Hand"
+                            ToolTip="Agregar concepto o servicio manual libre [F6]"/>
 
-                <!-- [F4] EN ESPERA / MULTI-TICKET -->
-                <Button Grid.Column="3" Content="⏸️ [F4] En Espera" Command="{Binding PausarVentaActualCommand}"
-                        Background="#D97706" Foreground="White" FontSize="13" FontWeight="Bold"
-                        Padding="14,12" Margin="0,0,8,0" Cursor="Hand"
-                        ToolTip="Poner venta en espera para atender a otro cliente [F4]"/>
+                    <!-- [F4] EN ESPERA / MULTI-TICKET -->
+                    <Button Content="⏸️ En Espera [F4]" Command="{Binding PausarVentaActualCommand}"
+                            Background="#D97706" Foreground="White" FontSize="12" FontWeight="Bold"
+                            Padding="6,8" Margin="4,0,4,0" Cursor="Hand"
+                            ToolTip="Poner venta en espera para atender a otro cliente [F4]"/>
 
-                <!-- [F12] VACIAR TICKET -->
-                <Button Grid.Column="4" Content="🗑 [F12] Vaciar" Command="{Binding LimpiarTicketConConfirmacionCommand}"
-                        Background="#DC2626" Foreground="White" FontSize="13" FontWeight="Bold"
-                        Padding="14,12" Cursor="Hand"
-                        ToolTip="Cancelar y vaciar todos los artículos del ticket actual [F12]"/>
+                    <!-- [F12] VACIAR TICKET -->
+                    <Button Content="🗑 Vaciar [F12]" Command="{Binding LimpiarTicketConConfirmacionCommand}"
+                            Background="#DC2626" Foreground="White" FontSize="12" FontWeight="Bold"
+                            Padding="6,8" Margin="4,0,0,0" Cursor="Hand"
+                            ToolTip="Cancelar y vaciar todos los artículos del ticket actual [F12]"/>
+                </UniformGrid>
             </Grid>
         </Grid>
 

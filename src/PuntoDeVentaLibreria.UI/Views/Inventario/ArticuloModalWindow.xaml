@@ -5,9 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Ficha de Artículo / Útil" 
-        Height="620" Width="640"
+        Height="730" Width="860"
+        MinWidth="760" MinHeight="600"
         WindowStartupLocation="CenterOwner"
-        ResizeMode="NoResize"
+        ResizeMode="CanResizeWithGrip"
         Background="#F8FAFC"
         FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
 
@@ -207,9 +208,9 @@
                                 <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="1.1*"/>
-                                <ColumnDefinition Width="1.1*"/>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="1.5*"/>
+                                <ColumnDefinition Width="0.9*"/>
                                 <ColumnDefinition Width="1.2*"/>
                             </Grid.ColumnDefinitions>
 
@@ -242,79 +243,88 @@
                     </StackPanel>
                 </Border>
 
-                <!-- SECCIÓN DE VARIANTES DE COLOR / MODELO (STOCK INDIVIDUAL) -->
-                <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,0,0,12">
+                <!-- SECCIÓN DE VARIANTES DE COLOR / MODELO -->
+                <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,12">
                     <StackPanel>
-                        <DockPanel LastChildFill="False" Margin="0,0,0,8">
-                            <StackPanel DockPanel.Dock="Left">
-                                <TextBlock Text="🎨 VARIANTES DE COLOR / MODELO (STOCK INDIVIDUAL)" FontWeight="Bold" FontSize="12.5" Foreground="#1E293B"/>
-                                <TextBlock Text="Para artículos que vienen en múltiples colores/modelos con distinto código de barras y stock independiente." FontSize="11" Foreground="#64748B"/>
-                            </StackPanel>
-                            <Border DockPanel.Dock="Right" Background="#EEF2FF" BorderBrush="#C7D2FE" BorderThickness="1" CornerRadius="6" Padding="8,4" VerticalAlignment="Center">
+                        <DockPanel LastChildFill="False">
+                            <CheckBox x:Name="ChkTieneVariantes" 
+                                      Content="🎨 Este artículo tiene variantes de color / modelo (con código de barras y stock independiente)"
+                                      FontWeight="Bold" FontSize="12.5" Foreground="#1E293B" VerticalAlignment="Center"
+                                      Checked="ChkTieneVariantes_Checked" Unchecked="ChkTieneVariantes_Unchecked"/>
+                            <Border x:Name="BrdBadgeResumenVariantes" DockPanel.Dock="Right" Background="#EEF2FF" BorderBrush="#C7D2FE" BorderThickness="1" CornerRadius="6" Padding="8,3" VerticalAlignment="Center" Visibility="Collapsed">
                                 <TextBlock x:Name="TxtResumenVariantes" Text="0 colores registrados" FontSize="11" FontWeight="Bold" Foreground="#4338CA"/>
                             </Border>
                         </DockPanel>
+                        <TextBlock Text="Active esta opción si el producto viene en varios colores, diseños o modelos con distinto código de barras para controlar el stock exacto al reponer."
+                                   FontSize="11" Foreground="#64748B" Margin="24,2,0,0" TextWrapping="Wrap"/>
 
-                        <!-- Fila para agregar variante -->
-                        <Grid Margin="0,4,0,8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="1.5*"/>
-                                <ColumnDefinition Width="1.8*"/>
-                                <ColumnDefinition Width="0.9*"/>
-                                <ColumnDefinition Width="0.9*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
+                        <!-- PANEL DESPLEGABLE DE GESTIÓN DE VARIANTES -->
+                        <Border x:Name="PanelVariantes" Visibility="Collapsed" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="14" Margin="0,10,0,0">
+                            <StackPanel>
+                                <TextBlock Text="AGREGAR NUEVO COLOR O MODELO:" FontSize="11.5" FontWeight="Bold" Foreground="#475569" Margin="0,0,0,8"/>
 
-                            <StackPanel Grid.Column="0" Margin="0,0,6,0">
-                                <TextBlock Text="Color / Modelo:" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,2"/>
-                                <TextBox x:Name="TxtColorVariante" KeyDown="TxtVariante_KeyDown" FontSize="12.5" Padding="6,4" ToolTip="Ej: Azul, Rojo, Verde, etc."/>
+                                <!-- Fila para agregar variante con amplio espacio -->
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1.8*"/>
+                                        <ColumnDefinition Width="2.2*"/>
+                                        <ColumnDefinition Width="0.9*"/>
+                                        <ColumnDefinition Width="0.9*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0" Margin="0,0,6,0">
+                                        <TextBlock Text="Color / Variante (*):" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox x:Name="TxtColorVariante" KeyDown="TxtVariante_KeyDown" FontSize="13" Padding="8,5" ToolTip="Ej: Azul, Rojo, Verde, Pastel, etc."/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Margin="6,0,6,0">
+                                        <DockPanel LastChildFill="False" Margin="0,0,0,3">
+                                            <TextBlock Text="Código de Barras:" FontSize="11" FontWeight="SemiBold" DockPanel.Dock="Left"/>
+                                            <Button DockPanel.Dock="Right" Content="⚡ Auto-generar" Click="BtnGenerarCodigoVariante_Click"
+                                                    Background="#EFF6FF" Foreground="#2563EB" BorderThickness="0" FontSize="10.5" FontWeight="Bold" Padding="6,1" Cursor="Hand"/>
+                                        </DockPanel>
+                                        <TextBox x:Name="TxtCodigoBarrasVariante" KeyDown="TxtVariante_KeyDown" FontSize="12.5" FontFamily="Consolas, Segoe UI" Padding="8,5"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2" Margin="6,0,6,0">
+                                        <TextBlock Text="Stock Actual:" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox x:Name="TxtStockVariante" Text="0" KeyDown="TxtVariante_KeyDown" FontSize="13" FontWeight="Bold" HorizontalContentAlignment="Center" Padding="8,5"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="3" Margin="6,0,6,0">
+                                        <TextBlock Text="Stock Mínimo:" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,3"/>
+                                        <TextBox x:Name="TxtStockMinVariante" Text="0" KeyDown="TxtVariante_KeyDown" FontSize="13" HorizontalContentAlignment="Center" Padding="8,5"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="4" Margin="6,0,0,0" VerticalAlignment="Bottom">
+                                        <Button Content="➕ Añadir Color" Click="BtnAgregarVariante_Click"
+                                                Background="#2563EB" Foreground="White" FontWeight="Bold" FontSize="12.5" Padding="14,7" Cursor="Hand"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Tabla de Variantes -->
+                                <DataGrid x:Name="GridVariantes" ItemsSource="{Binding VariantesLista, RelativeSource={RelativeSource AncestorType=Window}}"
+                                          AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
+                                          HeadersVisibility="Column" GridLinesVisibility="Horizontal" MaxHeight="180" FontSize="12.5"
+                                          Background="White" BorderBrush="#E2E8F0" BorderThickness="1" RowHeight="34">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Color / Variante" Binding="{Binding Nombre}" Width="1.5*" FontWeight="SemiBold"/>
+                                        <DataGridTextColumn Header="Código de Barras" Binding="{Binding CodigoBarras}" Width="2*" FontFamily="Consolas, Segoe UI"/>
+                                        <DataGridTextColumn Header="Stock Actual" Binding="{Binding StockActual, StringFormat='N0'}" Width="100" FontWeight="Bold"/>
+                                        <DataGridTextColumn Header="Stock Mín." Binding="{Binding StockMinimo, StringFormat='N0'}" Width="90"/>
+                                        <DataGridTemplateColumn Width="45">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Content="🗑️" Click="BtnEliminarVariante_Click" Tag="{Binding}" Width="26" Height="26"
+                                                            Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip="Quitar color"/>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                    </DataGrid.Columns>
+                                </DataGrid>
                             </StackPanel>
-
-                            <StackPanel Grid.Column="1" Margin="6,0,6,0">
-                                <DockPanel LastChildFill="False" Margin="0,0,0,2">
-                                    <TextBlock Text="Código de Barras:" FontSize="11" FontWeight="SemiBold" DockPanel.Dock="Left"/>
-                                    <Button DockPanel.Dock="Right" Content="⚡ Generar" Click="BtnGenerarCodigoVariante_Click"
-                                            Background="Transparent" BorderThickness="0" Foreground="#2563EB" FontSize="10" FontWeight="Bold" Cursor="Hand"/>
-                                </DockPanel>
-                                <TextBox x:Name="TxtCodigoBarrasVariante" KeyDown="TxtVariante_KeyDown" FontSize="12" FontFamily="Consolas, Segoe UI" Padding="6,4"/>
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="2" Margin="6,0,6,0">
-                                <TextBlock Text="Stock Act.:" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,2"/>
-                                <TextBox x:Name="TxtStockVariante" Text="0" KeyDown="TxtVariante_KeyDown" FontSize="12.5" FontWeight="Bold" HorizontalContentAlignment="Center" Padding="6,4"/>
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="3" Margin="6,0,6,0">
-                                <TextBlock Text="Stock Mín.:" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,2"/>
-                                <TextBox x:Name="TxtStockMinVariante" Text="0" KeyDown="TxtVariante_KeyDown" FontSize="12.5" HorizontalContentAlignment="Center" Padding="6,4"/>
-                            </StackPanel>
-
-                            <StackPanel Grid.Column="4" Margin="6,0,0,0" VerticalAlignment="Bottom">
-                                <Button Content="➕ Añadir" Click="BtnAgregarVariante_Click"
-                                        Background="#2563EB" Foreground="White" FontWeight="Bold" FontSize="12" Padding="12,6" Cursor="Hand"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <!-- Tabla de Variantes -->
-                        <DataGrid x:Name="GridVariantes" ItemsSource="{Binding VariantesLista, RelativeSource={RelativeSource AncestorType=Window}}"
-                                  AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
-                                  HeadersVisibility="Column" GridLinesVisibility="Horizontal" MaxHeight="160" FontSize="12"
-                                  Background="White" BorderBrush="#E2E8F0" BorderThickness="1" RowHeight="32">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Color / Variante" Binding="{Binding Nombre}" Width="1.4*" FontWeight="SemiBold"/>
-                                <DataGridTextColumn Header="Código de Barras" Binding="{Binding CodigoBarras}" Width="1.6*" FontFamily="Consolas, Segoe UI"/>
-                                <DataGridTextColumn Header="Stock Act." Binding="{Binding StockActual, StringFormat='N0'}" Width="80" FontWeight="Bold"/>
-                                <DataGridTextColumn Header="Stock Mín." Binding="{Binding StockMinimo, StringFormat='N0'}" Width="80"/>
-                                <DataGridTemplateColumn Width="45">
-                                    <DataGridTemplateColumn.CellTemplate>
-                                        <DataTemplate>
-                                            <Button Content="🗑️" Click="BtnEliminarVariante_Click" Tag="{Binding}" Width="24" Height="24"
-                                                    Background="Transparent" BorderThickness="0" Cursor="Hand" ToolTip="Quitar color"/>
-                                        </DataTemplate>
-                                    </DataGridTemplateColumn.CellTemplate>
-                                </DataGridTemplateColumn>
-                            </DataGrid.Columns>
-                        </DataGrid>
+                        </Border>
                     </StackPanel>
                 </Border>
 
