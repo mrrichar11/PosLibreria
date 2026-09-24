@@ -122,11 +122,14 @@ public class ArticuloAumentoPrecioItemDto : INotifyPropertyChanged
         ? Nombre 
         : $"{Nombre}\n(Mayorista: {DescripcionProveedor})";
 
+    public ReglaRedondeoPrecio ReglaRedondeo { get; set; } = ReglaRedondeoPrecio.SinRedondeo;
+
     public void Recalcular()
     {
         var factor = _factorConversion > 0 ? _factorConversion : 1m;
         CostoNuevo = Math.Round(CostoOriginalProveedor / factor, 2);
-        VentaNueva = CalculoPreciosUtils.CalcularPrecioVenta(CostoNuevo, PorcentajeGanancia, IvaPorcentaje);
+        var ventaCalculada = CalculoPreciosUtils.CalcularPrecioVenta(CostoNuevo, PorcentajeGanancia, IvaPorcentaje);
+        VentaNueva = CalculoPreciosUtils.RedondearPrecioVenta(ventaCalculada, ReglaRedondeo);
         VariacionPorcentaje = CostoAnterior > 0 
             ? Math.Round(((CostoNuevo - CostoAnterior) / CostoAnterior) * 100m, 1) 
             : 0m;

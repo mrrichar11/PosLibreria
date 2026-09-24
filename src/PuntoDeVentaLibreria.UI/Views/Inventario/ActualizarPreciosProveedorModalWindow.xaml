@@ -68,12 +68,31 @@
                             Background="#7C3AED" Foreground="White" FontWeight="Bold" Padding="16,8" Cursor="Hand"/>
                 </StackPanel>
 
-                <!-- Checkboxes de Asignación y Búsqueda -->
+                <!-- Checkboxes de Asignación y Opciones -->
                 <WrapPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="0,10,0,0" VerticalAlignment="Center">
-                    <CheckBox x:Name="ChkAsignarProveedor" Content="Asignar este proveedor a los artículos actualizados que no lo tengan" 
-                              IsChecked="True" FontWeight="SemiBold" Foreground="#334155" VerticalAlignment="Center" Margin="0,0,24,0"/>
-                    <CheckBox x:Name="ChkSoloArticulosDelProveedor" Content="Buscar únicamente en artículos que ya tienen este proveedor asignado" 
-                              IsChecked="False" Foreground="#64748B" VerticalAlignment="Center"/>
+                    <CheckBox x:Name="ChkAsignarProveedor" Content="Asignar este proveedor a los actualizados" 
+                              IsChecked="True" FontWeight="SemiBold" Foreground="#334155" VerticalAlignment="Center" Margin="0,0,16,4"/>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,4">
+                        <CheckBox x:Name="ChkAsignarRubro" Content="Asignar Rubro:" IsChecked="True" FontWeight="SemiBold" Foreground="#334155" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <ComboBox x:Name="CmbAsignarRubro" Width="105" Padding="4,2" FontSize="11.5">
+                            <ComboBoxItem Content="Librería" IsSelected="True"/>
+                            <ComboBoxItem Content="Regalería"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,16,4">
+                        <TextBlock Text="Redondeo Venta:" FontWeight="SemiBold" Foreground="#334155" VerticalAlignment="Center" Margin="0,0,6,0" FontSize="11.5"/>
+                        <ComboBox x:Name="CmbReglaRedondeo" Width="175" Padding="4,2" FontSize="11.5" SelectionChanged="CmbReglaRedondeo_SelectionChanged">
+                            <ComboBoxItem Content="Al $100 más cercano" Tag="CentenaCercana" IsSelected="True"/>
+                            <ComboBoxItem Content="Al $100 superior" Tag="CentenaSuperior"/>
+                            <ComboBoxItem Content="Al $50 más cercano" Tag="CincuentaCercano"/>
+                            <ComboBoxItem Content="Sin redondeo (Exacto)" Tag="SinRedondeo"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <CheckBox x:Name="ChkSoloArticulosDelProveedor" Content="Solo artículos que ya tienen este proveedor" 
+                              IsChecked="False" Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,0,4"/>
                 </WrapPanel>
             </Grid>
         </Border>

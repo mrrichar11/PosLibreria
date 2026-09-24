@@ -915,10 +915,12 @@ public class InventarioService : IInventarioService
         var candidatos = new HashSet<int>();
 
         // 1. Patrones explícitos en texto: 'x15', 'x 50', 'caja x 12', 'pack x 10', 'potes x 60', 'display x 24', 'x15 potes'
+        // NOTA: Se excluyen explícitamente unidades de medida física (gramos, kilos, mililitros, centímetros, milímetros, hojas/páginas)
+        // para evitar falsos positivos como 'Voligoma x 22 g', 'Témpera x 250 ml' o 'Regla x 20 cm'.
         var regexes = new[]
         {
-            @"\b(?:pack|caja|blister|bulto|potes?|display|paq(?:uete)?|bolsa|tubo)\s*(?:x\s*)?(\d{1,4})\b",
-            @"\b[xX]\s*(\d{1,4})\b",
+            @"\b(?:pack|caja|blister|bulto|potes?|display|paq(?:uete)?|bolsa|tubo)\s*(?:x\s*)?(\d{1,4})(?!\s*(?:g|gr|grs|gramos?|kg|kilos?|ml|cc|cm|mm|mts?|m|hojas?|hs|hjs|pag|paginas?)\b)\b",
+            @"\b[xX]\s*(\d{1,4})(?!\s*(?:g|gr|grs|gramos?|kg|kilos?|ml|cc|cm|mm|mts?|m|hojas?|hs|hjs|pag|paginas?)\b)\b",
             @"\b(\d{1,4})\s*(?:unid(?:ades)?|u\b|potes?|sobres?|piezas?)\b"
         };
 
@@ -936,7 +938,7 @@ public class InventarioService : IInventarioService
 
         // Si el costo del proveedor es significativamente mayor que el costo anterior (> 150% del anterior)
         // y no encontramos candidatos en texto, evaluamos factores comunes de papelería / librería
-        if (costoAnterior > 0 && costoProveedor > costoAnterior * 2.0m)
+        if (candidatos.Count == 0 && costoAnterior > 0 && costoProveedor > costoAnterior * 2.0m)
         {
             int[] factoresComunes = { 5, 6, 10, 12, 15, 20, 24, 25, 30, 36, 48, 50, 60, 72, 100, 120, 144, 200, 250, 500 };
             foreach (var f in factoresComunes)
@@ -975,10 +977,13 @@ public class InventarioService : IInventarioService
         }
 
         // Si no hay costo anterior (ej. costo 0), pero encontramos un candidato explícito en el texto del proveedor
-        var matchPrimerFactor = Regex.Match(textoCompleto, @"\b(?:pack|caja|blister|bulto|potes?|display)?\s*[xX]\s*(\d{1,4})\b");
-        if (matchPrimerFactor.Success && int.TryParse(matchPrimerFactor.Groups[1].Value, out int factorTexto) && factorTexto > 1)
+        if (costoAnterior <= 0)
         {
-            return factorTexto;
+            var matchPrimerFactor = Regex.Match(textoCompleto, @"\b(?:pack|caja|blister|bulto|potes?|display)?\s*[xX]\s*(\d{1,4})(?!\s*(?:g|gr|grs|gramos?|kg|kilos?|ml|cc|cm|mm|mts?|m|hojas?|hs|hjs|pag|paginas?)\b)\b");
+            if (matchPrimerFactor.Success && int.TryParse(matchPrimerFactor.Groups[1].Value, out int factorTexto) && factorTexto > 1)
+            {
+                return factorTexto;
+            }
         }
 
         return null;
@@ -1129,6 +1134,7 @@ public class InventarioService : IInventarioService
     public async Task<ActualizacionPreciosResultadoDto> AplicarActualizacionPreciosAsync(
         IEnumerable<ArticuloAumentoPrecioItemDto> items, 
         Guid? asignarProveedorId = null, 
+        string? asignarRubro = null,
         CancellationToken ct = default)
     {
         var itemsSeleccionados = items.Where(i => i.Aplicar).ToList();
@@ -1164,6 +1170,7 @@ public class InventarioService : IInventarioService
 
         int actualizados = 0;
         int proveedoresAsignados = 0;
+        int rubrosAsignados = 0;
 
         foreach (var a in articulos)
         {
@@ -1178,6 +1185,12 @@ public class InventarioService : IInventarioService
                     proveedoresAsignados++;
                 }
 
+                if (!string.IsNullOrWhiteSpace(asignarRubro) && a.Rubro != asignarRubro)
+                {
+                    a.Rubro = asignarRubro;
+                    rubrosAsignados++;
+                }
+
                 actualizados++;
             }
         }
@@ -1188,6 +1201,10 @@ public class InventarioService : IInventarioService
         if (proveedoresAsignados > 0 && proveedorAsignar != null)
         {
             mensaje += $" Se vinculó el proveedor '{proveedorAsignar.Nombre}' a {proveedoresAsignados} artículos.";
+        }
+        if (!string.IsNullOrWhiteSpace(asignarRubro) && rubrosAsignados > 0)
+        {
+            mensaje += $" Se asignó el rubro '{asignarRubro}' a {rubrosAsignados} artículos.";
         }
 
         return new ActualizacionPreciosResultadoDto

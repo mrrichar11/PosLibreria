@@ -206,12 +206,13 @@
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
                                 <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="1*"/>
                                 <ColumnDefinition Width="1.5*"/>
                                 <ColumnDefinition Width="0.9*"/>
-                                <ColumnDefinition Width="1.2*"/>
+                                <ColumnDefinition Width="1.3*"/>
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Precio Costo ($):" FontSize="12" FontWeight="SemiBold" Margin="0,0,6,4"/>
@@ -236,6 +237,18 @@
                             <TextBox x:Name="TxtVenta" Grid.Row="1" Grid.Column="3" 
                                      TextChanged="TxtVenta_TextChanged"
                                      FontSize="16" FontWeight="Black" Foreground="#0369A1" Padding="8,6" Margin="6,0,0,0"/>
+
+                            <!-- Botones de Redondeo Rápido a Centena -->
+                            <StackPanel x:Name="PnlBotonesRedondeo" Grid.Row="2" Grid.Column="3" Orientation="Horizontal" Margin="6,4,0,0" Visibility="Collapsed">
+                                <Button x:Name="BtnRedondearAbajo" Content="⬇️ $0" Click="BtnRedondearAbajo_Click"
+                                        ToolTip="Redondear al $100 inferior más cercano (ajusta margen)"
+                                        Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" 
+                                        Foreground="#475569" FontSize="10.5" FontWeight="Bold" Padding="5,2" Margin="0,0,4,0" Cursor="Hand"/>
+                                <Button x:Name="BtnRedondearArriba" Content="⬆️ $0" Click="BtnRedondearArriba_Click"
+                                        ToolTip="Redondear al $100 superior más cercano (ajusta margen)"
+                                        Background="#EFF6FF" BorderBrush="#93C5FD" BorderThickness="1" 
+                                        Foreground="#1D4ED8" FontSize="10.5" FontWeight="Bold" Padding="5,2" Cursor="Hand"/>
+                            </StackPanel>
                         </Grid>
 
                         <TextBlock Text="💡 Al ingresar Costo o IVA, el sistema calcula automáticamente el Precio de Venta según el margen. También puede tipear el Precio de Venta final y se actualizará el margen." 

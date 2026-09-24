@@ -94,6 +94,8 @@ public partial class ArticuloModalWindow : Window
             _isCalculating = false;
         }
 
+        ActualizarSugerenciasRedondeo(Articulo.PrecioVenta);
+
         SincronizarTipoUI();
         SincronizarRubroUI();
 
@@ -565,6 +567,7 @@ public partial class ArticuloModalWindow : Window
             {
                 TxtVenta.Text = venta.ToString("0.00", CultureInfo.InvariantCulture);
             }
+            ActualizarSugerenciasRedondeo(venta);
         }
         finally
         {
@@ -590,10 +593,53 @@ public partial class ArticuloModalWindow : Window
             {
                 TxtMargen.Text = margen.ToString("0.#", CultureInfo.InvariantCulture);
             }
+            ActualizarSugerenciasRedondeo(venta);
         }
         finally
         {
             _isCalculating = false;
+        }
+    }
+
+    private void ActualizarSugerenciasRedondeo(decimal venta)
+    {
+        if (BtnRedondearAbajo == null || BtnRedondearArriba == null || PnlBotonesRedondeo == null) return;
+        if (venta < 100m)
+        {
+            PnlBotonesRedondeo.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var abajo = Math.Floor(venta / 100m) * 100m;
+        var arriba = Math.Ceiling(venta / 100m) * 100m;
+        if (abajo == arriba)
+        {
+            abajo = Math.Max(0, venta - 100m);
+            arriba = venta + 100m;
+        }
+
+        BtnRedondearAbajo.Content = $"⬇️ ${abajo:N0}";
+        BtnRedondearAbajo.Tag = abajo;
+        BtnRedondearArriba.Content = $"⬆️ ${arriba:N0}";
+        BtnRedondearArriba.Tag = arriba;
+        PnlBotonesRedondeo.Visibility = Visibility.Visible;
+    }
+
+    private void BtnRedondearAbajo_Click(object sender, RoutedEventArgs e)
+    {
+        if (BtnRedondearAbajo?.Tag is decimal val && val > 0)
+        {
+            TxtVenta.Text = val.ToString("0.00", CultureInfo.InvariantCulture);
+            RecalcularMargenDesdeVenta();
+        }
+    }
+
+    private void BtnRedondearArriba_Click(object sender, RoutedEventArgs e)
+    {
+        if (BtnRedondearArriba?.Tag is decimal val && val > 0)
+        {
+            TxtVenta.Text = val.ToString("0.00", CultureInfo.InvariantCulture);
+            RecalcularMargenDesdeVenta();
         }
     }
 

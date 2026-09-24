@@ -119,6 +119,13 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
             _totalCatalogo = resumen.TotalArticulosCatalogo;
             _noEncontrados = resumen.NoEncontradosEnCatalogo;
 
+            var reglaActual = ObtenerReglaRedondeoSeleccionada();
+            foreach (var item in _itemsComparados)
+            {
+                item.ReglaRedondeo = reglaActual;
+                item.Recalcular();
+            }
+
             GridComparativa.ItemsSource = _itemsComparados;
             TxtEstadoVacio.Visibility = _itemsComparados.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
 
@@ -270,6 +277,33 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         BtnAplicarAumento.IsEnabled = false;
     }
 
+    private void CmbReglaRedondeo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded || _itemsComparados == null || _itemsComparados.Count == 0) return;
+        var regla = ObtenerReglaRedondeoSeleccionada();
+        foreach (var item in _itemsComparados)
+        {
+            item.ReglaRedondeo = regla;
+            item.Recalcular();
+        }
+        GridComparativa?.Items?.Refresh();
+    }
+
+    private PuntoDeVentaLibreria.Application.Common.ReglaRedondeoPrecio ObtenerReglaRedondeoSeleccionada()
+    {
+        if (CmbReglaRedondeo?.SelectedItem is ComboBoxItem cbi && cbi.Tag is string tag)
+        {
+            return tag switch
+            {
+                "CentenaSuperior" => PuntoDeVentaLibreria.Application.Common.ReglaRedondeoPrecio.CentenaSuperior,
+                "CincuentaCercano" => PuntoDeVentaLibreria.Application.Common.ReglaRedondeoPrecio.CincuentaCercano,
+                "SinRedondeo" => PuntoDeVentaLibreria.Application.Common.ReglaRedondeoPrecio.SinRedondeo,
+                _ => PuntoDeVentaLibreria.Application.Common.ReglaRedondeoPrecio.CentenaCercana
+            };
+        }
+        return PuntoDeVentaLibreria.Application.Common.ReglaRedondeoPrecio.CentenaCercana;
+    }
+
     private async void BtnAplicarAumento_Click(object sender, RoutedEventArgs e)
     {
         var seleccionados = _itemsComparados.Where(i => i.Aplicar).ToList();
@@ -301,10 +335,20 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
             nombreProveedor = p.Nombre;
         }
 
+        string? asignarRubro = null;
+        if (ChkAsignarRubro?.IsChecked == true && CmbAsignarRubro?.SelectedItem is ComboBoxItem cbiRubro)
+        {
+            asignarRubro = cbiRubro.Content?.ToString();
+        }
+
         var mensajeConfirmacion = $"¿Confirma actualizar los precios de costo y venta de {seleccionados.Count:N0} artículos?";
         if (asignarProveedorId.HasValue)
         {
-            mensajeConfirmacion += $"\n\nAdemás, se vinculará el proveedor '{nombreProveedor}' a los artículos actualizados.";
+            mensajeConfirmacion += $"\n\n• Se vinculará el proveedor '{nombreProveedor}'.";
+        }
+        if (!string.IsNullOrWhiteSpace(asignarRubro))
+        {
+            mensajeConfirmacion += $"\n• Se asignará el rubro '{asignarRubro}'.";
         }
 
         var res = MessageBox.Show(
@@ -319,7 +363,7 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
 
         try
         {
-            var resultado = await _inventarioService.AplicarActualizacionPreciosAsync(seleccionados, asignarProveedorId);
+            var resultado = await _inventarioService.AplicarActualizacionPreciosAsync(seleccionados, asignarProveedorId, asignarRubro);
             PreciosActualizados = true;
 
             TxtMensajeResultado.Text = $"✅ {resultado.Mensaje}";
