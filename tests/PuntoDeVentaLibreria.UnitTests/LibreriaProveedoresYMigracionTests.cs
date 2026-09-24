@@ -229,4 +229,179 @@ public class LibreriaProveedoresYMigracionTests
             g.MovimientosStock.First().Cantidad.Should().Be(12m);
         }
     }
+
+    [Fact]
+    public void DetectarFactorPack_ConDiferentesCasos_IdentificaFactorExacto()
+    {
+        // Caso 1: Broches Clips Pastel N6 (15 potes de 60 unidades)
+        // Costo anterior tienda: $1.750. Costo proveedor por bulto: $25.986
+        var factorClips = InventarioService.DetectarFactorPack(
+            "*BROCHES CLIPS PASTEL Nº6 x15 Potes x60u", 
+            "CLIPS PASTEL N6 EN POTE - SIFAP", 
+            1750m, 
+            25986m);
+        factorClips.Should().Be(15);
+
+        // Caso 2: Bolígrafos BIC caja x 50
+        // Costo anterior tienda: $350. Costo proveedor caja: $18.200
+        var factorBic = InventarioService.DetectarFactorPack(
+            "BOLIGRAFO BIC CRISTAL AZUL OP. X 50 UNID", 
+            "BOLIGRAFO BIC CRISTAL AZUL", 
+            350m, 
+            18200m);
+        factorBic.Should().Be(50);
+
+        // Caso 3: Cuadernos pack x 10
+        // Costo anterior tienda: $2.100. Costo proveedor: $21.500
+        var factorCuadernos = InventarioService.DetectarFactorPack(
+            "CUADERNO ABC 48 HJS RAY. (PACK X 10)", 
+            "CUADERNO ABC 48HS RAYADO", 
+            2100m, 
+            21500m);
+        factorCuadernos.Should().Be(10);
+
+        // Caso 4: Artículo con aumento inflacionario normal (sin factor pack)
+        // Costo anterior: $300. Costo proveedor: $360 (+20%)
+        var factorGoma = InventarioService.DetectarFactorPack(
+            "GOMA DE BORRAR FACTIS S20", 
+            "GOMA FACTIS S20", 
+            300m, 
+            360m);
+        factorGoma.Should().BeNull();
+    }
+
+    [Fact]
+    public void ArticuloAumentoPrecioItemDto_AlModificarFactorConversion_RecalculaPreciosYAlerta()
+    {
+        var item = new ArticuloAumentoPrecioItemDto
+        {
+            SKU = "CLIPS-001",
+            Nombre = "CLIPS PASTEL N6 EN POTE",
+            CostoAnterior = 1750m,
+            CostoOriginalProveedor = 25986m,
+            PorcentajeGanancia = 60m,
+            IvaPorcentaje = 21m,
+            FactorConversion = 1m,
+            FactorSugerido = 15
+        };
+
+        item.Recalcular();
+
+        // Con factor 1: el costo nuevo es $25.986 (+1384.9%) -> alerta extrema activa
+        item.CostoNuevo.Should().Be(25986m);
+        item.VariacionPorcentaje.Should().BeGreaterThan(1000m);
+        item.EsAlertaVariacionExtrema.Should().BeTrue();
+        item.MostrarBotonSugerido.Should().BeTrue();
+        item.SugerenciaBotonTexto.Should().Be("÷15");
+
+        // Al aplicar factor 15 (como en un pack de 15 potes):
+        item.FactorConversion = 15m;
+
+        // Costo nuevo unitario: 25.986 / 15 = 1.732,40
+        item.CostoNuevo.Should().Be(1732.40m);
+        item.VariacionPorcentaje.Should().BeApproximately(-1.0m, 0.2m);
+        item.EsAlertaVariacionExtrema.Should().BeFalse();
+        item.MostrarBotonSugerido.Should().BeFalse();
+
+        // Precio de venta recalculado manteniendo el 60% de ganancia y 21% IVA
+        // Costo con IVA = 1732.40 * 1.21 = 2096.204. Con 60% = 3353.93
+        item.VentaNueva.Should().Be(CalculoPreciosUtils.CalcularPrecioVenta(1732.40m, 60m, 21m));
+    }
+
+    [Fact]
+    public async Task InventarioService_ActualizacionPrecios_DeduplicaCoincidenciasYAsignaProveedor()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        // 1. Dar de alta un proveedor "Distribuidora El Once"
+        var proveedor = new PuntoDeVentaLibreria.Domain.Entities.Proveedores.Proveedor
+        {
+            Id = Guid.NewGuid(),
+            Nombre = "Distribuidora El Once",
+            RazonSocial = "El Once S.A."
+        };
+        context.Proveedores.Add(proveedor);
+
+        // 2. Dar de alta artículos en catálogo que NO tienen proveedor asignado (migrados de AlmaLibre)
+        var art1 = new PuntoDeVentaLibreria.Domain.Entities.Catalogo.Articulo
+        {
+            Id = Guid.NewGuid(),
+            SKU = "ART-001",
+            Nombre = "Cuaderno Rivadavia Tapa Dura",
+            CodigoProveedor = "31030",
+            PrecioCosto = 1000m,
+            PrecioVenta = 1936m,
+            PorcentajeGanancia = 60m,
+            IvaPorcentaje = 21m,
+            Activo = true,
+            ProveedorId = null
+        };
+        var art2 = new PuntoDeVentaLibreria.Domain.Entities.Catalogo.Articulo
+        {
+            Id = Guid.NewGuid(),
+            SKU = "ART-002",
+            Nombre = "Témpera Alba 250ml",
+            CodigoProveedor = "42010",
+            PrecioCosto = 800m,
+            PrecioVenta = 1548.80m,
+            PorcentajeGanancia = 60m,
+            IvaPorcentaje = 21m,
+            Activo = true,
+            ProveedorId = null
+        };
+        context.Articulos.AddRange(art1, art2);
+        await context.SaveChangesAsync();
+
+        // 3. Preparar items de actualización, incluyendo un duplicado accidental en la lista
+        var item1 = new ArticuloAumentoPrecioItemDto
+        {
+            ArticuloId = art1.Id,
+            SKU = art1.SKU,
+            Nombre = art1.Nombre,
+            CostoAnterior = 1000m,
+            CostoNuevo = 1200m,
+            VentaNueva = 2323.20m,
+            Aplicar = true
+        };
+        // Duplicado accidental del mismo artículo:
+        var item1Duplicado = new ArticuloAumentoPrecioItemDto
+        {
+            ArticuloId = art1.Id,
+            SKU = art1.SKU,
+            Nombre = art1.Nombre,
+            CostoAnterior = 1000m,
+            CostoNuevo = 1200m,
+            VentaNueva = 2323.20m,
+            Aplicar = true
+        };
+        var item2 = new ArticuloAumentoPrecioItemDto
+        {
+            ArticuloId = art2.Id,
+            SKU = art2.SKU,
+            Nombre = art2.Nombre,
+            CostoAnterior = 800m,
+            CostoNuevo = 950m,
+            VentaNueva = 1839.20m,
+            Aplicar = true
+        };
+
+        // 4. Aplicar actualización con asignación automática de proveedor
+        var items = new[] { item1, item1Duplicado, item2 };
+        var resultado = await inventarioService.AplicarActualizacionPreciosAsync(items, asignarProveedorId: proveedor.Id);
+
+        resultado.TotalActualizados.Should().Be(2); // Deduplicado a 2 artículos distintos
+        resultado.Mensaje.Should().Contain("Distribuidora El Once");
+
+        // 5. Verificar que en la base de datos se actualizaron los precios y se asignó el proveedor
+        var art1Db = await context.Articulos.FindAsync(art1.Id);
+        art1Db!.PrecioCosto.Should().Be(1200m);
+        art1Db.PrecioVenta.Should().Be(2323.20m);
+        art1Db.ProveedorId.Should().Be(proveedor.Id);
+
+        var art2Db = await context.Articulos.FindAsync(art2.Id);
+        art2Db!.PrecioCosto.Should().Be(950m);
+        art2Db.PrecioVenta.Should().Be(1839.20m);
+        art2Db.ProveedorId.Should().Be(proveedor.Id);
+    }
 }

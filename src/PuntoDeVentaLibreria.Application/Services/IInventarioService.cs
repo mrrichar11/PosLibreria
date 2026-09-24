@@ -24,7 +24,7 @@ public interface IInventarioService
 
     // Actualizador masivo de precios desde listas de mayoristas (ej. El Once)
     Task<ResumenPrevisualizacionAumentoDto> PrevisualizarActualizacionPreciosProveedorAsync(Stream archivoExcelStream, Guid? proveedorId = null, CancellationToken ct = default);
-    Task<ActualizacionPreciosResultadoDto> AplicarActualizacionPreciosAsync(IEnumerable<ArticuloAumentoPrecioItemDto> items, CancellationToken ct = default);
+    Task<ActualizacionPreciosResultadoDto> AplicarActualizacionPreciosAsync(IEnumerable<ArticuloAumentoPrecioItemDto> items, Guid? asignarProveedorId = null, CancellationToken ct = default);
 
     // Auditoría y Conteo rápido de Stock por Góndola (Sunday-Ready & Gradual)
     Task<ArticuloDto> AjustarStockRapidoAsync(Guid articuloId, decimal nuevoStock, string motivo = "Auditoría de Stock", string usuarioNombre = "Administrador", Guid? articuloVarianteId = null, CancellationToken ct = default);

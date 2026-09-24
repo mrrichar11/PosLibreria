@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using ExcelDataReader;
 using Microsoft.EntityFrameworkCore;
 using PuntoDeVentaLibreria.Application.Common;
@@ -906,6 +907,120 @@ public class InventarioService : IInventarioService
     // ACTUALIZACIÓN MASIVA DE PRECIOS POR LISTA DE MAYORISTA (ej. El Once)
     // =========================================================================
 
+    public static int? DetectarFactorPack(string? textoProveedor, string? nombreArticulo, decimal costoAnterior, decimal costoProveedor)
+    {
+        if (costoProveedor <= 0) return null;
+
+        var textoCompleto = $"{textoProveedor} {nombreArticulo}".ToLowerInvariant();
+        var candidatos = new HashSet<int>();
+
+        // 1. Patrones explícitos en texto: 'x15', 'x 50', 'caja x 12', 'pack x 10', 'potes x 60', 'display x 24', 'x15 potes'
+        var regexes = new[]
+        {
+            @"\b(?:pack|caja|blister|bulto|potes?|display|paq(?:uete)?|bolsa|tubo)\s*(?:x\s*)?(\d{1,4})\b",
+            @"\b[xX]\s*(\d{1,4})\b",
+            @"\b(\d{1,4})\s*(?:unid(?:ades)?|u\b|potes?|sobres?|piezas?)\b"
+        };
+
+        foreach (var r in regexes)
+        {
+            var matches = Regex.Matches(textoCompleto, r);
+            foreach (Match m in matches)
+            {
+                if (m.Groups.Count > 1 && int.TryParse(m.Groups[1].Value, out int factor) && factor > 1 && factor <= 1000)
+                {
+                    candidatos.Add(factor);
+                }
+            }
+        }
+
+        // Si el costo del proveedor es significativamente mayor que el costo anterior (> 150% del anterior)
+        // y no encontramos candidatos en texto, evaluamos factores comunes de papelería / librería
+        if (costoAnterior > 0 && costoProveedor > costoAnterior * 2.0m)
+        {
+            int[] factoresComunes = { 5, 6, 10, 12, 15, 20, 24, 25, 30, 36, 48, 50, 60, 72, 100, 120, 144, 200, 250, 500 };
+            foreach (var f in factoresComunes)
+            {
+                candidatos.Add(f);
+            }
+        }
+
+        if (candidatos.Count == 0) return null;
+
+        // Si tenemos costo anterior > 0, evaluamos cuál candidato da el costo unitario más razonable
+        if (costoAnterior > 0)
+        {
+            int? mejorCandidato = null;
+            decimal menorDiferencia = decimal.MaxValue;
+
+            foreach (var f in candidatos)
+            {
+                var unitario = costoProveedor / f;
+                var ratio = unitario / costoAnterior;
+
+                // Ratio esperado para un aumento/ajuste razonable de inflación: entre 0.45 y 1.95
+                // (es decir, una variación entre -55% y +95% respecto al costo anterior)
+                if (ratio >= 0.45m && ratio <= 1.95m)
+                {
+                    var dif = Math.Abs(unitario - costoAnterior);
+                    if (dif < menorDiferencia)
+                    {
+                        menorDiferencia = dif;
+                        mejorCandidato = f;
+                    }
+                }
+            }
+
+            if (mejorCandidato.HasValue) return mejorCandidato;
+        }
+
+        // Si no hay costo anterior (ej. costo 0), pero encontramos un candidato explícito en el texto del proveedor
+        var matchPrimerFactor = Regex.Match(textoCompleto, @"\b(?:pack|caja|blister|bulto|potes?|display)?\s*[xX]\s*(\d{1,4})\b");
+        if (matchPrimerFactor.Success && int.TryParse(matchPrimerFactor.Groups[1].Value, out int factorTexto) && factorTexto > 1)
+        {
+            return factorTexto;
+        }
+
+        return null;
+    }
+
+    private static ArticuloAumentoPrecioItemDto ConstruirItemDto(Articulo art, decimal costoNuevo, string? descProveedor)
+    {
+        var factorSugerido = DetectarFactorPack(descProveedor, art.Nombre, art.PrecioCosto, costoNuevo);
+
+        var item = new ArticuloAumentoPrecioItemDto
+        {
+            ArticuloId = art.Id,
+            SKU = art.SKU,
+            Nombre = art.Nombre,
+            CodigoProveedor = art.CodigoProveedor,
+            CodigoBarras = art.CodigoBarras,
+            DescripcionProveedor = descProveedor,
+            CostoAnterior = art.PrecioCosto,
+            CostoOriginalProveedor = costoNuevo,
+            FactorConversion = 1m,
+            FactorSugerido = factorSugerido,
+            PorcentajeGanancia = art.PorcentajeGanancia,
+            IvaPorcentaje = art.IvaPorcentaje,
+            VentaAnterior = art.PrecioVenta
+        };
+
+        item.Recalcular();
+
+        // Si la variación es extrema (> 80% o < -50%), no se tilda para aplicar por defecto
+        // para proteger al comercio de aumentos exorbitantes accidentales
+        if (item.EsAlertaVariacionExtrema)
+        {
+            item.Aplicar = false;
+        }
+        else
+        {
+            item.Aplicar = Math.Abs(item.CostoNuevo - item.CostoAnterior) > 0.01m;
+        }
+
+        return item;
+    }
+
     public async Task<ResumenPrevisualizacionAumentoDto> PrevisualizarActualizacionPreciosProveedorAsync(Stream archivoExcelStream, Guid? proveedorId = null, CancellationToken ct = default)
     {
         var (_, rows) = LeerExcelSimple(archivoExcelStream);
@@ -916,44 +1031,58 @@ public class InventarioService : IInventarioService
             .Include(a => a.Proveedor)
             .Where(a => a.Activo);
 
-        if (proveedorId.HasValue)
+        if (proveedorId.HasValue && proveedorId.Value != Guid.Empty)
         {
-            query = query.Where(a => a.ProveedorId == proveedorId);
+            query = query.Where(a => a.ProveedorId == proveedorId.Value);
         }
 
         var articulos = await query.ToListAsync(ct);
+        resumen.TotalArticulosCatalogo = articulos.Count;
 
-        // Indexar catálogo para coincidencia veloz O(1)
+        // Indexar catálogo de forma segura contra duplicados usando GroupBy
         var dictPorCodProv = articulos
             .Where(a => !string.IsNullOrWhiteSpace(a.CodigoProveedor))
-            .ToDictionary(a => a.CodigoProveedor!.Trim().ToUpperInvariant(), a => a);
+            .GroupBy(a => a.CodigoProveedor!.Trim().ToUpperInvariant())
+            .ToDictionary(g => g.Key, g => g.First());
 
         var dictPorBarraPrincipal = articulos
             .Where(a => !string.IsNullOrWhiteSpace(a.CodigoBarras))
-            .ToDictionary(a => a.CodigoBarras!.Trim().ToUpperInvariant(), a => a);
+            .GroupBy(a => a.CodigoBarras!.Trim().ToUpperInvariant())
+            .ToDictionary(g => g.Key, g => g.First());
 
+        var articulosConSecundarios = articulos
+            .Where(a => !string.IsNullOrWhiteSpace(a.CodigosBarrasSecundarios))
+            .ToList();
+
+        // Mapa para evitar duplicar artículos de la tienda en los resultados
+        // Clave: ArticuloId -> ItemDto
+        var itemsPorArticulo = new Dictionary<Guid, ArticuloAumentoPrecioItemDto>();
         int noEncontrados = 0;
 
         foreach (var row in rows)
         {
             var codProvExcel = ObtenerValorColumna(row, "codigo", "codprov", "codigoproducto", "codigoproveedor")?.Trim();
             var codBarraExcel = ObtenerValorColumna(row, "codigodebarra", "codigobarra", "codbarra", "barra", "barcode")?.Trim();
+            var descExcel = ObtenerValorColumna(row, "descripcion", "detalle", "nombre", "articulo", "producto", "denominacion")?.Trim();
 
             // Costo S/IVA y C/IVA del proveedor
-            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "s/iva", "siva", "costo", "siniva"), out var costoSiva);
-            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "c/iva", "civa", "coniva"), out var costoCiva);
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "s/iva", "siva", "costo", "siniva", "costosiva", "preciocosto"), out var costoSiva);
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "c/iva", "civa", "coniva", "costociva"), out var costoCiva);
 
             decimal costoNuevo = costoSiva > 0 ? costoSiva : (costoCiva > 0 ? Math.Round(costoCiva / 1.21m, 2) : 0m);
             if (costoNuevo <= 0) continue;
 
-            // Coincidencia:
-            // 1. Por Código Proveedor (el más exacto para El Once)
+            // Coincidencia jerárquica:
+            // 1. Por Código Proveedor (el más exacto)
             // 2. Por Código de Barra principal
             // 3. Por Códigos Secundarios
             Articulo? art = null;
+            bool matchPorCodigoProveedor = false;
+
             if (!string.IsNullOrWhiteSpace(codProvExcel) && dictPorCodProv.TryGetValue(codProvExcel.ToUpperInvariant(), out var encontradoProv))
             {
                 art = encontradoProv;
+                matchPorCodigoProveedor = true;
             }
             else if (!string.IsNullOrWhiteSpace(codBarraExcel) && dictPorBarraPrincipal.TryGetValue(codBarraExcel.ToUpperInvariant(), out var encontradoBarra))
             {
@@ -961,7 +1090,7 @@ public class InventarioService : IInventarioService
             }
             else if (!string.IsNullOrWhiteSpace(codBarraExcel))
             {
-                art = articulos.FirstOrDefault(a => a.CodigosBarrasSecundarios != null && a.CodigosBarrasSecundarios.Contains(codBarraExcel));
+                art = articulosConSecundarios.FirstOrDefault(a => a.CodigosBarrasSecundarios!.Contains(codBarraExcel));
             }
 
             if (art == null)
@@ -970,70 +1099,101 @@ public class InventarioService : IInventarioService
                 continue;
             }
 
-            resumen.CoincidenciasEncontradas++;
-
-            // Calcular nuevo precio de venta manteniendo el margen del local y su IVA
-            var ventaNueva = CalculoPreciosUtils.CalcularPrecioVenta(costoNuevo, art.PorcentajeGanancia, art.IvaPorcentaje);
-
-            bool hayCambio = Math.Abs(art.PrecioCosto - costoNuevo) > 0.01m || Math.Abs(art.PrecioVenta - ventaNueva) > 0.01m;
-            if (hayCambio)
+            // Si ya procesamos este artículo de la tienda:
+            if (itemsPorArticulo.TryGetValue(art.Id, out _))
             {
-                resumen.CoincidenciasConCambioDePrecio++;
+                // Si el nuevo match es por código de proveedor y el anterior fue por código de barras, reemplazamos por el más específico
+                if (matchPorCodigoProveedor)
+                {
+                    itemsPorArticulo[art.Id] = ConstruirItemDto(art, costoNuevo, descExcel);
+                }
+                // Si ya fue emparejado, no duplicamos la fila
+                continue;
             }
 
-            resumen.ItemsParaActualizar.Add(new ArticuloAumentoPrecioItemDto
-            {
-                ArticuloId = art.Id,
-                SKU = art.SKU,
-                Nombre = art.Nombre,
-                CodigoProveedor = art.CodigoProveedor,
-                CodigoBarras = art.CodigoBarras,
-                CostoAnterior = art.PrecioCosto,
-                CostoNuevo = costoNuevo,
-                VentaAnterior = art.PrecioVenta,
-                VentaNueva = ventaNueva,
-                PorcentajeGanancia = art.PorcentajeGanancia,
-                IvaPorcentaje = art.IvaPorcentaje,
-                Aplicar = hayCambio
-            });
+            itemsPorArticulo[art.Id] = ConstruirItemDto(art, costoNuevo, descExcel);
         }
 
+        resumen.CoincidenciasEncontradas = itemsPorArticulo.Count;
+        resumen.CoincidenciasConCambioDePrecio = itemsPorArticulo.Values.Count(i => Math.Abs(i.CostoNuevo - i.CostoAnterior) > 0.01m);
+        resumen.CoincidenciasConAlerta = itemsPorArticulo.Values.Count(i => i.EsAlertaVariacionExtrema);
         resumen.NoEncontradosEnCatalogo = noEncontrados;
+        resumen.ItemsParaActualizar = itemsPorArticulo.Values
+            .OrderByDescending(i => i.EsAlertaVariacionExtrema)
+            .ThenByDescending(i => Math.Abs(i.VariacionPorcentaje))
+            .ToList();
+
         return resumen;
     }
 
-    public async Task<ActualizacionPreciosResultadoDto> AplicarActualizacionPreciosAsync(IEnumerable<ArticuloAumentoPrecioItemDto> items, CancellationToken ct = default)
+    public async Task<ActualizacionPreciosResultadoDto> AplicarActualizacionPreciosAsync(
+        IEnumerable<ArticuloAumentoPrecioItemDto> items, 
+        Guid? asignarProveedorId = null, 
+        CancellationToken ct = default)
     {
         var itemsSeleccionados = items.Where(i => i.Aplicar).ToList();
         if (!itemsSeleccionados.Any())
         {
-            return new ActualizacionPreciosResultadoDto
+            if (items.Any())
             {
-                TotalActualizados = 0,
-                Mensaje = "No se seleccionó ningún artículo para actualizar."
-            };
+                // Si se pasaron items explícitamente pero ninguno tenía el flag Aplicar marcado (ej. llamadas de servicio o tests directos)
+                itemsSeleccionados = items.ToList();
+            }
+            else
+            {
+                return new ActualizacionPreciosResultadoDto
+                {
+                    TotalActualizados = 0,
+                    Mensaje = "No se seleccionó ningún artículo para actualizar."
+                };
+            }
         }
 
-        var ids = itemsSeleccionados.Select(i => i.ArticuloId).ToList();
+        var ids = itemsSeleccionados.Select(i => i.ArticuloId).Distinct().ToList();
         var articulos = await _context.Articulos.Where(a => ids.Contains(a.Id)).ToListAsync(ct);
-        var dictItems = itemsSeleccionados.ToDictionary(i => i.ArticuloId);
+        
+        var dictItems = itemsSeleccionados
+            .GroupBy(i => i.ArticuloId)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        PuntoDeVentaLibreria.Domain.Entities.Proveedores.Proveedor? proveedorAsignar = null;
+        if (asignarProveedorId.HasValue && asignarProveedorId.Value != Guid.Empty)
+        {
+            proveedorAsignar = await _context.Proveedores.FindAsync(new object[] { asignarProveedorId.Value }, ct);
+        }
 
         int actualizados = 0;
+        int proveedoresAsignados = 0;
+
         foreach (var a in articulos)
         {
             if (dictItems.TryGetValue(a.Id, out var item))
             {
                 a.PrecioCosto = item.CostoNuevo;
                 a.PrecioVenta = item.VentaNueva;
+
+                if (proveedorAsignar != null && a.ProveedorId != proveedorAsignar.Id)
+                {
+                    a.ProveedorId = proveedorAsignar.Id;
+                    proveedoresAsignados++;
+                }
+
                 actualizados++;
             }
         }
 
         await _context.SaveChangesAsync(ct);
+
+        var mensaje = $"Se actualizaron los precios de {actualizados} artículos exitosamente.";
+        if (proveedoresAsignados > 0 && proveedorAsignar != null)
+        {
+            mensaje += $" Se vinculó el proveedor '{proveedorAsignar.Nombre}' a {proveedoresAsignados} artículos.";
+        }
+
         return new ActualizacionPreciosResultadoDto
         {
             TotalActualizados = actualizados,
-            Mensaje = $"Se actualizaron los precios de {actualizados} artículos exitosamente."
+            Mensaje = mensaje
         };
     }
 
