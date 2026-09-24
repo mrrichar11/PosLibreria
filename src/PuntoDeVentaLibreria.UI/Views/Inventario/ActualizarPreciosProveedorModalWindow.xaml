@@ -109,13 +109,13 @@
                 <DockPanel Grid.Row="1" LastChildFill="False">
                     <!-- Segmented View Filter -->
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                        <RadioButton x:Name="RbFiltroTodos" Content="Mostrar Todos" IsChecked="True" Checked="FiltroRadio_Checked" 
+                        <RadioButton x:Name="RbFiltroTodos" GroupName="FiltroVista" Content="Mostrar Todos" Checked="FiltroRadio_Checked" 
                                      Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="SemiBold" FontSize="11" Margin="0,0,4,0"/>
-                        <RadioButton x:Name="RbFiltroAlertas" Content="⚠️ Alertas / Posibles Packs" Checked="FiltroRadio_Checked" 
+                        <RadioButton x:Name="RbFiltroAlertas" GroupName="FiltroVista" Content="⚠️ Alertas / Posibles Packs" Checked="FiltroRadio_Checked" 
                                      Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="Bold" FontSize="11" Margin="0,0,4,0" Foreground="#DC2626"/>
-                        <RadioButton x:Name="RbFiltroConCambio" Content="📈 Variación Normal" Checked="FiltroRadio_Checked" 
+                        <RadioButton x:Name="RbFiltroConCambio" GroupName="FiltroVista" Content="📈 Variación Normal" Checked="FiltroRadio_Checked" 
                                      Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="SemiBold" FontSize="11" Margin="0,0,4,0"/>
-                        <RadioButton x:Name="RbFiltroSinCambio" Content="⏸️ Sin Cambios" Checked="FiltroRadio_Checked" 
+                        <RadioButton x:Name="RbFiltroSinCambio" GroupName="FiltroVista" Content="⏸️ Sin Cambios" Checked="FiltroRadio_Checked" 
                                      Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="SemiBold" FontSize="11"/>
                     </StackPanel>
 

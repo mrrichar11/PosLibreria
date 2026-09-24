@@ -52,6 +52,8 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
 
     private void CmbProveedor_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (ChkAsignarProveedor == null || ChkSoloArticulosDelProveedor == null) return;
+
         if (CmbProveedor.SelectedItem is ProveedorDto p && p.Id != Guid.Empty)
         {
             ChkAsignarProveedor.IsEnabled = true;
@@ -142,6 +144,9 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
 
     private void ActualizarContadoresMetricas()
     {
+        if (TxtTotalCatalogo == null || TxtCoincidencias == null || TxtConCambio == null || 
+            TxtConAlerta == null || TxtNoEncontrados == null || BorderAlertas == null) return;
+
         int total = _itemsComparados.Count;
         int conCambio = _itemsComparados.Count(i => !i.EsAlertaVariacionExtrema && Math.Abs(i.CostoNuevo - i.CostoAnterior) > 0.01m);
         int alertas = _itemsComparados.Count(i => i.EsAlertaVariacionExtrema);
@@ -156,26 +161,30 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         BorderAlertas.Visibility = alertas > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         // Textos de los filtros de radio
-        RbFiltroTodos.Content = $"Mostrar Todos ({total:N0})";
-        RbFiltroAlertas.Content = $"⚠️ Alertas / Posibles Packs ({alertas:N0})";
-        RbFiltroConCambio.Content = $"📈 Variación Normal ({conCambio:N0})";
-        RbFiltroSinCambio.Content = $"⏸️ Sin Cambios ({sinCambio:N0})";
+        if (RbFiltroTodos != null) RbFiltroTodos.Content = $"Mostrar Todos ({total:N0})";
+        if (RbFiltroAlertas != null) RbFiltroAlertas.Content = $"⚠️ Alertas / Posibles Packs ({alertas:N0})";
+        if (RbFiltroConCambio != null) RbFiltroConCambio.Content = $"📈 Variación Normal ({conCambio:N0})";
+        if (RbFiltroSinCambio != null) RbFiltroSinCambio.Content = $"⏸️ Sin Cambios ({sinCambio:N0})";
 
         // Botón masivo para auto-aplicar sugerencias
         int sugeridosPendientes = _itemsComparados.Count(i => i.FactorSugerido.HasValue && i.MostrarBotonSugerido);
-        if (sugeridosPendientes > 0)
+        if (BtnAutoAplicarDivisores != null)
         {
-            BtnAutoAplicarDivisores.Visibility = Visibility.Visible;
-            BtnAutoAplicarDivisores.Content = $"✨ Auto-aplicar divisores sugeridos ({sugeridosPendientes})";
-        }
-        else
-        {
-            BtnAutoAplicarDivisores.Visibility = Visibility.Collapsed;
+            if (sugeridosPendientes > 0)
+            {
+                BtnAutoAplicarDivisores.Visibility = Visibility.Visible;
+                BtnAutoAplicarDivisores.Content = $"✨ Auto-aplicar divisores sugeridos ({sugeridosPendientes})";
+            }
+            else
+            {
+                BtnAutoAplicarDivisores.Visibility = Visibility.Collapsed;
+            }
         }
     }
 
     private void FiltroRadio_Checked(object sender, RoutedEventArgs e)
     {
+        if (!IsLoaded) return;
         if (sender is RadioButton rb && rb.IsChecked == true)
         {
             if (rb == RbFiltroTodos) AplicarFiltroVista("Todos");
@@ -187,6 +196,7 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
 
     private void AplicarFiltroVista(string tipoFiltro)
     {
+        if (GridComparativa == null || GridComparativa.ItemsSource == null) return;
         var view = CollectionViewSource.GetDefaultView(GridComparativa.ItemsSource);
         if (view == null) return;
 
