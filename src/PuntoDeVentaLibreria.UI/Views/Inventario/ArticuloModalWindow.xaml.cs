@@ -604,18 +604,26 @@ public partial class ArticuloModalWindow : Window
     private void ActualizarSugerenciasRedondeo(decimal venta)
     {
         if (BtnRedondearAbajo == null || BtnRedondearArriba == null || PnlBotonesRedondeo == null) return;
-        if (venta < 100m)
+        if (venta <= 0m)
         {
             PnlBotonesRedondeo.Visibility = Visibility.Collapsed;
             return;
         }
 
-        var abajo = Math.Floor(venta / 100m) * 100m;
-        var arriba = Math.Ceiling(venta / 100m) * 100m;
+        // Si el precio es menor a $100 (ej. hojas sueltas, fotocopias), redondear en decenas ($10),
+        // caso contrario redondear en centenas ($100).
+        decimal paso = venta < 100m ? 10m : 100m;
+        var abajo = Math.Floor(venta / paso) * paso;
+        var arriba = Math.Ceiling(venta / paso) * paso;
+
         if (abajo == arriba)
         {
-            abajo = Math.Max(0, venta - 100m);
-            arriba = venta + 100m;
+            abajo = Math.Max(paso, venta - paso);
+            arriba = venta + paso;
+        }
+        else if (abajo <= 0)
+        {
+            abajo = paso;
         }
 
         BtnRedondearAbajo.Content = $"⬇️ ${abajo:N0}";
@@ -640,6 +648,17 @@ public partial class ArticuloModalWindow : Window
         {
             TxtVenta.Text = val.ToString("0.00", CultureInfo.InvariantCulture);
             RecalcularMargenDesdeVenta();
+        }
+    }
+
+    private void BtnCopiarDescProveedorANombre_Click(object sender, RoutedEventArgs e)
+    {
+        if (!string.IsNullOrWhiteSpace(TxtDescripcion?.Text))
+        {
+            TxtNombre.Text = TxtDescripcion.Text.Trim();
+            Articulo.Nombre = TxtNombre.Text;
+            TxtNombre.Focus();
+            TxtNombre.SelectAll();
         }
     }
 

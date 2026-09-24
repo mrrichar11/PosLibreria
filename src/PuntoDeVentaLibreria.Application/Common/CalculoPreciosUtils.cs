@@ -53,6 +53,18 @@ public static class CalculoPreciosUtils
     public static decimal RedondearPrecioVenta(decimal precio, ReglaRedondeoPrecio regla)
     {
         if (precio <= 0) return 0;
+
+        // Si el precio es menor a $100 (ej. hojas sueltas, fotocopias, clips),
+        // redondear a la decena más cercana (mínimo $10) para evitar que quede en $0.
+        if (precio < 100m && regla != ReglaRedondeoPrecio.SinRedondeo)
+        {
+            return regla switch
+            {
+                ReglaRedondeoPrecio.CentenaSuperior => Math.Max(10m, Math.Ceiling(precio / 10m) * 10m),
+                _ => Math.Max(10m, Math.Round(precio / 10m, MidpointRounding.AwayFromZero) * 10m)
+            };
+        }
+
         return regla switch
         {
             ReglaRedondeoPrecio.CentenaSuperior => Math.Ceiling(precio / 100m) * 100m,

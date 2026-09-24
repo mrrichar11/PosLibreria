@@ -91,6 +91,11 @@
                         </ComboBox>
                     </StackPanel>
 
+                    <CheckBox x:Name="ChkActualizarNombreConDescripcionProveedor" 
+                              Content="Actualizar nombres de artículos con la descripción del proveedor" 
+                              IsChecked="False" FontWeight="SemiBold" Foreground="#334155" VerticalAlignment="Center" Margin="0,0,16,4"
+                              ToolTip="Si se marca, el nombre del artículo se reemplazará por la descripción del mayorista. De todas formas, la descripción del proveedor siempre se guardará en la ficha del producto."/>
+
                     <CheckBox x:Name="ChkSoloArticulosDelProveedor" Content="Solo artículos que ya tienen este proveedor" 
                               IsChecked="False" Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,0,4"/>
                 </WrapPanel>

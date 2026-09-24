@@ -136,6 +136,19 @@
                             <DataTemplate>
                                 <StackPanel VerticalAlignment="Center" Margin="4,2">
                                     <TextBlock Text="{Binding Nombre}" FontWeight="SemiBold" FontSize="13"/>
+                                    <TextBlock Text="{Binding Descripcion, StringFormat='(Prov: {0})', TargetNullValue=''}" 
+                                               FontSize="10.5" Foreground="#64748B" FontStyle="Italic" TextTrimming="CharacterEllipsis">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                                <Style.Triggers>
+                                                    <Trigger Property="Text" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </Trigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
                                     <Border Visibility="{Binding TieneVariantes, Converter={StaticResource BooleanToVisibilityConverter}}"
                                             Background="#EEF2FF" BorderBrush="#C7D2FE" BorderThickness="1" CornerRadius="4" 
                                             Padding="5,1" Margin="0,3,0,0" HorizontalAlignment="Left"

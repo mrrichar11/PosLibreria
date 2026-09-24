@@ -341,6 +341,8 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
             asignarRubro = cbiRubro.Content?.ToString();
         }
 
+        bool actualizarNombres = ChkActualizarNombreConDescripcionProveedor?.IsChecked == true;
+
         var mensajeConfirmacion = $"¿Confirma actualizar los precios de costo y venta de {seleccionados.Count:N0} artículos?";
         if (asignarProveedorId.HasValue)
         {
@@ -349,6 +351,10 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         if (!string.IsNullOrWhiteSpace(asignarRubro))
         {
             mensajeConfirmacion += $"\n• Se asignará el rubro '{asignarRubro}'.";
+        }
+        if (actualizarNombres)
+        {
+            mensajeConfirmacion += "\n• Se reemplazarán los nombres locales por las descripciones del proveedor.";
         }
 
         var res = MessageBox.Show(
@@ -363,7 +369,7 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
 
         try
         {
-            var resultado = await _inventarioService.AplicarActualizacionPreciosAsync(seleccionados, asignarProveedorId, asignarRubro);
+            var resultado = await _inventarioService.AplicarActualizacionPreciosAsync(seleccionados, asignarProveedorId, asignarRubro, actualizarNombres);
             PreciosActualizados = true;
 
             TxtMensajeResultado.Text = $"✅ {resultado.Mensaje}";

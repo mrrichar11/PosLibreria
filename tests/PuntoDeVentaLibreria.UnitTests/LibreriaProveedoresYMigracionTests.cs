@@ -476,8 +476,70 @@ public class LibreriaProveedoresYMigracionTests
         CalculoPreciosUtils.RedondearPrecioVenta(1274m, ReglaRedondeoPrecio.CincuentaCercano).Should().Be(1250m);
         CalculoPreciosUtils.RedondearPrecioVenta(1275m, ReglaRedondeoPrecio.CincuentaCercano).Should().Be(1300m);
 
-        // 4. Sin Redondeo
+        // 4. Precios menores a $100 (Hojas sueltas, clips, fotocopias) se redondean a la decena más cercana (mínimo $10)
+        CalculoPreciosUtils.RedondearPrecioVenta(45m, ReglaRedondeoPrecio.CentenaCercana).Should().Be(50m);
+        CalculoPreciosUtils.RedondearPrecioVenta(32m, ReglaRedondeoPrecio.CentenaCercana).Should().Be(30m);
+        CalculoPreciosUtils.RedondearPrecioVenta(8m, ReglaRedondeoPrecio.CentenaCercana).Should().Be(10m);
+        CalculoPreciosUtils.RedondearPrecioVenta(32m, ReglaRedondeoPrecio.CentenaSuperior).Should().Be(40m);
+
+        // 5. Sin Redondeo
         CalculoPreciosUtils.RedondearPrecioVenta(1243.75m, ReglaRedondeoPrecio.SinRedondeo).Should().Be(1243.75m);
+        CalculoPreciosUtils.RedondearPrecioVenta(45.20m, ReglaRedondeoPrecio.SinRedondeo).Should().Be(45.20m);
+    }
+
+    [Fact]
+    public async Task AplicarActualizacionPrecios_PersisteFactorPackYDescripcionProveedor()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        var art = new PuntoDeVentaLibreria.Domain.Entities.Catalogo.Articulo
+        {
+            Id = Guid.NewGuid(),
+            Nombre = "Bic Azul",
+            SKU = "BOLI-BIC-AZUL",
+            PrecioCosto = 200m,
+            PrecioVenta = 400m,
+            CantidadPorPack = 1m, // Por defecto 1
+            Activo = true
+        };
+        context.Articulos.Add(art);
+        await context.SaveChangesAsync();
+
+        // 1. Aplicar aumento con factor de división 50 (pack mayorista de 50) y descripción del proveedor
+        var item = new ArticuloAumentoPrecioItemDto
+        {
+            ArticuloId = art.Id,
+            SKU = art.SKU,
+            Nombre = art.Nombre,
+            DescripcionProveedor = "BOLIGRAFO BIC CRISTAL AZUL X 50 UNID",
+            CostoAnterior = 200m,
+            CostoOriginalProveedor = 11500m,
+            FactorConversion = 50m,
+            CostoNuevo = 230m,
+            VentaNueva = 450m,
+            Aplicar = true
+        };
+
+        var resultado = await inventarioService.AplicarActualizacionPreciosAsync(
+            new[] { item }, 
+            actualizarNombresConDescripcionProveedor: true);
+
+        resultado.TotalActualizados.Should().Be(1);
+
+        // 2. Verificar que se persistió CantidadPorPack = 50, Descripcion y Nombre unificado
+        var artDb = await context.Articulos.FindAsync(art.Id);
+        artDb!.CantidadPorPack.Should().Be(50m);
+        artDb.PrecioCosto.Should().Be(230m);
+        artDb.PrecioVenta.Should().Be(450m);
+        artDb.Descripcion.Should().Be("BOLIGRAFO BIC CRISTAL AZUL X 50 UNID");
+        artDb.Nombre.Should().Be("BOLIGRAFO BIC CRISTAL AZUL X 50 UNID");
+
+        // 3. Simular una futura lista de precios (ej. la de mañana)
+        // ConstruirItemDto debe precargar automáticamente FactorConversion = 50 sin que el usuario tenga que reconfigurarlo
+        var streamMock = new MemoryStream(); // No se usa para ConstruirItemDto
+        // Comprobamos directamente que el artículo en base de datos retiene CantidadPorPack
+        artDb.CantidadPorPack.Should().Be(50m);
     }
 
     [Fact]

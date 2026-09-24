@@ -79,6 +79,7 @@ public class InventarioService : IInventarioService
             query = query.Where(a =>
                 a.Nombre.ToUpper().Contains(token) ||
                 a.SKU.ToUpper().Contains(token) ||
+                (a.Descripcion != null && a.Descripcion.ToUpper().Contains(token)) ||
                 (a.CodigoBarras != null && a.CodigoBarras.Contains(token)) ||
                 (a.CodigoProveedor != null && a.CodigoProveedor.Contains(token)) ||
                 (a.CodigosBarrasSecundarios != null && a.CodigosBarrasSecundarios.Contains(token)) ||
@@ -131,6 +132,7 @@ public class InventarioService : IInventarioService
                 query = query.Where(a =>
                     a.Nombre.ToUpper().Contains(token) ||
                     a.SKU.ToUpper().Contains(token) ||
+                    (a.Descripcion != null && a.Descripcion.ToUpper().Contains(token)) ||
                     (a.CodigoBarras != null && a.CodigoBarras.Contains(token)) ||
                     (a.CodigoProveedor != null && a.CodigoProveedor.Contains(token)) ||
                     (a.CodigosBarrasSecundarios != null && a.CodigosBarrasSecundarios.Contains(token)) ||
@@ -993,6 +995,9 @@ public class InventarioService : IInventarioService
     {
         var factorSugerido = DetectarFactorPack(descProveedor, art.Nombre, art.PrecioCosto, costoNuevo);
 
+        // Si el artículo ya tenía un factor de pack guardado (> 1) previamente, lo precargamos automáticamente
+        decimal factorInicial = (art.CantidadPorPack > 1) ? art.CantidadPorPack : 1m;
+
         var item = new ArticuloAumentoPrecioItemDto
         {
             ArticuloId = art.Id,
@@ -1003,7 +1008,7 @@ public class InventarioService : IInventarioService
             DescripcionProveedor = descProveedor,
             CostoAnterior = art.PrecioCosto,
             CostoOriginalProveedor = costoNuevo,
-            FactorConversion = 1m,
+            FactorConversion = factorInicial,
             FactorSugerido = factorSugerido,
             PorcentajeGanancia = art.PorcentajeGanancia,
             IvaPorcentaje = art.IvaPorcentaje,
@@ -1135,6 +1140,7 @@ public class InventarioService : IInventarioService
         IEnumerable<ArticuloAumentoPrecioItemDto> items, 
         Guid? asignarProveedorId = null, 
         string? asignarRubro = null,
+        bool actualizarNombresConDescripcionProveedor = false,
         CancellationToken ct = default)
     {
         var itemsSeleccionados = items.Where(i => i.Aplicar).ToList();
@@ -1171,6 +1177,7 @@ public class InventarioService : IInventarioService
         int actualizados = 0;
         int proveedoresAsignados = 0;
         int rubrosAsignados = 0;
+        int nombresActualizados = 0;
 
         foreach (var a in articulos)
         {
@@ -1178,6 +1185,24 @@ public class InventarioService : IInventarioService
             {
                 a.PrecioCosto = item.CostoNuevo;
                 a.PrecioVenta = item.VentaNueva;
+
+                // 1. Persistir el divisor de pack/bulto elegido para que se recuerde en futuras listas
+                if (item.FactorConversion >= 1m)
+                {
+                    a.CantidadPorPack = item.FactorConversion;
+                }
+
+                // 2. Guardar la descripción oficial del catálogo del mayorista y actualizar nombre si se solicitó
+                if (!string.IsNullOrWhiteSpace(item.DescripcionProveedor))
+                {
+                    a.Descripcion = item.DescripcionProveedor;
+
+                    if (actualizarNombresConDescripcionProveedor)
+                    {
+                        a.Nombre = item.DescripcionProveedor;
+                        nombresActualizados++;
+                    }
+                }
 
                 if (proveedorAsignar != null && a.ProveedorId != proveedorAsignar.Id)
                 {
@@ -1198,6 +1223,10 @@ public class InventarioService : IInventarioService
         await _context.SaveChangesAsync(ct);
 
         var mensaje = $"Se actualizaron los precios de {actualizados} artículos exitosamente.";
+        if (nombresActualizados > 0)
+        {
+            mensaje += $" Se estandarizaron {nombresActualizados} nombres con el catálogo del proveedor.";
+        }
         if (proveedoresAsignados > 0 && proveedorAsignar != null)
         {
             mensaje += $" Se vinculó el proveedor '{proveedorAsignar.Nombre}' a {proveedoresAsignados} artículos.";

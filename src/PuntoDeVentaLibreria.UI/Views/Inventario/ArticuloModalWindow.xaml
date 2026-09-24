@@ -84,6 +84,18 @@
                     </StackPanel>
                 </Grid>
 
+                <!-- Descripción Oficial del Proveedor / Catálogo -->
+                <StackPanel Margin="0,0,0,12">
+                    <DockPanel LastChildFill="False" Margin="0,0,0,4">
+                        <TextBlock DockPanel.Dock="Left" Text="Descripción Oficial del Proveedor / Catálogo:" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                        <Button x:Name="BtnCopiarDescProveedorANombre" DockPanel.Dock="Right" Content="📋 Usar como Nombre Principal" Click="BtnCopiarDescProveedorANombre_Click"
+                                Background="#F1F5F9" Foreground="#334155" BorderBrush="#CBD5E1" BorderThickness="1" Padding="8,2" FontSize="11" FontWeight="SemiBold" Cursor="Hand"
+                                ToolTip="Copia este texto al nombre del artículo para unificar con el proveedor."/>
+                    </DockPanel>
+                    <TextBox x:Name="TxtDescripcion" Text="{Binding Descripcion, UpdateSourceTrigger=PropertyChanged}" FontSize="13" Padding="8,6"/>
+                    <TextBlock Text="💡 Se actualiza automáticamente al cotejar y aplicar listas de precios del mayorista." FontSize="10.5" Foreground="#64748B" Margin="0,2,0,0"/>
+                </StackPanel>
+
                 <!-- Rubro Comercial y Tipo de Artículo -->
                 <Grid Margin="0,0,0,12">
                     <Grid.ColumnDefinitions>
