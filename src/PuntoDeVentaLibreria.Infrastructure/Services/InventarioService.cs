@@ -258,6 +258,8 @@ public class InventarioService : IInventarioService
         entidad.IvaPorcentaje = dto.IvaPorcentaje;
         entidad.PorcentajeGanancia = dto.PorcentajeGanancia;
         entidad.PrecioVenta = dto.PrecioVenta;
+        entidad.EsPrecioDolar = dto.EsPrecioDolar;
+        entidad.PrecioCostoDolar = dto.PrecioCostoDolar;
         entidad.StockActual = dto.StockActual;
         entidad.StockMinimo = dto.StockMinimo;
         entidad.UnidadMedida = dto.UnidadMedida;
@@ -1340,6 +1342,8 @@ public class InventarioService : IInventarioService
         IvaPorcentaje = a.IvaPorcentaje,
         PorcentajeGanancia = a.PorcentajeGanancia,
         PrecioVenta = a.PrecioVenta,
+        EsPrecioDolar = a.EsPrecioDolar,
+        PrecioCostoDolar = a.PrecioCostoDolar,
         StockActual = a.Variantes != null && a.Variantes.Any(v => v.Activo)
             ? a.Variantes.Where(v => v.Activo).Sum(v => v.StockActual)
             : a.StockActual,

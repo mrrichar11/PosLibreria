@@ -117,6 +117,14 @@ public partial class App : System.Windows.Application
             var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             await DatabaseInitializer.InitializeAsync(dbContext);
             await DataSeeder.SeedAsync(dbContext);
+
+            try
+            {
+                var configService = scope.ServiceProvider.GetRequiredService<IConfiguracionService>();
+                var cfg = await configService.ObtenerConfiguracionAsync();
+                PuntoDeVentaLibreria.UI.Helpers.ThemeHelper.AplicarTema(cfg.TemaInterfaz);
+            }
+            catch { }
         }
 
         // Iniciar flujo con ventana de Login obligatoria

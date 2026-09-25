@@ -289,7 +289,13 @@ public partial class ConfiguracionViewModel : ObservableObject
         await CargarHistorialBackupsAsync();
         await CargarUsuariosAsync();
         ActualizacionInfo.VersionActual = _updateService.ObtenerVersionActual();
+        CotizacionDolarInput = Config.CotizacionDolar > 0 ? Config.CotizacionDolar : 1350m;
+        FechaCotizacionDolarTexto = Config.FechaCotizacionDolar.HasValue
+            ? $"Última actualización: {Config.FechaCotizacionDolar.Value:dd/MM/yyyy HH:mm}"
+            : "Sin registrar";
         OnPropertyChanged(nameof(ActualizacionInfo));
+        OnPropertyChanged(nameof(CotizacionDolarInput));
+        OnPropertyChanged(nameof(FechaCotizacionDolarTexto));
         OnPropertyChanged(nameof(EsPapel80Mm));
         OnPropertyChanged(nameof(EsPapel58Mm));
     }
@@ -357,18 +363,41 @@ public partial class ConfiguracionViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void CambiarTema(string? tema)
+    private async Task CambiarTemaAsync(string? tema)
     {
-        if (string.Equals(tema, "Dark", StringComparison.OrdinalIgnoreCase))
+        bool esOscuro = string.Equals(tema, "Dark", StringComparison.OrdinalIgnoreCase);
+        PuntoDeVentaLibreria.UI.Helpers.ThemeHelper.AplicarTema(esOscuro ? "Dark" : "Light");
+        Config.TemaInterfaz = esOscuro ? "Dark" : "Light";
+        await _configuracionService.GuardarConfiguracionAsync(Config);
+    }
+
+    [ObservableProperty]
+    private decimal _cotizacionDolarInput = 1350m;
+
+    [ObservableProperty]
+    private string _fechaCotizacionDolarTexto = "Sin registrar";
+
+    [ObservableProperty]
+    private string _mensajeCotizacionDolar = string.Empty;
+
+    public bool TieneMensajeCotizacion => !string.IsNullOrWhiteSpace(MensajeCotizacionDolar);
+
+    [RelayCommand]
+    private async Task ActualizarCotizacionDolarAsync()
+    {
+        if (CotizacionDolarInput <= 0)
         {
-            ApplicationThemeManager.Apply(ApplicationTheme.Dark);
-            Config.TemaInterfaz = "Dark";
+            MensajeCotizacionDolar = "La cotización debe ser un importe mayor a cero.";
+            OnPropertyChanged(nameof(TieneMensajeCotizacion));
+            return;
         }
-        else
-        {
-            ApplicationThemeManager.Apply(ApplicationTheme.Light);
-            Config.TemaInterfaz = "Light";
-        }
+
+        Config.CotizacionDolar = CotizacionDolarInput;
+        Config.FechaCotizacionDolar = DateTime.Now;
+        await _configuracionService.ActualizarCotizacionDolarAsync(CotizacionDolarInput);
+        FechaCotizacionDolarTexto = $"Última actualización: {DateTime.Now:dd/MM/yyyy HH:mm}";
+        MensajeCotizacionDolar = $"¡Cotización del Dólar actualizada a ${CotizacionDolarInput:N2}!";
+        OnPropertyChanged(nameof(TieneMensajeCotizacion));
     }
 
     public static event Func<Task>? LicenciaActualizadaGlobal;

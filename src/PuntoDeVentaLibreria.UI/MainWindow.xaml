@@ -9,7 +9,7 @@
         Height="720" Width="1200"
         MinHeight="580" MinWidth="960"
         WindowStartupLocation="CenterScreen"
-        Background="#F1F5F9"
+        Background="{DynamicResource FondoVentanaBrush}"
         FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
 
     <Window.Resources>
@@ -18,8 +18,8 @@
 
         <Style x:Key="NavButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#334155"/>
-            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextoNormalBrush}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BordeBarraLateralBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -43,15 +43,15 @@
                                               TextElement.Foreground="{TemplateBinding Foreground}"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <!-- Hover sobre botón NO activo -->
+                            <!-- Hover sobre botón NO activo: contraste siempre asegurado -->
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
                                     <Condition Property="IsMouseOver" Value="True"/>
                                     <Condition Property="Tag" Value="{x:Null}"/>
                                 </MultiTrigger.Conditions>
-                                <Setter TargetName="border" Property="Background" Value="#F1F5F9"/>
-                                <Setter TargetName="border" Property="BorderBrush" Value="#CBD5E1"/>
-                                <Setter Property="Foreground" Value="#0F172A"/>
+                                <Setter TargetName="border" Property="Background" Value="{DynamicResource FondoControlSecundarioBrush}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{DynamicResource BordeTarjetaBrush}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource TextoTituloBrush}"/>
                             </MultiTrigger>
 
                             <!-- Estado ACTIVO (seleccionado) -->
@@ -103,8 +103,14 @@
                     <TextBlock Text="{Binding Titulo}" Foreground="White" FontSize="15" FontWeight="Bold" VerticalAlignment="Center"/>
                 </StackPanel>
 
-                <!-- Estado del Turno, Licencia y Actualización -->
+                <!-- Estado del Turno, Licencia, Cotización Dólar y Actualización -->
                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Badge Cotización Dólar -->
+                    <Border Margin="0,0,8,0" Padding="8,4" CornerRadius="6" Background="#14532D"
+                            ToolTip="Cotización del Dólar activa para artículos de Joyería/Regalería">
+                        <TextBlock Text="{Binding CotizacionDolarHeaderTexto}" FontSize="11" FontWeight="Bold" Foreground="#86EFAC"/>
+                    </Border>
+
                     <!-- Botón Interactivo de Actualización si hay -->
                     <Button Margin="0,0,8,0" Padding="10,4" Cursor="Hand"
                             Command="{Binding AbrirActualizacionModalCommand}"
@@ -149,10 +155,10 @@
             </Grid.ColumnDefinitions>
 
             <!-- BARRA LATERAL FLUENT -->
-            <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="0,0,1,0" Padding="12">
+            <Border Grid.Column="0" Background="{DynamicResource FondoBarraLateralBrush}" BorderBrush="{DynamicResource BordeBarraLateralBrush}" BorderThickness="0,0,1,0" Padding="12">
                 <StackPanel>
                     <!-- LOGO / COMERCIO -->
-                    <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="0,0,0,16">
+                    <Border Background="{DynamicResource FondoControlSecundarioBrush}" BorderBrush="{DynamicResource BordeBarraLateralBrush}" BorderThickness="1" CornerRadius="8" Padding="10,8" Margin="0,0,0,16">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <!-- Si tiene logo custom -->
                             <Border Width="34" Height="34" CornerRadius="6" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" Margin="0,0,8,0"
@@ -167,8 +173,8 @@
                             </Border>
 
                             <StackPanel VerticalAlignment="Center" MaxWidth="140">
-                                <TextBlock Text="{Binding NombreComercio}" FontWeight="Bold" FontSize="12" TextTrimming="CharacterEllipsis" Foreground="#0F172A"/>
-                                <TextBlock Text="LIBRERÍA &amp; REGALOS" FontSize="8.5" FontWeight="Bold" Foreground="#64748B"/>
+                                <TextBlock Text="{Binding NombreComercio}" FontWeight="Bold" FontSize="12" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextoTituloBrush}"/>
+                                <TextBlock Text="LIBRERÍA &amp; REGALOS" FontSize="8.5" FontWeight="Bold" Foreground="{DynamicResource TextoSubtituloBrush}"/>
                             </StackPanel>
                         </StackPanel>
                     </Border>

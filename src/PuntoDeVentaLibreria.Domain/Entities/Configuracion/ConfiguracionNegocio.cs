@@ -33,6 +33,10 @@ public class ConfiguracionNegocio : BaseEntity
     public string SimboloMoneda { get; set; } = "$";
     public string BilletesHabilitados { get; set; } = "100,200,500,1000,2000,10000,20000";
 
+    // Cotización de Moneda Extranjera (Joyería / Regalería / Importados)
+    public decimal CotizacionDolar { get; set; } = 1350.0m;
+    public DateTime? FechaCotizacionDolar { get; set; } = DateTime.Now;
+
     // Configuración de Tickets Térmicos
     public string ImpresoraTickets { get; set; } = string.Empty;
     public int AnchoPapelMm { get; set; } = 80;

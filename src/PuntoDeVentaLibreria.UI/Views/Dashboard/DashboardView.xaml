@@ -27,9 +27,9 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Row="0" Grid.Column="0" VerticalAlignment="Center">
-                <TextBlock Text="DASHBOARD &amp; ANALÍTICAS DE LIBRERÍA" FontSize="20" FontWeight="Bold" Foreground="#0F172A"/>
+                <TextBlock Text="DASHBOARD &amp; ANALÍTICAS DE LIBRERÍA" FontSize="20" FontWeight="Bold" Foreground="{DynamicResource TextoTituloBrush}"/>
                 <TextBlock Text="{Binding Datos.PeriodoTexto, StringFormat='Reporte financiero de ventas, costos y utilidades: {0}'}" 
-                           FontSize="12" Foreground="#64748B" Margin="0,2,0,0"/>
+                           FontSize="12" Foreground="{DynamicResource TextoSubtituloBrush}" Margin="0,2,0,0"/>
             </StackPanel>
 
             <!-- Botón Exportar CSV -->
@@ -39,28 +39,28 @@
             </StackPanel>
 
             <!-- Barra de Filtros Rápidos y Selector de Fechas Personalizadas -->
-            <Border Grid.Row="1" Grid.ColumnSpan="2" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="10,6" Margin="0,12,0,0">
+            <Border Grid.Row="1" Grid.ColumnSpan="2" Background="{DynamicResource FondoTarjetaBrush}" BorderBrush="{DynamicResource BordeTarjetaBrush}" BorderThickness="1" CornerRadius="10" Padding="10,6" Margin="0,12,0,0">
                 <DockPanel LastChildFill="False">
                     <!-- Botonera de Períodos Rápidos -->
-                    <Border DockPanel.Dock="Left" Background="#F1F5F9" CornerRadius="8" Padding="3" VerticalAlignment="Center">
+                    <Border DockPanel.Dock="Left" Background="{DynamicResource FondoControlSecundarioBrush}" CornerRadius="8" Padding="3" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
                             <Button Content="Hoy" Command="{Binding FiltrarHoyCommand}"
-                                    Padding="12,5" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
+                                    Padding="12,5" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="{DynamicResource FondoTarjetaBrush}" Foreground="{DynamicResource TextoNormalBrush}"/>
                             <Button Content="7 Días" Command="{Binding FiltrarSemanaCommand}"
-                                    Padding="12,5" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
+                                    Padding="12,5" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="{DynamicResource FondoTarjetaBrush}" Foreground="{DynamicResource TextoNormalBrush}"/>
                             <Button Content="Este Mes" Command="{Binding FiltrarMesCommand}"
-                                    Padding="12,5" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
+                                    Padding="12,5" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="{DynamicResource FondoTarjetaBrush}" Foreground="{DynamicResource TextoNormalBrush}"/>
                             <Button Content="Histórico" Command="{Binding FiltrarHistoricoCommand}"
-                                    Padding="12,5" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="White"/>
+                                    Padding="12,5" Margin="2" FontWeight="SemiBold" FontSize="12" Cursor="Hand" Background="{DynamicResource FondoTarjetaBrush}" Foreground="{DynamicResource TextoNormalBrush}"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Selector de Rango Personalizado -->
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="Rango personalizado:" FontWeight="SemiBold" FontSize="12" Foreground="#475569" VerticalAlignment="Center" Margin="14,0,8,0"/>
-                        <TextBlock Text="Desde:" FontSize="11" Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <TextBlock Text="Rango personalizado:" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextoTituloBrush}" VerticalAlignment="Center" Margin="14,0,8,0"/>
+                        <TextBlock Text="Desde:" FontSize="11" Foreground="{DynamicResource TextoSubtituloBrush}" VerticalAlignment="Center" Margin="0,0,4,0"/>
                         <DatePicker SelectedDate="{Binding FechaDesde}" Width="120" Margin="0,0,8,0" VerticalAlignment="Center"/>
-                        <TextBlock Text="Hasta:" FontSize="11" Foreground="#64748B" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <TextBlock Text="Hasta:" FontSize="11" Foreground="{DynamicResource TextoSubtituloBrush}" VerticalAlignment="Center" Margin="0,0,4,0"/>
                         <DatePicker SelectedDate="{Binding FechaHasta}" Width="120" Margin="0,0,8,0" VerticalAlignment="Center"/>
                         <Button Content="🔍 Filtrar" Command="{Binding FiltrarRangoPersonalizadoCommand}"
                                 Background="#2563EB" Foreground="White" FontWeight="Bold" Padding="12,5" FontSize="12" Cursor="Hand"/>
@@ -79,25 +79,25 @@
             </Grid.ColumnDefinitions>
 
             <!-- KPI 1: Facturación Bruta -->
-            <Border Grid.Column="0" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,10,0">
+            <Border Grid.Column="0" Background="{DynamicResource FondoTarjetaBrush}" BorderBrush="{DynamicResource BordeTarjetaBrush}" BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,10,0">
                 <StackPanel>
-                    <TextBlock Text="FACTURACIÓN TOTAL" FontSize="11" FontWeight="Bold" Foreground="#64748B"/>
-                    <TextBlock Text="{Binding Datos.FacturacionTotal, StringFormat='${0:N2}'}" FontSize="24" FontWeight="Black" Foreground="#0F172A" Margin="0,6,0,4"/>
+                    <TextBlock Text="FACTURACIÓN TOTAL" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextoSubtituloBrush}"/>
+                    <TextBlock Text="{Binding Datos.FacturacionTotal, StringFormat='${0:N2}'}" FontSize="24" FontWeight="Black" Foreground="{DynamicResource TextoTituloBrush}" Margin="0,6,0,4"/>
                     <TextBlock Text="{Binding Datos.CantidadVentas, StringFormat='{}{0} ventas registradas'}" FontSize="11" Foreground="#10B981" FontWeight="SemiBold"/>
                 </StackPanel>
             </Border>
 
             <!-- KPI 2: Costo de Mercadería (CMV) -->
-            <Border Grid.Column="1" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,10,0">
+            <Border Grid.Column="1" Background="{DynamicResource FondoTarjetaBrush}" BorderBrush="{DynamicResource BordeTarjetaBrush}" BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,10,0">
                 <StackPanel>
-                    <TextBlock Text="COSTO MERCADERÍA (CMV)" FontSize="11" FontWeight="Bold" Foreground="#64748B"/>
-                    <TextBlock Text="{Binding Datos.CostoTotalEstimado, StringFormat='${0:N2}'}" FontSize="24" FontWeight="Black" Foreground="#475569" Margin="0,6,0,4"/>
-                    <TextBlock Text="{Binding Datos.CantidadArticulosVendidos, StringFormat='{}{0:N0} unidades vendidas'}" FontSize="11" Foreground="#64748B"/>
+                    <TextBlock Text="COSTO MERCADERÍA (CMV)" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextoSubtituloBrush}"/>
+                    <TextBlock Text="{Binding Datos.CostoTotalEstimado, StringFormat='${0:N2}'}" FontSize="24" FontWeight="Black" Foreground="{DynamicResource TextoTituloBrush}" Margin="0,6,0,4"/>
+                    <TextBlock Text="{Binding Datos.CantidadArticulosVendidos, StringFormat='{}{0:N0} unidades vendidas'}" FontSize="11" Foreground="{DynamicResource TextoSubtituloBrush}"/>
                 </StackPanel>
             </Border>
 
             <!-- KPI 3: Ganancia Neta Estimada -->
-            <Border Grid.Column="2" Background="White" BorderBrush="#BBF7D0" BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,10,0">
+            <Border Grid.Column="2" Background="{DynamicResource FondoTarjetaBrush}" BorderBrush="#BBF7D0" BorderThickness="1" CornerRadius="12" Padding="16" Margin="0,0,10,0">
                 <StackPanel>
                     <TextBlock Text="UTILIDAD ESTIMADA" FontSize="11" FontWeight="Bold" Foreground="#15803D"/>
                     <TextBlock Text="{Binding Datos.GananciaNetaEstimada, StringFormat='${0:N2}'}" FontSize="24" FontWeight="Black" Foreground="#16A34A" Margin="0,6,0,4"/>
@@ -106,17 +106,17 @@
             </Border>
 
             <!-- KPI 4: Ticket Promedio -->
-            <Border Grid.Column="3" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="16">
+            <Border Grid.Column="3" Background="{DynamicResource FondoTarjetaBrush}" BorderBrush="{DynamicResource BordeTarjetaBrush}" BorderThickness="1" CornerRadius="12" Padding="16">
                 <StackPanel>
-                    <TextBlock Text="TICKET PROMEDIO" FontSize="11" FontWeight="Bold" Foreground="#64748B"/>
+                    <TextBlock Text="TICKET PROMEDIO" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextoSubtituloBrush}"/>
                     <TextBlock Text="{Binding Datos.TicketPromedio, StringFormat='${0:N2}'}" FontSize="24" FontWeight="Black" Foreground="#2563EB" Margin="0,6,0,4"/>
-                    <TextBlock Text="Gasto medio por cliente" FontSize="11" Foreground="#64748B"/>
+                    <TextBlock Text="Gasto medio por cliente" FontSize="11" Foreground="{DynamicResource TextoSubtituloBrush}"/>
                 </StackPanel>
             </Border>
         </Grid>
 
         <!-- Desglose por Rubro Comercial: Librería vs Regalería -->
-        <Border Grid.Row="2" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="14" Margin="0,0,0,16">
+        <Border Grid.Row="2" Background="{DynamicResource FondoTarjetaBrush}" BorderBrush="{DynamicResource BordeTarjetaBrush}" BorderThickness="1" CornerRadius="12" Padding="14" Margin="0,0,0,16">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -157,7 +157,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- COLUMNA IZQUIERDA: Medios de Pago -->
-            <Border Grid.Column="0" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="18" Margin="0,0,14,0">
+            <Border Grid.Column="0" Background="{DynamicResource FondoTarjetaBrush}" BorderBrush="{DynamicResource BordeTarjetaBrush}" BorderThickness="1" CornerRadius="12" Padding="18" Margin="0,0,14,0">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -165,26 +165,26 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Margin="0,0,0,14">
-                        <TextBlock Text="MEDIOS DE PAGO" FontSize="14" FontWeight="Bold" Foreground="#1E293B"/>
-                        <TextBlock Text="Distribución y porcentajes de cobro" FontSize="11" Foreground="#64748B"/>
+                        <TextBlock Text="MEDIOS DE PAGO" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextoTituloBrush}"/>
+                        <TextBlock Text="Distribución y porcentajes de cobro" FontSize="11" Foreground="{DynamicResource TextoSubtituloBrush}"/>
                     </StackPanel>
 
                     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                         <ItemsControl ItemsSource="{Binding MetodosPago}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
+                                    <Border Background="{DynamicResource FondoControlSecundarioBrush}" BorderBrush="{DynamicResource BordeTarjetaBrush}" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,0,10">
                                         <StackPanel>
                                             <Grid Margin="0,0,0,6">
-                                                <TextBlock Text="{Binding MedioPago}" FontWeight="Bold" FontSize="13" Foreground="#1E293B"/>
-                                                <TextBlock Text="{Binding Total, StringFormat='${0:N2}'}" HorizontalAlignment="Right" FontWeight="Black" FontSize="13" Foreground="#0F172A"/>
+                                                <TextBlock Text="{Binding MedioPago}" FontWeight="Bold" FontSize="13" Foreground="{DynamicResource TextoTituloBrush}"/>
+                                                <TextBlock Text="{Binding Total, StringFormat='${0:N2}'}" HorizontalAlignment="Right" FontWeight="Black" FontSize="13" Foreground="{DynamicResource TextoTituloBrush}"/>
                                             </Grid>
                                             
                                             <!-- Barra de Porcentaje -->
                                             <ProgressBar Value="{Binding PorcentajeTotal}" Maximum="100" Height="8" Background="#E2E8F0" Foreground="#2563EB" Margin="0,0,0,6"/>
 
                                             <DockPanel>
-                                                <TextBlock Text="{Binding CantidadOperaciones, StringFormat='{}{0} transacciones'}" FontSize="11" Foreground="#64748B"/>
+                                                <TextBlock Text="{Binding CantidadOperaciones, StringFormat='{}{0} transacciones'}" FontSize="11" Foreground="{DynamicResource TextoSubtituloBrush}"/>
                                                 <TextBlock Text="{Binding PorcentajeTotal, StringFormat='{}{0:N1}%'}" HorizontalAlignment="Right" FontWeight="Bold" FontSize="11" Foreground="#2563EB"/>
                                             </DockPanel>
                                         </StackPanel>
@@ -197,7 +197,7 @@
             </Border>
 
             <!-- COLUMNA DERECHA: Top 10 Artículos Más Vendidos -->
-            <Border Grid.Column="1" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="12" Padding="18">
+            <Border Grid.Column="1" Background="{DynamicResource FondoTarjetaBrush}" BorderBrush="{DynamicResource BordeTarjetaBrush}" BorderThickness="1" CornerRadius="12" Padding="18">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -205,8 +205,8 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Margin="0,0,0,14">
-                        <TextBlock Text="TOP 10 ARTÍCULOS &amp; SERVICIOS MÁS VENDIDOS" FontSize="14" FontWeight="Bold" Foreground="#1E293B"/>
-                        <TextBlock Text="Útiles escolares, fotocopias, libros y regalería con mayor rotación" FontSize="11" Foreground="#64748B"/>
+                        <TextBlock Text="TOP 10 ARTÍCULOS &amp; SERVICIOS MÁS VENDIDOS" FontSize="14" FontWeight="Bold" Foreground="{DynamicResource TextoTituloBrush}"/>
+                        <TextBlock Text="Útiles escolares, fotocopias, libros y regalería con mayor rotación" FontSize="11" Foreground="{DynamicResource TextoSubtituloBrush}"/>
                     </StackPanel>
 
                     <DataGrid Grid.Row="1" ItemsSource="{Binding TopArticulos}"
@@ -216,10 +216,11 @@
                               IsReadOnly="True"
                               HeadersVisibility="Column"
                               GridLinesVisibility="Horizontal"
-                              HorizontalGridLinesBrush="#F1F5F9"
+                              HorizontalGridLinesBrush="{DynamicResource HorizontalGridLinesBrush}"
                               RowHeight="38"
                               FontSize="12"
-                              Background="White"
+                              Background="{DynamicResource FondoDataGridBrush}"
+                              RowBackground="{DynamicResource FondoDataGridBrush}"
                               BorderThickness="0">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Artículo / Servicio" Binding="{Binding Descripcion}" Width="*" FontWeight="SemiBold"/>

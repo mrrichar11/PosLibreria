@@ -17,6 +17,7 @@ public partial class ArticuloModalWindow : Window
     private readonly IProveedorService? _proveedorService;
     private IReadOnlyList<ArticuloDto> _articulosDisponibles = new List<ArticuloDto>();
     private decimal _margenConfigurado = 40m;
+    private decimal _cotizacionDolar = 1350m;
     private bool _isCalculating;
 
     public ObservableCollection<ArticuloVarianteDto> VariantesLista { get; } = new();
@@ -166,11 +167,23 @@ public partial class ArticuloModalWindow : Window
                 {
                     _margenConfigurado = cfg.MargenGananciaSugerido;
                 }
+                if (cfg.CotizacionDolar > 0)
+                {
+                    _cotizacionDolar = cfg.CotizacionDolar;
+                }
             }
         }
         catch { }
 
         BtnAplicarMargenConfig.Content = $"🎯 Aplicar Margen del Comercio ({_margenConfigurado:0.#}%)";
+
+        if (Articulo.EsPrecioDolar)
+        {
+            ChkEsPrecioDolar.IsChecked = true;
+            if (PnlCostoDolarInput != null) PnlCostoDolarInput.Visibility = Visibility.Visible;
+            TxtCostoDolar.Text = Articulo.PrecioCostoDolar > 0 ? Articulo.PrecioCostoDolar.ToString("0.##", CultureInfo.InvariantCulture) : "0";
+            ActualizarCostoDolarInfo();
+        }
 
         // Si es un artículo nuevo o no tiene margen configurado
         if (Articulo.PorcentajeGanancia <= 0)
@@ -186,6 +199,67 @@ public partial class ArticuloModalWindow : Window
                 _isCalculating = false;
             }
             RecalcularPrecioVentaDesdeCostoYMargen();
+        }
+    }
+
+    private void ChkEsPrecioDolar_Checked(object sender, RoutedEventArgs e)
+    {
+        if (PnlCostoDolarInput != null) PnlCostoDolarInput.Visibility = Visibility.Visible;
+        if (TryParseMonto(TxtCostoDolar.Text, out var usd) && usd > 0)
+        {
+            CalcularCostoDesdeDolar(usd);
+        }
+        else
+        {
+            ActualizarCostoDolarInfo();
+        }
+    }
+
+    private void ChkEsPrecioDolar_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (PnlCostoDolarInput != null) PnlCostoDolarInput.Visibility = Visibility.Collapsed;
+    }
+
+    private void TxtCostoDolar_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_isCalculating) return;
+        if (TryParseMonto(TxtCostoDolar.Text, out var usd))
+        {
+            CalcularCostoDesdeDolar(usd);
+        }
+        else
+        {
+            TxtCostoDolarInfo.Text = "≈ $0,00 ARS";
+        }
+    }
+
+    private void CalcularCostoDesdeDolar(decimal usd)
+    {
+        decimal tc = _cotizacionDolar > 0 ? _cotizacionDolar : 1350m;
+        decimal ars = Math.Round(usd * tc, 2);
+        TxtCostoDolarInfo.Text = $"≈ ${ars:N2} ARS (TC ${tc:N0})";
+
+        _isCalculating = true;
+        try
+        {
+            Articulo.PrecioCosto = ars;
+            TxtCosto.Text = ars.ToString("0.##", CultureInfo.InvariantCulture);
+        }
+        finally
+        {
+            _isCalculating = false;
+        }
+
+        RecalcularPrecioVentaDesdeCostoYMargen();
+    }
+
+    private void ActualizarCostoDolarInfo()
+    {
+        if (TryParseMonto(TxtCostoDolar.Text, out var usd))
+        {
+            decimal tc = _cotizacionDolar > 0 ? _cotizacionDolar : 1350m;
+            decimal ars = Math.Round(usd * tc, 2);
+            TxtCostoDolarInfo.Text = $"≈ ${ars:N2} ARS (TC ${tc:N0})";
         }
     }
 
@@ -722,6 +796,16 @@ public partial class ArticuloModalWindow : Window
         if (TryParseMonto(TxtCosto.Text, out var c)) Articulo.PrecioCosto = c;
         if (TryParseMonto(TxtMargen.Text, out var m)) Articulo.PorcentajeGanancia = m;
         if (TryParseMonto(TxtVenta.Text, out var v)) Articulo.PrecioVenta = v;
+
+        Articulo.EsPrecioDolar = ChkEsPrecioDolar.IsChecked == true;
+        if (Articulo.EsPrecioDolar && TryParseMonto(TxtCostoDolar.Text, out var usdVal))
+        {
+            Articulo.PrecioCostoDolar = usdVal;
+        }
+        else if (!Articulo.EsPrecioDolar)
+        {
+            Articulo.PrecioCostoDolar = 0;
+        }
 
         // Asegurar que si el SKU quedó vacío se autogenere uno único
         if (string.IsNullOrWhiteSpace(Articulo.SKU))

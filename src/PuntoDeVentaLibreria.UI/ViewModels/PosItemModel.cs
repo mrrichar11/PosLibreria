@@ -24,5 +24,10 @@ public partial class PosItemModel : ObservableObject
     public bool EsServicio { get; set; }
     public bool EsVentaManual { get; set; }
 
+    // Campos de Precio Dólar (USD - Joyería / Regalería importada)
+    public bool EsPrecioDolar { get; set; }
+    public decimal PrecioCostoDolar { get; set; }
+    public string? DetalleDolar { get; set; }
+
     public decimal Subtotal => Cantidad * PrecioUnitario;
 }

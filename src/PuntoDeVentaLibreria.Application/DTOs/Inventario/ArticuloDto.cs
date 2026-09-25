@@ -22,6 +22,8 @@ public class ArticuloDto
     public decimal IvaPorcentaje { get; set; } = 21.0m;
     public decimal PorcentajeGanancia { get; set; }
     public decimal PrecioVenta { get; set; }
+    public bool EsPrecioDolar { get; set; } = false;
+    public decimal PrecioCostoDolar { get; set; } = 0.0m;
     public decimal StockActual { get; set; }
     public decimal StockMinimo { get; set; }
     public string? UnidadMedida { get; set; }

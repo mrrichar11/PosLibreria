@@ -28,6 +28,8 @@ public class ConfiguracionNegocioDto
     public string Pais { get; set; } = "Argentina";
     public string SimboloMoneda { get; set; } = "$";
     public string BilletesHabilitados { get; set; } = "100,200,500,1000,2000,10000,20000";
+    public decimal CotizacionDolar { get; set; } = 1350.0m;
+    public DateTime? FechaCotizacionDolar { get; set; } = DateTime.Now;
 
     public string ImpresoraTickets { get; set; } = string.Empty;
     public int AnchoPapelMm { get; set; } = 80;

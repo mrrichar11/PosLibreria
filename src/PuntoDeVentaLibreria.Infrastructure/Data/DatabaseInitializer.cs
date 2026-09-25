@@ -283,6 +283,31 @@ public static class DatabaseInitializer
         }
         catch { }
 
+        // Nuevas columnas para Joyería / Moneda Extranjera (USD)
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN CotizacionDolar NUMERIC NOT NULL DEFAULT 1350.0;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN FechaCotizacionDolar TEXT NULL;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Articulos ADD COLUMN EsPrecioDolar INTEGER NOT NULL DEFAULT 0;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Articulos ADD COLUMN PrecioCostoDolar NUMERIC NOT NULL DEFAULT 0.0;", cancellationToken);
+        }
+        catch { }
+
         // 3. Optimización WAL para SQLite
         try
         {

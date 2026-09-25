@@ -102,7 +102,7 @@
             </Border>
 
             <!-- GRILLA DEL TICKET EN CURSO -->
-            <Border Grid.Row="2" Background="White" CornerRadius="10" BorderBrush="#E2E8F0" BorderThickness="1" Margin="0,0,0,8">
+            <Border Grid.Row="2" Background="{DynamicResource FondoDataGridBrush}" CornerRadius="10" BorderBrush="{DynamicResource BordeTarjetaBrush}" BorderThickness="1" Margin="0,0,0,8">
                 <DataGrid x:Name="GridCarrito"
                           ItemsSource="{Binding Items}"
                           AutoGenerateColumns="False"
@@ -110,10 +110,11 @@
                           CanUserDeleteRows="False"
                           HeadersVisibility="Column"
                           GridLinesVisibility="Horizontal"
-                          HorizontalGridLinesBrush="#F1F5F9"
+                          HorizontalGridLinesBrush="{DynamicResource HorizontalGridLinesBrush}"
                           RowHeight="44"
                           FontSize="13"
-                          Background="White"
+                          Background="{DynamicResource FondoDataGridBrush}"
+                          RowBackground="{DynamicResource FondoDataGridBrush}"
                           BorderThickness="0">
                     <DataGrid.Columns>
                         <!-- Código / SKU -->
@@ -123,8 +124,10 @@
                         <DataGridTemplateColumn Header="Descripción del Artículo / Útil" Width="*" IsReadOnly="True">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Descripcion}" FontWeight="SemiBold" Foreground="#1E293B" VerticalAlignment="Center"/>
+                                    <StackPanel VerticalAlignment="Center" Margin="2,0">
+                                        <TextBlock Text="{Binding Descripcion}" FontWeight="SemiBold" Foreground="{DynamicResource TextoNormalBrush}" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DetalleDolar}" FontSize="10" FontWeight="Bold" Foreground="#16A34A"
+                                                   Visibility="{Binding EsPrecioDolar, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -155,7 +158,7 @@
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="FontWeight" Value="Bold"/>
-                                    <Setter Property="Foreground" Value="#0F172A"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource TextoTituloBrush}"/>
                                     <Setter Property="VerticalAlignment" Value="Center"/>
                                 </Style>
                             </DataGridTextColumn.ElementStyle>
@@ -225,8 +228,7 @@
 
                 <!-- BOTÓN PRINCIPAL DE COBRO: 100% VISIBLE Y PROMINENTE -->
                 <Button Grid.Row="0" Command="{Binding AbrirCobroCommand}"
-                        Background="#16A34A" Foreground="White" BorderThickness="0"
-                        Padding="16,11" Margin="0,0,0,6" Cursor="Hand"
+                        Style="{StaticResource BotonCobrarPosStyle}"
                         ToolTip="Finalizar venta y abrir ventana de cobro [F2] o [Espacio]">
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                         <TextBlock Text="💰 COBRAR TICKET" FontSize="15" FontWeight="Black" Margin="0,0,8,0"/>
@@ -238,33 +240,29 @@
                 <UniformGrid Grid.Row="1" Rows="1" Columns="4">
                     <!-- [F3] ALTA RÁPIDA -->
                     <Button Content="➕ Alta Rápida [F3]" Command="{Binding AbrirAltaRapidaCommand}"
-                            Background="#10B981" Foreground="White" FontSize="12" FontWeight="Bold"
-                            Padding="6,8" Margin="0,0,4,0" Cursor="Hand"
+                            Style="{StaticResource BotonAltaRapidaStyle}" Margin="0,0,4,0"
                             ToolTip="Registrar artículo no existente e insertarlo al ticket [F3]"/>
 
                     <!-- [F6] VENTA MANUAL -->
                     <Button Content="📝 Manual [F6]" Command="{Binding AgregarVentaManualCommand}"
-                            Background="#2563EB" Foreground="White" FontSize="12" FontWeight="Bold"
-                            Padding="6,8" Margin="4,0,4,0" Cursor="Hand"
+                            Style="{StaticResource BotonManualStyle}" Margin="4,0,4,0"
                             ToolTip="Agregar concepto o servicio manual libre [F6]"/>
 
                     <!-- [F4] EN ESPERA / MULTI-TICKET -->
                     <Button Content="⏸️ En Espera [F4]" Command="{Binding PausarVentaActualCommand}"
-                            Background="#D97706" Foreground="White" FontSize="12" FontWeight="Bold"
-                            Padding="6,8" Margin="4,0,4,0" Cursor="Hand"
+                            Style="{StaticResource BotonEnEsperaStyle}" Margin="4,0,4,0"
                             ToolTip="Poner venta en espera para atender a otro cliente [F4]"/>
 
                     <!-- [F12] VACIAR TICKET -->
                     <Button Content="🗑 Vaciar [F12]" Command="{Binding LimpiarTicketConConfirmacionCommand}"
-                            Background="#DC2626" Foreground="White" FontSize="12" FontWeight="Bold"
-                            Padding="6,8" Margin="4,0,0,0" Cursor="Hand"
+                            Style="{StaticResource BotonVaciarStyle}" Margin="4,0,0,0"
                             ToolTip="Cancelar y vaciar todos los artículos del ticket actual [F12]"/>
                 </UniformGrid>
             </Grid>
         </Grid>
 
         <!-- COLUMNA DERECHA: BOTONERA RÁPIDA TÁCTIL Y COMBOS (35%) -->
-        <Border Grid.Column="1" Background="White" CornerRadius="12" BorderBrush="#E2E8F0" BorderThickness="1" Padding="16">
+        <Border Grid.Column="1" Background="{DynamicResource FondoTarjetaBrush}" CornerRadius="12" BorderBrush="{DynamicResource BordeTarjetaBrush}" BorderThickness="1" Padding="16">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -275,17 +273,17 @@
 
                 <!-- Cabecera Botonera -->
                 <DockPanel Grid.Row="0" Margin="0,0,0,4">
-                    <TextBlock Text="BOTONERA RÁPIDA &amp; KITS" FontSize="16" FontWeight="Bold" Foreground="#1E293B"/>
+                    <TextBlock Text="BOTONERA RÁPIDA &amp; KITS" FontSize="16" FontWeight="Bold" Foreground="{DynamicResource TextoTituloBrush}"/>
                 </DockPanel>
                 <TextBlock Grid.Row="1" Text="Fotocopias, impresiones y combos escolares sin código de barras" 
-                           FontSize="11" Foreground="#64748B" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                           FontSize="11" Foreground="{DynamicResource TextoSubtituloBrush}" TextWrapping="Wrap" Margin="0,0,0,12"/>
 
                 <!-- Lista de Botones Rápidos -->
                 <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
                     <ItemsControl ItemsSource="{Binding BotonesRapidos}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" 
+                                <Border Background="{DynamicResource FondoControlSecundarioBrush}" BorderBrush="{DynamicResource BordeTarjetaBrush}" BorderThickness="1" CornerRadius="10" 
                                         Padding="12,10" Margin="0,0,0,10">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
@@ -294,8 +292,8 @@
                                         </Grid.ColumnDefinitions>
 
                                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                                            <TextBlock Text="{Binding Nombre}" FontSize="13" FontWeight="Bold" Foreground="#0F172A" TextWrapping="Wrap"/>
-                                            <TextBlock Text="{Binding CategoriaNombre}" FontSize="11" Foreground="#64748B" Margin="0,2,0,0"/>
+                                            <TextBlock Text="{Binding Nombre}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextoTituloBrush}" TextWrapping="Wrap"/>
+                                            <TextBlock Text="{Binding CategoriaNombre}" FontSize="11" Foreground="{DynamicResource TextoSubtituloBrush}" Margin="0,2,0,0"/>
                                         </StackPanel>
 
                                         <Button Grid.Column="1" Command="{Binding DataContext.AgregarBotonRapidoCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -312,8 +310,8 @@
                 </ScrollViewer>
 
                 <!-- Atajo de Teclado Info -->
-                <Border Grid.Row="3" Background="#F1F5F9" CornerRadius="8" Padding="10,6" Margin="0,8,0,0">
-                    <TextBlock Text="💡 Tip: Haga clic en cualquier útil o servicio para agregarlo al ticket." FontSize="11" Foreground="#475569" TextWrapping="Wrap"/>
+                <Border Grid.Row="3" Background="{DynamicResource FondoControlSecundarioBrush}" CornerRadius="8" Padding="10,6" Margin="0,8,0,0">
+                    <TextBlock Text="💡 Tip: Haga clic en cualquier útil o servicio para agregarlo al ticket." FontSize="11" Foreground="{DynamicResource TextoSubtituloBrush}" TextWrapping="Wrap"/>
                 </Border>
             </Grid>
         </Border>

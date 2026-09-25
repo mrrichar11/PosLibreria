@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PuntoDeVentaLibreria.Application.Common;
 using PuntoDeVentaLibreria.Application.DTOs.Inventario;
 using PuntoDeVentaLibreria.Application.DTOs.Ventas;
 using PuntoDeVentaLibreria.Application.Services;
@@ -16,6 +17,7 @@ public partial class PosViewModel : ObservableObject
     private readonly IClienteService _clienteService;
     private readonly IConfiguracionService _configuracionService;
     private readonly ITicketPrinterService _ticketPrinterService;
+    private decimal _cotizacionDolar = 1350m;
 
     [ObservableProperty]
     private string _codigoBarrasInput = string.Empty;
@@ -85,10 +87,21 @@ public partial class PosViewModel : ObservableObject
         _ticketPrinterService = ticketPrinterService ?? throw new ArgumentNullException(nameof(ticketPrinterService));
 
         Items.CollectionChanged += (s, e) => RecalcularTotales();
+        PuntoDeVentaLibreria.Infrastructure.Services.ConfiguracionService.CotizacionDolarCambiada += tc =>
+        {
+            _cotizacionDolar = tc;
+        };
     }
 
     public async Task InicializarAsync()
     {
+        try
+        {
+            var cfg = await _configuracionService.ObtenerConfiguracionAsync();
+            if (cfg.CotizacionDolar > 0) _cotizacionDolar = cfg.CotizacionDolar;
+        }
+        catch { }
+
         await RecargarCajaAsync();
         await RecargarBotonesRapidosAsync();
     }
@@ -234,6 +247,19 @@ public partial class PosViewModel : ObservableObject
         var descripcion = variante != null ? $"{art.Nombre} ({variante.Nombre})" : art.Nombre;
         var codigoBarras = variante?.CodigoBarras ?? art.CodigoBarras;
 
+        decimal precioUnitario = art.PrecioVenta;
+        decimal precioCosto = art.PrecioCosto;
+        string? detalleDolar = null;
+
+        if (art.EsPrecioDolar && art.PrecioCostoDolar > 0)
+        {
+            decimal tc = _cotizacionDolar > 0 ? _cotizacionDolar : 1350m;
+            precioCosto = Math.Round(art.PrecioCostoDolar * tc, 2);
+            decimal pCalculado = CalculoPreciosUtils.CalcularPrecioVenta(precioCosto, art.PorcentajeGanancia, art.IvaPorcentaje);
+            precioUnitario = CalculoPreciosUtils.RedondearPrecioVenta(pCalculado, ReglaRedondeoPrecio.CentenaCercana);
+            detalleDolar = $"USD ${art.PrecioCostoDolar:N2} x ${tc:N0}";
+        }
+
         var nuevo = new PosItemModel
         {
             ArticuloId = art.Id,
@@ -242,11 +268,14 @@ public partial class PosViewModel : ObservableObject
             SKU = art.SKU,
             CodigoBarras = codigoBarras,
             Descripcion = descripcion,
-            PrecioUnitario = art.PrecioVenta,
-            PrecioCosto = art.PrecioCosto,
+            PrecioUnitario = precioUnitario,
+            PrecioCosto = precioCosto,
             Cantidad = 1,
             EsCombo = art.Tipo == TipoArticulo.ComboKit,
-            EsServicio = art.Tipo == TipoArticulo.Servicio
+            EsServicio = art.Tipo == TipoArticulo.Servicio,
+            EsPrecioDolar = art.EsPrecioDolar,
+            PrecioCostoDolar = art.PrecioCostoDolar,
+            DetalleDolar = detalleDolar
         };
 
         nuevo.PropertyChanged += (s, e) => RecalcularTotales();

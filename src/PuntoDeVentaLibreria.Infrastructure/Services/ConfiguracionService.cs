@@ -75,7 +75,9 @@ public class ConfiguracionService : IConfiguracionService
             PuertoPostgres = config.PuertoPostgres,
             BaseDatosPostgres = config.BaseDatosPostgres,
             UsuarioPostgres = config.UsuarioPostgres,
-            PasswordPostgres = config.PasswordPostgres
+            PasswordPostgres = config.PasswordPostgres,
+            CotizacionDolar = config.CotizacionDolar > 0 ? config.CotizacionDolar : 1350m,
+            FechaCotizacionDolar = config.FechaCotizacionDolar ?? DateTime.Now
         };
     }
 
@@ -129,7 +131,32 @@ public class ConfiguracionService : IConfiguracionService
         config.UsuarioPostgres = string.IsNullOrWhiteSpace(dto.UsuarioPostgres) ? "postgres" : dto.UsuarioPostgres.Trim();
         config.PasswordPostgres = dto.PasswordPostgres ?? string.Empty;
 
+        if (dto.CotizacionDolar > 0)
+        {
+            config.CotizacionDolar = dto.CotizacionDolar;
+            config.FechaCotizacionDolar = DateTime.Now;
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public static event Action<decimal>? CotizacionDolarCambiada;
+
+    public async Task ActualizarCotizacionDolarAsync(decimal nuevaCotizacion, CancellationToken cancellationToken = default)
+    {
+        if (nuevaCotizacion <= 0) return;
+        var config = await _context.Configuraciones.FirstOrDefaultAsync(cancellationToken);
+        if (config == null)
+        {
+            config = new ConfiguracionNegocio();
+            _context.Configuraciones.Add(config);
+        }
+
+        config.CotizacionDolar = nuevaCotizacion;
+        config.FechaCotizacionDolar = DateTime.Now;
+        await _context.SaveChangesAsync(cancellationToken);
+
+        CotizacionDolarCambiada?.Invoke(nuevaCotizacion);
     }
 
 

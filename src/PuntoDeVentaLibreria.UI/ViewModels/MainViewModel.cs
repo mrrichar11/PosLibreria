@@ -56,6 +56,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _statusBarDerechaTexto = "MR SYS ONLINE";
 
+    [ObservableProperty]
+    private string _cotizacionDolarHeaderTexto = "💵 USD: $1.350";
+
     public MainViewModel(
         IConfiguracionService configuracionService,
         ICajaService cajaService,
@@ -68,6 +71,11 @@ public partial class MainViewModel : ObservableObject
         _updateService = updateService ?? throw new ArgumentNullException(nameof(updateService));
 
         StatusBarDerechaTexto = $"MR SYS v{_updateService.ObtenerVersionActual()} · ONLINE";
+
+        PuntoDeVentaLibreria.Infrastructure.Services.ConfiguracionService.CotizacionDolarCambiada += tc =>
+        {
+            CotizacionDolarHeaderTexto = $"💵 USD: ${tc:N0}";
+        };
         ConfiguracionViewModel.LicenciaActualizadaGlobal += ActualizarLicenciaAsync;
     }
 
@@ -92,6 +100,10 @@ public partial class MainViewModel : ObservableObject
             var config = await _configuracionService.ObtenerConfiguracionAsync();
             NombreComercio = config.NombreComercio;
             StatusBarIzquierdaTexto = $"{config.NombreComercio} · {config.Direccion}";
+            if (config.CotizacionDolar > 0)
+            {
+                CotizacionDolarHeaderTexto = $"💵 USD: ${config.CotizacionDolar:N0}";
+            }
 
             if (!string.IsNullOrWhiteSpace(config.LogoRuta) && System.IO.File.Exists(config.LogoRuta))
             {

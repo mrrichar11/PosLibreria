@@ -38,6 +38,10 @@ public class Articulo : BaseEntity
     public decimal PorcentajeGanancia { get; set; } = 60.0m;
     public decimal PrecioVenta { get; set; }
 
+    /// <summary>Indica si el costo del producto se pacta en dólares (USD) (ej. joyería, regalería importada)</summary>
+    public bool EsPrecioDolar { get; set; } = false;
+    public decimal PrecioCostoDolar { get; set; } = 0.0m;
+
     // Control de Inventario
     public decimal StockActual { get; set; }
     public decimal StockMinimo { get; set; } = 5;
