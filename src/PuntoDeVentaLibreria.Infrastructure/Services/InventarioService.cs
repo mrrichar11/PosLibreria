@@ -215,6 +215,22 @@ public class InventarioService : IInventarioService
         return dto;
     }
 
+    public async Task<ArticuloDto?> ObtenerPorIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var art = await _context.Articulos
+            .AsNoTracking()
+            .Include(a => a.Categoria)
+            .Include(a => a.Marca)
+            .Include(a => a.Proveedor)
+            .Include(a => a.ArticuloBase)
+            .Include(a => a.Variantes)
+            .Include(a => a.ItemsDelCombo)
+                .ThenInclude(c => c.ComponenteArticulo)
+            .FirstOrDefaultAsync(a => a.Id == id, ct);
+
+        return art != null ? MapToDto(art) : null;
+    }
+
     public async Task<IReadOnlyList<ArticuloDto>> ObtenerBotonesRapidosAsync(CancellationToken ct = default)
     {
         var articulos = await _context.Articulos
@@ -1009,26 +1025,122 @@ public class InventarioService : IInventarioService
         return null;
     }
 
+    private static decimal? ObtenerUnidadesProveedor(Dictionary<string, string> row)
+    {
+        // 1. Columnas explícitas con prioridad para unidades por bulto / paquete
+        string[] nombresPrioritarios = 
+        {
+            "unidadesporpaquete", "unidades_por_paquete", "unidadespaquete", "unidadesbulto",
+            "unidadesxbulto", "unidadesxpaquete", "cantxpaquete", "cantxbulto", "unidades", 
+            "unidad", "unid", "cant", "cantidad", "bulto", "pack", "presentacion"
+        };
+
+        foreach (var p in nombresPrioritarios)
+        {
+            var val = ObtenerValorColumna(row, p);
+            var parsed = ParsearUnidadesPack(val);
+            if (parsed.HasValue && parsed.Value > 0)
+            {
+                return parsed.Value;
+            }
+        }
+
+        // 2. Si no encontró en las prioritarias, revisar cualquier columna que contenga "unidad" o "paquete" y tenga un número
+        foreach (var kvp in row)
+        {
+            var normKey = NormalizarTextoColumna(kvp.Key);
+            if ((normKey.Contains("unidad") || normKey.Contains("paquete") || normKey.Contains("bulto")) && 
+                !normKey.Contains("precio") && !normKey.Contains("costo") && !normKey.Contains("utilidad"))
+            {
+                var parsed = ParsearUnidadesPack(kvp.Value);
+                if (parsed.HasValue && parsed.Value > 0)
+                {
+                    return parsed.Value;
+                }
+            }
+        }
+
+        return null;
+    }
+
     private static bool SonNombresCompletamenteDiferentes(string nombreLocal, string? nombreProveedor)
     {
         if (string.IsNullOrWhiteSpace(nombreLocal) || string.IsNullOrWhiteSpace(nombreProveedor)) return false;
 
         var stopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
         { 
-            "para", "con", "por", "del", "las", "los", "una", "uno", "pack", "caja", "set", "x", "de", "la", "el", "en", "un", "al", "u"
+            "para", "con", "por", "del", "las", "los", "una", "uno", "unas", "unos", "pack", "caja", "set", "x", "de", "la", "el", "en", "un", "al", "u", "sin", "tipo", "mod", "art"
         };
 
-        var palabrasLocal = Regex.Split(nombreLocal.ToLowerInvariant(), @"[^\p{L}\p{Nd}]+")
-            .Where(w => w.Length > 2 && !stopWords.Contains(w))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        static string NormalizarToken(string token)
+        {
+            var clean = NormalizarTextoColumna(token).Trim();
+            // Lematización para singular/plural en español
+            if (clean.EndsWith("es") && clean.Length > 4)
+                clean = clean[..^2];
+            else if (clean.EndsWith("s") && clean.Length > 3)
+                clean = clean[..^1];
+            return clean;
+        }
 
-        var palabrasProv = Regex.Split(nombreProveedor.ToLowerInvariant(), @"[^\p{L}\p{Nd}]+")
-            .Where(w => w.Length > 2 && !stopWords.Contains(w))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var tokensLocal = Regex.Split(nombreLocal, @"[^\p{L}\p{Nd}]+")
+            .Where(w => w.Length > 1)
+            .Select(NormalizarToken)
+            .Where(w => w.Length >= 2 && !stopWords.Contains(w))
+            .ToList();
 
-        if (palabrasLocal.Count < 2 || palabrasProv.Count < 2) return false;
+        var tokensProv = Regex.Split(nombreProveedor, @"[^\p{L}\p{Nd}]+")
+            .Where(w => w.Length > 1)
+            .Select(NormalizarToken)
+            .Where(w => w.Length >= 2 && !stopWords.Contains(w))
+            .ToList();
 
-        int coincidencias = palabrasLocal.Count(p => palabrasProv.Contains(p));
+        if (tokensLocal.Count < 2 || tokensProv.Count < 2) return false;
+
+        int coincidencias = 0;
+        foreach (var l in tokensLocal)
+        {
+            bool esNumeroL = char.IsDigit(l[0]);
+            foreach (var p in tokensProv)
+            {
+                bool esNumeroP = char.IsDigit(p[0]);
+
+                if (esNumeroL && esNumeroP)
+                {
+                    // Si ambos son números (ej: 9, 12, 48, 500, a4, etc.), deben coincidir exactamente
+                    if (l.Equals(p, StringComparison.OrdinalIgnoreCase))
+                    {
+                        coincidencias++;
+                        break;
+                    }
+                }
+                else if (!esNumeroL && !esNumeroP)
+                {
+                    // Comparación exacta lematizada
+                    if (l.Equals(p, StringComparison.OrdinalIgnoreCase))
+                    {
+                        coincidencias++;
+                        break;
+                    }
+
+                    // Raíz compartida de al menos 4 caracteres (ej: comercial / comerc, cartulina / cartul, plastificado / plastificar, etc.)
+                    if (l.Length >= 4 && p.Length >= 4)
+                    {
+                        if (l.StartsWith(p, StringComparison.OrdinalIgnoreCase) || p.StartsWith(l, StringComparison.OrdinalIgnoreCase))
+                        {
+                            coincidencias++;
+                            break;
+                        }
+                    }
+                    else if (l.Length == 3 && p.Length == 3 && l.Equals(p, StringComparison.OrdinalIgnoreCase))
+                    {
+                        coincidencias++;
+                        break;
+                    }
+                }
+            }
+        }
+
         return coincidencias == 0;
     }
 
@@ -1169,8 +1281,7 @@ public class InventarioService : IInventarioService
             var codProvExcel = ObtenerValorColumna(row, "codigo", "codprov", "codigoproducto", "codigoproveedor")?.Trim();
             var codBarraExcel = ObtenerValorColumna(row, "codigodebarra", "codigobarra", "codbarra", "barra", "barcode")?.Trim();
             var descExcel = ObtenerValorColumna(row, "descripcion", "detalle", "nombre", "articulo", "producto", "denominacion")?.Trim();
-            var unidadesExcelStr = ObtenerValorColumna(row, "unidades", "unidad", "unid", "cant", "cantidad", "contenido", "bulto", "pack", "presentacion", "envase", "empaque");
-            decimal? unidadesExcel = ParsearUnidadesPack(unidadesExcelStr);
+            decimal? unidadesExcel = ObtenerUnidadesProveedor(row);
 
             // Costo S/IVA y C/IVA del proveedor
             CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "s/iva", "siva", "costo", "siniva", "costosiva", "preciocosto"), out var costoSiva);

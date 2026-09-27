@@ -63,7 +63,7 @@ public partial class InventarioView : UserControl
 
     private async void BtnActualizarPrecios_Click(object sender, RoutedEventArgs e)
     {
-        var modal = new ActualizarPreciosProveedorModalWindow(_inventarioService, _proveedorService)
+        var modal = new ActualizarPreciosProveedorModalWindow(_inventarioService, _proveedorService, _configuracionService)
         {
             Owner = Window.GetWindow(this)
         };

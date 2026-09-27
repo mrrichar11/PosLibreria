@@ -12,6 +12,130 @@ namespace PuntoDeVentaLibreria.UnitTests;
 
 public class LibreriaProveedoresYMigracionTests
 {
+    private readonly Xunit.Abstractions.ITestOutputHelper _output;
+
+    public LibreriaProveedoresYMigracionTests(Xunit.Abstractions.ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
+    [Fact]
+    public async Task PrevisualizarActualizacionPreciosProveedor_ConColumnaUnidadesPorPaquete_DetectaUnidadesYDivisorCorrectamente()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        // Artículo individual existente con costo $26 (ej. sobre comercial)
+        var art = new PuntoDeVentaLibreria.Domain.Entities.Catalogo.Articulo
+        {
+            Id = Guid.NewGuid(),
+            Nombre = "SOBRE BLANCO \"COMERCIAL\" - MEDORO",
+            SKU = "274",
+            CodigoProveedor = "160860",
+            PrecioCosto = 26.00m,
+            PrecioVenta = 100.00m,
+            Activo = true
+        };
+
+        context.Articulos.Add(art);
+        await context.SaveChangesAsync();
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Precios");
+        worksheet.Cell(1, 1).Value = "Código";
+        worksheet.Cell(1, 2).Value = "Descripción";
+        worksheet.Cell(1, 3).Value = "Empaque";
+        worksheet.Cell(1, 4).Value = "$ S/IVA";
+        worksheet.Cell(1, 5).Value = "Unidades Por Paquete";
+
+        worksheet.Cell(2, 1).Value = "160860";
+        worksheet.Cell(2, 2).Value = "SOBRES COMERC. 1500/6700 x500u. (18)";
+        worksheet.Cell(2, 3).Value = "CAJA"; // Empaque es texto, no debe anular las unidades
+        worksheet.Cell(2, 4).Value = 20293.92;
+        worksheet.Cell(2, 5).Value = 500;
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+
+        var resumen = await inventarioService.PrevisualizarActualizacionPreciosProveedorAsync(stream);
+
+        resumen.CoincidenciasEncontradas.Should().Be(1);
+        var item = resumen.ItemsParaActualizar.First();
+        item.CodigoProveedor.Should().Be("160860");
+        item.UnidadesProveedor.Should().Be(500);
+        item.UnidadesProveedorTexto.Should().Be("500 u.");
+        item.FactorSugerido.Should().Be(500);
+        // Gracias a la lematización, no debe marcarse como código reutilizado
+        item.EsAlertaCodigoReutilizado.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PrevisualizarActualizacionPreciosProveedor_DistingueReutilizadoRealDePlurales()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        var artReutilizado = new PuntoDeVentaLibreria.Domain.Entities.Catalogo.Articulo
+        {
+            Id = Guid.NewGuid(),
+            Nombre = "CARGADOR DE AUTO",
+            SKU = "LP3222",
+            CodigoProveedor = "9650",
+            PrecioCosto = 7800m,
+            PrecioVenta = 13500m,
+            Activo = true
+        };
+
+        var artPlural = new PuntoDeVentaLibreria.Domain.Entities.Catalogo.Articulo
+        {
+            Id = Guid.NewGuid(),
+            Nombre = "BROCHE DORADO - MARIPOSA N° 9-Sifap",
+            SKU = "119",
+            CodigoProveedor = "310090",
+            PrecioCosto = 15m,
+            PrecioVenta = 40m,
+            Activo = true
+        };
+
+        context.Articulos.AddRange(artReutilizado, artPlural);
+        await context.SaveChangesAsync();
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Precios");
+        worksheet.Cell(1, 1).Value = "Código";
+        worksheet.Cell(1, 2).Value = "Descripción";
+        worksheet.Cell(1, 3).Value = "$ S/IVA";
+        worksheet.Cell(1, 4).Value = "Unidades Por Paquete";
+
+        // Caso 1: Código verdaderamente reutilizado (Cargador de auto vs Libreta)
+        worksheet.Cell(2, 1).Value = "9650";
+        worksheet.Cell(2, 2).Value = "REP *LIBRETA 6 Perf. N°5 40 (10) *";
+        worksheet.Cell(2, 3).Value = 447.30;
+        worksheet.Cell(2, 4).Value = 1;
+
+        // Caso 2: Mismo producto con plural y abreviatura
+        worksheet.Cell(3, 1).Value = "310090";
+        worksheet.Cell(3, 2).Value = "BROCHES DORADOS Nº  9 45mm x100u. (20)";
+        worksheet.Cell(3, 3).Value = 2248.65;
+        worksheet.Cell(3, 4).Value = 1;
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+
+        var resumen = await inventarioService.PrevisualizarActualizacionPreciosProveedorAsync(stream);
+
+        resumen.CoincidenciasEncontradas.Should().Be(2);
+
+        var itemReutilizado = resumen.ItemsParaActualizar.First(i => i.CodigoProveedor == "9650");
+        itemReutilizado.EsAlertaCodigoReutilizado.Should().BeTrue();
+        itemReutilizado.Aplicar.Should().BeFalse();
+
+        var itemPlural = resumen.ItemsParaActualizar.First(i => i.CodigoProveedor == "310090");
+        itemPlural.EsAlertaCodigoReutilizado.Should().BeFalse();
+    }
+
     private AppDbContext CrearContextoEnMemoria()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()

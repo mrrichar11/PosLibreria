@@ -140,33 +140,61 @@
                     </Border>
                 </WrapPanel>
 
-                <!-- Botones de Vista / Filtro Rápido y Acciones Masivas -->
-                <DockPanel Grid.Row="1" LastChildFill="False">
+                <!-- Botones de Vista / Filtro Rápido, Búsqueda y Acciones Masivas -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="220"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
                     <!-- Segmented View Filter -->
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,10,0">
                         <RadioButton x:Name="RbFiltroTodos" GroupName="FiltroVista" Content="Mostrar Todos" Checked="FiltroRadio_Checked" 
-                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="SemiBold" FontSize="11" Margin="0,0,4,0"/>
+                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="8,4" FontWeight="SemiBold" FontSize="11" Margin="0,0,4,0"/>
                         <RadioButton x:Name="RbFiltroConCambio" GroupName="FiltroVista" Content="📈 Aumentos" Checked="FiltroRadio_Checked" 
-                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="SemiBold" FontSize="11" Margin="0,0,4,0" Foreground="#15803D"/>
-                        <RadioButton x:Name="RbFiltroBajas" GroupName="FiltroVista" Content="📉 Bajas a Revisar" Checked="FiltroRadio_Checked" 
-                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="Bold" FontSize="11" Margin="0,0,4,0" Foreground="#1D4ED8"/>
+                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="8,4" FontWeight="SemiBold" FontSize="11" Margin="0,0,4,0" Foreground="#15803D"/>
+                        <RadioButton x:Name="RbFiltroBajas" GroupName="FiltroVista" Content="📉 Bajas" Checked="FiltroRadio_Checked" 
+                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="8,4" FontWeight="Bold" FontSize="11" Margin="0,0,4,0" Foreground="#1D4ED8"/>
                         <RadioButton x:Name="RbFiltroAlertas" GroupName="FiltroVista" Content="⚠️ Posibles Packs" Checked="FiltroRadio_Checked" 
-                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="Bold" FontSize="11" Margin="0,0,4,0" Foreground="#DC2626"/>
+                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="8,4" FontWeight="Bold" FontSize="11" Margin="0,0,4,0" Foreground="#DC2626"/>
                         <RadioButton x:Name="RbFiltroReutilizados" GroupName="FiltroVista" Content="⚠️ Cód. Reutilizados" Checked="FiltroRadio_Checked" 
-                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="Bold" FontSize="11" Margin="0,0,4,0" Foreground="#B45309"/>
+                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="8,4" FontWeight="Bold" FontSize="11" Margin="0,0,4,0" Foreground="#B45309"/>
                         <RadioButton x:Name="RbFiltroSinCambio" GroupName="FiltroVista" Content="⏸️ Sin Cambios" Checked="FiltroRadio_Checked" 
-                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="SemiBold" FontSize="11"/>
+                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="8,4" FontWeight="SemiBold" FontSize="11"/>
                     </StackPanel>
 
+                    <!-- Cuadro de Búsqueda Rápida en la Lista -->
+                    <Border Grid.Column="1" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="6" Padding="6,2" VerticalAlignment="Center">
+                        <Grid>
+                            <TextBox x:Name="TxtFiltroBusqueda" BorderThickness="0" Background="Transparent" VerticalAlignment="Center"
+                                     FontSize="11.5" TextChanged="TxtFiltroBusqueda_TextChanged"/>
+                            <TextBlock Text="🔍 Filtrar por nombre, cód..." IsHitTestVisible="False" Foreground="#94A3B8" FontSize="11"
+                                       VerticalAlignment="Center" Margin="2,0,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Text, ElementName=TxtFiltroBusqueda}" Value="">
+                                                <Setter Property="Visibility" Value="Visible"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </Grid>
+                    </Border>
+
                     <!-- Acciones Masivas -->
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
-                        <Button x:Name="BtnAutoAplicarDivisores" Content="✨ Auto-aplicar divisores sugeridos" Click="BtnAutoAplicarDivisores_Click"
-                                Background="#EDE9FE" BorderBrush="#C4B5FD" BorderThickness="1" Foreground="#6D28D9" FontWeight="Bold" FontSize="11" Padding="10,4" Cursor="Hand" Margin="0,0,12,0"/>
-                        <Button Content="☑️ Marcar solo aumentos" Click="BtnMarcarSoloAumentos_Click" Background="Transparent" BorderThickness="0" Foreground="#15803D" FontWeight="Bold" FontSize="11" Cursor="Hand" Margin="0,0,10,0"/>
-                        <Button Content="☑️ Marcar visibles" Click="BtnMarcarTodos_Click" Background="Transparent" BorderThickness="0" Foreground="#2563EB" FontWeight="Bold" FontSize="11" Cursor="Hand" Margin="0,0,10,0"/>
-                        <Button Content="◻️ Desmarcar todos" Click="BtnDesmarcarTodos_Click" Background="Transparent" BorderThickness="0" Foreground="#64748B" FontWeight="Bold" FontSize="11" Cursor="Hand"/>
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="BtnAutoAplicarDivisores" Content="✨ Auto-aplicar divisores" Click="BtnAutoAplicarDivisores_Click"
+                                Background="#EDE9FE" BorderBrush="#C4B5FD" BorderThickness="1" Foreground="#6D28D9" FontWeight="Bold" FontSize="11" Padding="8,4" Cursor="Hand" Margin="0,0,8,0"/>
+                        <Button Content="☑️ Solo aumentos" Click="BtnMarcarSoloAumentos_Click" Background="Transparent" BorderThickness="0" Foreground="#15803D" FontWeight="Bold" FontSize="11" Cursor="Hand" Margin="0,0,6,0"/>
+                        <Button Content="☑️ Visibles" Click="BtnMarcarTodos_Click" Background="Transparent" BorderThickness="0" Foreground="#2563EB" FontWeight="Bold" FontSize="11" Cursor="Hand" Margin="0,0,6,0"/>
+                        <Button Content="◻️ Desmarcar" Click="BtnDesmarcarTodos_Click" Background="Transparent" BorderThickness="0" Foreground="#64748B" FontWeight="Bold" FontSize="11" Cursor="Hand"/>
                     </StackPanel>
-                </DockPanel>
+                </Grid>
             </Grid>
         </Border>
 
@@ -175,7 +203,8 @@
             <Grid>
                 <DataGrid x:Name="GridComparativa" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
                           HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#F1F5F9"
-                          RowHeight="44" FontSize="12" Background="White" BorderThickness="0">
+                          RowHeight="44" FontSize="12" Background="White" BorderThickness="0"
+                          MouseDoubleClick="GridComparativa_MouseDoubleClick">
                     <DataGrid.Columns>
                         <!-- Aplicar -->
                         <DataGridCheckBoxColumn Header="Aplicar" Binding="{Binding Aplicar, UpdateSourceTrigger=PropertyChanged}" Width="55"/>
@@ -245,7 +274,7 @@
                         <DataGridTextColumn Header="Venta Nueva" Binding="{Binding VentaNueva, StringFormat='${0:N2}'}" Width="95" FontWeight="Black" Foreground="#0284C7" IsReadOnly="True"/>
 
                         <!-- % Variación y Badge de Alerta -->
-                        <DataGridTemplateColumn Header="% Variación" Width="120">
+                        <DataGridTemplateColumn Header="% Variación" Width="110">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -259,6 +288,31 @@
                                         </Border>
                                         <TextBlock Visibility="{Binding NoEsAlerta, Converter={StaticResource BoolToVisConverter}}"
                                                    Text="{Binding VariacionTexto}" FontWeight="Bold" Foreground="{Binding VariacionColorHex}" FontSize="11.5"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+
+                        <!-- Acciones Rápidas en la Fila -->
+                        <DataGridTemplateColumn Header="Acciones" Width="95">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Button Click="BtnEditarArticuloFila_Click" ToolTip="Editar producto en ficha completa (Doble clic en fila)"
+                                                Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" 
+                                                Width="26" Height="26" Margin="0,0,4,0" Cursor="Hand">
+                                            <TextBlock Text="✏️" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Button>
+                                        <Button Click="BtnEliminarArticuloFila_Click" ToolTip="Eliminar artículo permanentemente del catálogo"
+                                                Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" 
+                                                Width="26" Height="26" Margin="0,0,4,0" Cursor="Hand">
+                                            <TextBlock Text="🗑️" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Button>
+                                        <Button Click="BtnOmitirFila_Click" ToolTip="Desmarcar / Omitir de esta actualización"
+                                                Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" 
+                                                Width="24" Height="26" Cursor="Hand">
+                                            <TextBlock Text="❌" FontSize="9" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Button>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>

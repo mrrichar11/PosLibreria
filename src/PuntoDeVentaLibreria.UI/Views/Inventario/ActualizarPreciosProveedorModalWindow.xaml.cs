@@ -14,18 +14,22 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
 {
     private readonly IInventarioService _inventarioService;
     private readonly IProveedorService _proveedorService;
+    private readonly IConfiguracionService? _configuracionService;
     private string _rutaArchivo = string.Empty;
     private List<ArticuloAumentoPrecioItemDto> _itemsComparados = new();
     private int _totalCatalogo;
     private int _noEncontrados;
+    private string _filtroTipoActual = "Todos";
+    private string _filtroTexto = string.Empty;
 
     public bool PreciosActualizados { get; private set; }
 
-    public ActualizarPreciosProveedorModalWindow(IInventarioService inventarioService, IProveedorService proveedorService)
+    public ActualizarPreciosProveedorModalWindow(IInventarioService inventarioService, IProveedorService proveedorService, IConfiguracionService? configuracionService = null)
     {
         InitializeComponent();
         _inventarioService = inventarioService ?? throw new ArgumentNullException(nameof(inventarioService));
         _proveedorService = proveedorService ?? throw new ArgumentNullException(nameof(proveedorService));
+        _configuracionService = configuracionService;
 
         Loaded += async (s, e) =>
         {
@@ -133,7 +137,8 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
             ActualizarContadoresMetricas();
 
             RbFiltroTodos.IsChecked = true;
-            AplicarFiltroVista("Todos");
+            _filtroTipoActual = "Todos";
+            AplicarFiltroVista();
 
             BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
         }
@@ -197,21 +202,29 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         }
     }
 
+    private void TxtFiltroBusqueda_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        _filtroTexto = TxtFiltroBusqueda.Text.Trim();
+        AplicarFiltroVista();
+    }
+
     private void FiltroRadio_Checked(object sender, RoutedEventArgs e)
     {
         if (!IsLoaded) return;
         if (sender is RadioButton rb && rb.IsChecked == true)
         {
-            if (rb == RbFiltroTodos) AplicarFiltroVista("Todos");
-            else if (rb == RbFiltroConCambio) AplicarFiltroVista("Aumentos");
-            else if (rb == RbFiltroBajas) AplicarFiltroVista("Bajas");
-            else if (rb == RbFiltroAlertas) AplicarFiltroVista("Alertas");
-            else if (rb == RbFiltroReutilizados) AplicarFiltroVista("Reutilizados");
-            else if (rb == RbFiltroSinCambio) AplicarFiltroVista("SinCambio");
+            if (rb == RbFiltroTodos) _filtroTipoActual = "Todos";
+            else if (rb == RbFiltroConCambio) _filtroTipoActual = "Aumentos";
+            else if (rb == RbFiltroBajas) _filtroTipoActual = "Bajas";
+            else if (rb == RbFiltroAlertas) _filtroTipoActual = "Alertas";
+            else if (rb == RbFiltroReutilizados) _filtroTipoActual = "Reutilizados";
+            else if (rb == RbFiltroSinCambio) _filtroTipoActual = "SinCambio";
+
+            AplicarFiltroVista();
         }
     }
 
-    private void AplicarFiltroVista(string tipoFiltro)
+    private void AplicarFiltroVista()
     {
         if (GridComparativa == null || GridComparativa.ItemsSource == null) return;
         var view = CollectionViewSource.GetDefaultView(GridComparativa.ItemsSource);
@@ -221,7 +234,8 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         {
             if (obj is not ArticuloAumentoPrecioItemDto item) return false;
 
-            return tipoFiltro switch
+            // 1. Filtro por tipo/estado
+            bool cumpleTipo = _filtroTipoActual switch
             {
                 "Aumentos" => !item.EsAlertaVariacionExtrema && !item.EsAlertaCodigoReutilizado && item.CostoNuevo > item.CostoAnterior + 0.01m,
                 "Bajas" => item.EsBajaDePrecio,
@@ -230,7 +244,123 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
                 "SinCambio" => Math.Abs(item.CostoNuevo - item.CostoAnterior) <= 0.01m,
                 _ => true
             };
+
+            if (!cumpleTipo) return false;
+
+            // 2. Filtro por texto de búsqueda rápida (nombre, sku, código proveedor, barras)
+            if (!string.IsNullOrWhiteSpace(_filtroTexto))
+            {
+                var q = _filtroTexto.ToLowerInvariant();
+                bool match = (item.Nombre?.ToLowerInvariant().Contains(q) == true)
+                    || (item.SKU?.ToLowerInvariant().Contains(q) == true)
+                    || (item.CodigoProveedor?.ToLowerInvariant().Contains(q) == true)
+                    || (item.CodigoBarras?.ToLowerInvariant().Contains(q) == true)
+                    || (item.DescripcionProveedor?.ToLowerInvariant().Contains(q) == true);
+
+                if (!match) return false;
+            }
+
+            return true;
         };
+    }
+
+    private async void BtnEditarArticuloFila_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.DataContext is ArticuloAumentoPrecioItemDto item)
+        {
+            await AbrirEdicionArticuloAsync(item);
+        }
+    }
+
+    private async void GridComparativa_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (GridComparativa.SelectedItem is ArticuloAumentoPrecioItemDto item)
+        {
+            await AbrirEdicionArticuloAsync(item);
+        }
+    }
+
+    private async Task AbrirEdicionArticuloAsync(ArticuloAumentoPrecioItemDto item)
+    {
+        try
+        {
+            var dto = await _inventarioService.ObtenerPorIdAsync(item.ArticuloId);
+            if (dto == null)
+            {
+                MessageBox.Show("No se encontró el artículo en la base de datos.", "Aviso", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var modal = new ArticuloModalWindow(dto, _inventarioService, _configuracionService, _proveedorService)
+            {
+                Owner = this
+            };
+
+            if (modal.ShowDialog() == true && modal.GuardadoExitoso)
+            {
+                var actualizado = await _inventarioService.ObtenerPorIdAsync(item.ArticuloId);
+                if (actualizado != null)
+                {
+                    item.Nombre = actualizado.Nombre;
+                    item.SKU = actualizado.SKU;
+                    item.CodigoProveedor = actualizado.CodigoProveedor;
+                    item.CodigoBarras = actualizado.CodigoBarras;
+                    item.CostoAnterior = actualizado.PrecioCosto;
+                    item.VentaAnterior = actualizado.PrecioVenta;
+                    item.PorcentajeGanancia = actualizado.PorcentajeGanancia;
+                    item.IvaPorcentaje = actualizado.IvaPorcentaje;
+                    item.Recalcular();
+                    GridComparativa.Items.Refresh();
+                    ActualizarContadoresMetricas();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al editar el artículo: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private async void BtnEliminarArticuloFila_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.DataContext is ArticuloAumentoPrecioItemDto item)
+        {
+            var confirm = MessageBox.Show(
+                $"¿Está seguro de eliminar el artículo '{item.Nombre}' (SKU: {item.SKU}) del catálogo?\n\nEsta acción quitará el producto de las listas y del punto de venta.",
+                "Confirmar Eliminación", 
+                MessageBoxButton.YesNo, 
+                MessageBoxImage.Warning);
+
+            if (confirm == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    var ok = await _inventarioService.EliminarArticuloAsync(item.ArticuloId);
+                    if (ok)
+                    {
+                        _itemsComparados.Remove(item);
+                        GridComparativa.Items.Refresh();
+                        ActualizarContadoresMetricas();
+                        BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+                        MessageBox.Show("Artículo eliminado con éxito del catálogo.", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error al eliminar el artículo: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+    }
+
+    private void BtnOmitirFila_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.DataContext is ArticuloAumentoPrecioItemDto item)
+        {
+            item.Aplicar = false;
+            GridComparativa.Items.Refresh();
+            BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+        }
     }
 
     private void BtnAplicarFactorFila_Click(object sender, RoutedEventArgs e)

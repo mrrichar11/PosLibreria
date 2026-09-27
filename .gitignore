@@ -498,5 +498,6 @@ dist/
 *.csv
 **/bin/
 **/obj/
+build_prueba/
 
 
