@@ -12,6 +12,10 @@
         Background="#F8FAFC"
         FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
 
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisConverter"/>
+    </Window.Resources>
+
     <Grid Margin="24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -161,8 +165,7 @@
                                         <ComboBox.ItemTemplate>
                                             <DataTemplate>
                                                 <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Text="{Binding CodigoProveedor, StringFormat='[{0}] '}" FontWeight="Bold" Foreground="#2563EB"
-                                                               Visibility="{Binding CodigoProveedor, Converter={StaticResource BoolToVisConverter}}"/>
+                                                    <TextBlock Text="{Binding CodigoProveedor, StringFormat='[{0}] '}" FontWeight="Bold" Foreground="#2563EB"/>
                                                     <TextBlock Text="{Binding Nombre}" FontWeight="SemiBold"/>
                                                     <TextBlock Text="{Binding PrecioCosto, StringFormat=' - Costo: ${0:N2}'}" Foreground="#64748B" FontSize="11"/>
                                                 </StackPanel>

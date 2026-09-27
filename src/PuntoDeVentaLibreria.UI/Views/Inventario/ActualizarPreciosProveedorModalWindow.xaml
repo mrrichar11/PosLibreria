@@ -123,11 +123,17 @@
                     <Border Background="#F5F3FF" BorderBrush="#DDD6FE" BorderThickness="1" CornerRadius="6" Padding="10,4" Margin="0,0,8,4">
                         <TextBlock x:Name="TxtCoincidencias" Text="Coincidentes: 0" FontWeight="Bold" Foreground="#6D28D9" FontSize="11.5"/>
                     </Border>
-                    <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="6" Padding="10,4" Margin="0,0,8,4">
-                        <TextBlock x:Name="TxtConCambio" Text="Con Variación: 0" FontWeight="Bold" Foreground="#1D4ED8" FontSize="11.5"/>
+                    <Border Background="#F0FDF4" BorderBrush="#BBF7D0" BorderThickness="1" CornerRadius="6" Padding="10,4" Margin="0,0,8,4">
+                        <TextBlock x:Name="TxtConAumento" Text="📈 Aumentos: 0" FontWeight="Bold" Foreground="#15803D" FontSize="11.5"/>
+                    </Border>
+                    <Border x:Name="BorderBajas" Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="6" Padding="10,4" Margin="0,0,8,4">
+                        <TextBlock x:Name="TxtBajasDePrecio" Text="📉 Bajas a Revisar: 0" FontWeight="Bold" Foreground="#1D4ED8" FontSize="11.5"/>
                     </Border>
                     <Border x:Name="BorderAlertas" Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="6" Padding="10,4" Margin="0,0,8,4">
-                        <TextBlock x:Name="TxtConAlerta" Text="⚠️ Posibles Bultos/Packs: 0" FontWeight="Bold" Foreground="#B91C1C" FontSize="11.5"/>
+                        <TextBlock x:Name="TxtConAlerta" Text="⚠️ Posibles Packs: 0" FontWeight="Bold" Foreground="#B91C1C" FontSize="11.5"/>
+                    </Border>
+                    <Border x:Name="BorderReutilizados" Background="#FFFBEB" BorderBrush="#FDE68A" BorderThickness="1" CornerRadius="6" Padding="10,4" Margin="0,0,8,4">
+                        <TextBlock x:Name="TxtCodigosReutilizados" Text="⚠️ Cód. Reutilizados: 0" FontWeight="Bold" Foreground="#B45309" FontSize="11.5"/>
                     </Border>
                     <Border Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="6" Padding="10,4" Margin="0,0,8,4">
                         <TextBlock x:Name="TxtNoEncontrados" Text="Filas sin asociar en local: 0" FontWeight="SemiBold" Foreground="#475569" FontSize="11.5"/>
@@ -140,10 +146,14 @@
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
                         <RadioButton x:Name="RbFiltroTodos" GroupName="FiltroVista" Content="Mostrar Todos" Checked="FiltroRadio_Checked" 
                                      Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="SemiBold" FontSize="11" Margin="0,0,4,0"/>
-                        <RadioButton x:Name="RbFiltroAlertas" GroupName="FiltroVista" Content="⚠️ Alertas / Posibles Packs" Checked="FiltroRadio_Checked" 
+                        <RadioButton x:Name="RbFiltroConCambio" GroupName="FiltroVista" Content="📈 Aumentos" Checked="FiltroRadio_Checked" 
+                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="SemiBold" FontSize="11" Margin="0,0,4,0" Foreground="#15803D"/>
+                        <RadioButton x:Name="RbFiltroBajas" GroupName="FiltroVista" Content="📉 Bajas a Revisar" Checked="FiltroRadio_Checked" 
+                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="Bold" FontSize="11" Margin="0,0,4,0" Foreground="#1D4ED8"/>
+                        <RadioButton x:Name="RbFiltroAlertas" GroupName="FiltroVista" Content="⚠️ Posibles Packs" Checked="FiltroRadio_Checked" 
                                      Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="Bold" FontSize="11" Margin="0,0,4,0" Foreground="#DC2626"/>
-                        <RadioButton x:Name="RbFiltroConCambio" GroupName="FiltroVista" Content="📈 Variación Normal" Checked="FiltroRadio_Checked" 
-                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="SemiBold" FontSize="11" Margin="0,0,4,0"/>
+                        <RadioButton x:Name="RbFiltroReutilizados" GroupName="FiltroVista" Content="⚠️ Cód. Reutilizados" Checked="FiltroRadio_Checked" 
+                                     Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="Bold" FontSize="11" Margin="0,0,4,0" Foreground="#B45309"/>
                         <RadioButton x:Name="RbFiltroSinCambio" GroupName="FiltroVista" Content="⏸️ Sin Cambios" Checked="FiltroRadio_Checked" 
                                      Style="{StaticResource {x:Type ToggleButton}}" Padding="10,4" FontWeight="SemiBold" FontSize="11"/>
                     </StackPanel>
@@ -152,7 +162,8 @@
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
                         <Button x:Name="BtnAutoAplicarDivisores" Content="✨ Auto-aplicar divisores sugeridos" Click="BtnAutoAplicarDivisores_Click"
                                 Background="#EDE9FE" BorderBrush="#C4B5FD" BorderThickness="1" Foreground="#6D28D9" FontWeight="Bold" FontSize="11" Padding="10,4" Cursor="Hand" Margin="0,0,12,0"/>
-                        <Button Content="☑️ Marcar con cambios" Click="BtnMarcarTodos_Click" Background="Transparent" BorderThickness="0" Foreground="#2563EB" FontWeight="Bold" FontSize="11" Cursor="Hand" Margin="0,0,10,0"/>
+                        <Button Content="☑️ Marcar solo aumentos" Click="BtnMarcarSoloAumentos_Click" Background="Transparent" BorderThickness="0" Foreground="#15803D" FontWeight="Bold" FontSize="11" Cursor="Hand" Margin="0,0,10,0"/>
+                        <Button Content="☑️ Marcar visibles" Click="BtnMarcarTodos_Click" Background="Transparent" BorderThickness="0" Foreground="#2563EB" FontWeight="Bold" FontSize="11" Cursor="Hand" Margin="0,0,10,0"/>
                         <Button Content="◻️ Desmarcar todos" Click="BtnDesmarcarTodos_Click" Background="Transparent" BorderThickness="0" Foreground="#64748B" FontWeight="Bold" FontSize="11" Cursor="Hand"/>
                     </StackPanel>
                 </DockPanel>
@@ -164,7 +175,7 @@
             <Grid>
                 <DataGrid x:Name="GridComparativa" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
                           HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#F1F5F9"
-                          RowHeight="42" FontSize="12" Background="White" BorderThickness="0">
+                          RowHeight="44" FontSize="12" Background="White" BorderThickness="0">
                     <DataGrid.Columns>
                         <!-- Aplicar -->
                         <DataGridCheckBoxColumn Header="Aplicar" Binding="{Binding Aplicar, UpdateSourceTrigger=PropertyChanged}" Width="55"/>
@@ -184,6 +195,11 @@
                                         <TextBlock Text="{Binding NombreArticuloSuelto, StringFormat='🔗 Suelto vinculado: {0}'}" 
                                                    FontSize="10.5" Foreground="#15803D" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
                                                    Visibility="{Binding TieneArticuloSueltoVinculado, Converter={StaticResource BoolToVisConverter}}"/>
+                                        <Border Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="4" Padding="4,2" Margin="0,2,0,0"
+                                                Visibility="{Binding EsAlertaCodigoReutilizado, Converter={StaticResource BoolToVisConverter}}">
+                                            <TextBlock Text="{Binding DescripcionProveedor, StringFormat='⚠️ CÓDIGO REUTILIZADO? Mayorista lista: \'{0}\''}" 
+                                                       FontWeight="Bold" Foreground="#DC2626" FontSize="10.5" TextTrimming="CharacterEllipsis"/>
+                                        </Border>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -229,13 +245,17 @@
                         <DataGridTextColumn Header="Venta Nueva" Binding="{Binding VentaNueva, StringFormat='${0:N2}'}" Width="95" FontWeight="Black" Foreground="#0284C7" IsReadOnly="True"/>
 
                         <!-- % Variación y Badge de Alerta -->
-                        <DataGridTemplateColumn Header="% Variación" Width="115">
+                        <DataGridTemplateColumn Header="% Variación" Width="120">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <Border Visibility="{Binding EsAlertaVariacionExtrema, Converter={StaticResource BoolToVisConverter}}"
-                                                Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="4" Padding="5,2">
+                                                Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="4" Padding="5,2" Margin="0,0,2,0">
                                             <TextBlock Text="{Binding EstadoVariacionTexto}" FontWeight="Bold" Foreground="#DC2626" FontSize="11"/>
+                                        </Border>
+                                        <Border Visibility="{Binding EsBajaDePrecio, Converter={StaticResource BoolToVisConverter}}"
+                                                Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="4" Padding="5,2" Margin="0,0,2,0">
+                                            <TextBlock Text="{Binding EstadoVariacionTexto}" FontWeight="Bold" Foreground="#1D4ED8" FontSize="11"/>
                                         </Border>
                                         <TextBlock Visibility="{Binding NoEsAlerta, Converter={StaticResource BoolToVisConverter}}"
                                                    Text="{Binding VariacionTexto}" FontWeight="Bold" Foreground="{Binding VariacionColorHex}" FontSize="11.5"/>

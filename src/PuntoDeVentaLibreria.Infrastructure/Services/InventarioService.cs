@@ -923,9 +923,9 @@ public class InventarioService : IInventarioService
         // para evitar falsos positivos como 'Voligoma x 22 g', 'Témpera x 250 ml' o 'Regla x 20 cm'.
         var regexes = new[]
         {
-            @"\b(?:pack|caja|blister|bulto|potes?|display|paq(?:uete)?|bolsa|tubo)\s*(?:x\s*)?(\d{1,4})(?!\s*(?:g|gr|grs|gramos?|kg|kilos?|ml|cc|cm|mm|mts?|m|hojas?|hs|hjs|pag|paginas?)\b)\b",
-            @"\b[xX]\s*(\d{1,4})(?!\s*(?:g|gr|grs|gramos?|kg|kilos?|ml|cc|cm|mm|mts?|m|hojas?|hs|hjs|pag|paginas?)\b)\b",
-            @"\b(\d{1,4})\s*(?:unid(?:ades)?|u\b|potes?|sobres?|piezas?)\b"
+            @"\b(?:pack|caja|blister|bulto|potes?|display|paq(?:uete)?|bolsa|tubo)\s*(?:x\s*)?(\d{1,4})\s*(?:u(?:nid(?:ades)?)?)?(?!\s*(?:g|gr|grs|gramos?|kg|kilos?|ml|cc|cm|mm|mts?|m|hojas?|hs|hjs|pag|paginas?)\b)\b",
+            @"\b[xX]\s*(\d{1,4})\s*(?:u(?:nid(?:ades)?)?)?(?!\s*(?:g|gr|grs|gramos?|kg|kilos?|ml|cc|cm|mm|mts?|m|hojas?|hs|hjs|pag|paginas?)\b)\b",
+            @"\b(\d{1,4})\s*(?:unid(?:ades)?|u\b|potes?|sobres?|piezas?)"
         };
 
         foreach (var r in regexes)
@@ -1009,6 +1009,29 @@ public class InventarioService : IInventarioService
         return null;
     }
 
+    private static bool SonNombresCompletamenteDiferentes(string nombreLocal, string? nombreProveedor)
+    {
+        if (string.IsNullOrWhiteSpace(nombreLocal) || string.IsNullOrWhiteSpace(nombreProveedor)) return false;
+
+        var stopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase) 
+        { 
+            "para", "con", "por", "del", "las", "los", "una", "uno", "pack", "caja", "set", "x", "de", "la", "el", "en", "un", "al", "u"
+        };
+
+        var palabrasLocal = Regex.Split(nombreLocal.ToLowerInvariant(), @"[^\p{L}\p{Nd}]+")
+            .Where(w => w.Length > 2 && !stopWords.Contains(w))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var palabrasProv = Regex.Split(nombreProveedor.ToLowerInvariant(), @"[^\p{L}\p{Nd}]+")
+            .Where(w => w.Length > 2 && !stopWords.Contains(w))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        if (palabrasLocal.Count < 2 || palabrasProv.Count < 2) return false;
+
+        int coincidencias = palabrasLocal.Count(p => palabrasProv.Contains(p));
+        return coincidencias == 0;
+    }
+
     private static ArticuloAumentoPrecioItemDto ConstruirItemDto(
         Articulo art, 
         decimal costoNuevo, 
@@ -1016,34 +1039,50 @@ public class InventarioService : IInventarioService
         decimal? unidadesExcel = null, 
         Articulo? artSuelto = null)
     {
-        var factorSugerido = DetectarFactorPack(descProveedor, art.Nombre, art.PrecioCosto, costoNuevo);
-
         int? unidadesParsed = (unidadesExcel.HasValue && unidadesExcel.Value > 1) 
             ? (int)Math.Round(unidadesExcel.Value) 
             : null;
 
-        if (unidadesParsed.HasValue && !factorSugerido.HasValue)
+        // La columna explícita 'Unidades' del proveedor es la fuente de datos más precisa y fidedigna.
+        // Si no está disponible, se analiza el texto y saltos de costo.
+        var factorSugerido = unidadesParsed ?? DetectarFactorPack(descProveedor, art.Nombre, art.PrecioCosto, costoNuevo);
+
+        // ¿El artículo en la tienda ya es el pack completo?
+        // Es pack completo si:
+        // - Ya está configurado como EsPack, o
+        // - Tiene un artículo suelto vinculado o encontrado con '-1', o
+        // - Su costo anterior sin dividir ya está en el rango normal del costo mayorista (ratio 0.45 a 1.95)
+        bool esPackCompletoEnCatalogo = art.EsPack 
+            || (artSuelto != null)
+            || (art.PrecioCosto > 0 && (costoNuevo / art.PrecioCosto >= 0.45m && costoNuevo / art.PrecioCosto <= 1.95m));
+
+        decimal factorInicial = 1m;
+
+        if (esPackCompletoEnCatalogo)
         {
-            factorSugerido = unidadesParsed.Value;
+            // El artículo en el catálogo ES el pack completo: conserva su costo íntegro mayorista (divisor 1).
+            // NO se debe sugerir dividir el costo del pack. El artículo suelto se sincroniza automáticamente por separado.
+            factorInicial = 1m;
+            factorSugerido = null;
         }
-
-        // Si el artículo ya tenía un factor de pack guardado (> 1) previamente, lo precargamos automáticamente
-        decimal factorInicial = (art.CantidadPorPack > 1) ? art.CantidadPorPack : 1m;
-
-        // Si el artículo en nuestro catálogo no tenía pack configurado, pero el mayorista indica unidades > 1,
-        // o detectamos que el costo del mayorista es muy alto y coincide con el pack de las unidades de la columna:
-        if (factorInicial <= 1m && unidadesParsed.HasValue && unidadesParsed.Value > 1)
+        else
         {
-            if (art.PrecioCosto > 0)
+            // Si el artículo en la tienda era una unidad suelta (o no era pack)
+            if (art.CantidadPorPack > 1)
             {
-                var ratioDirecto = costoNuevo / art.PrecioCosto;
-                var ratioDividido = (costoNuevo / unidadesParsed.Value) / art.PrecioCosto;
-                if (ratioDirecto > 1.8m && ratioDividido >= 0.45m && ratioDividido <= 1.95m)
+                factorInicial = art.CantidadPorPack;
+            }
+            else if (unidadesParsed.HasValue && !factorSugerido.HasValue)
+            {
+                // Si el costo del mayorista saltó mucho comparado al costo unitario previo
+                if (art.PrecioCosto <= 0 || (costoNuevo / art.PrecioCosto > 1.8m))
                 {
-                    factorInicial = unidadesParsed.Value;
+                    factorSugerido = unidadesParsed.Value;
                 }
             }
         }
+
+        bool codigoReutilizado = SonNombresCompletamenteDiferentes(art.Nombre, descProveedor);
 
         var item = new ArticuloAumentoPrecioItemDto
         {
@@ -1060,7 +1099,8 @@ public class InventarioService : IInventarioService
             UnidadesProveedor = unidadesParsed,
             TieneArticuloSueltoVinculado = artSuelto != null || art.ArticuloBaseId.HasValue,
             NombreArticuloSuelto = artSuelto?.Nombre ?? art.ArticuloBase?.Nombre,
-            EsPackArticulo = art.EsPack || art.CantidadPorPack > 1 || artSuelto != null,
+            EsPackArticulo = esPackCompletoEnCatalogo,
+            EsAlertaCodigoReutilizado = codigoReutilizado,
             PorcentajeGanancia = art.PorcentajeGanancia,
             IvaPorcentaje = art.IvaPorcentaje,
             VentaAnterior = art.PrecioVenta
@@ -1068,15 +1108,18 @@ public class InventarioService : IInventarioService
 
         item.Recalcular();
 
-        // Si la variación es extrema (> 80% o < -50%), no se tilda para aplicar por defecto
-        // para proteger al comercio de aumentos exorbitantes accidentales
-        if (item.EsAlertaVariacionExtrema)
+        // REGLA DE PROTECCIÓN DE PRECIOS DEL COMERCIO:
+        // 1. Variaciones extremas (> 80% o < -50%): NO aplicar por defecto
+        // 2. Posible código reutilizado del proveedor: NO aplicar por defecto
+        // 3. BAJAS DE PRECIO: NO aplicar por defecto (se identifican para revisión)
+        // 4. Solo aumentos de precio normales se tildan para aplicar por defecto
+        if (item.EsAlertaVariacionExtrema || item.EsAlertaCodigoReutilizado || item.EsBajaDePrecio)
         {
             item.Aplicar = false;
         }
         else
         {
-            item.Aplicar = Math.Abs(item.CostoNuevo - item.CostoAnterior) > 0.01m;
+            item.Aplicar = item.CostoNuevo > item.CostoAnterior + 0.01m;
         }
 
         return item;
@@ -1196,9 +1239,13 @@ public class InventarioService : IInventarioService
         resumen.CoincidenciasEncontradas = itemsPorArticulo.Count;
         resumen.CoincidenciasConCambioDePrecio = itemsPorArticulo.Values.Count(i => Math.Abs(i.CostoNuevo - i.CostoAnterior) > 0.01m);
         resumen.CoincidenciasConAlerta = itemsPorArticulo.Values.Count(i => i.EsAlertaVariacionExtrema);
+        resumen.CoincidenciasConBajaDePrecio = itemsPorArticulo.Values.Count(i => i.EsBajaDePrecio);
+        resumen.CoincidenciasConCodigoReutilizado = itemsPorArticulo.Values.Count(i => i.EsAlertaCodigoReutilizado);
         resumen.NoEncontradosEnCatalogo = noEncontrados;
         resumen.ItemsParaActualizar = itemsPorArticulo.Values
-            .OrderByDescending(i => i.EsAlertaVariacionExtrema)
+            .OrderByDescending(i => i.EsAlertaCodigoReutilizado)
+            .ThenByDescending(i => i.EsAlertaVariacionExtrema)
+            .ThenByDescending(i => i.EsBajaDePrecio)
             .ThenByDescending(i => Math.Abs(i.VariacionPorcentaje))
             .ToList();
 

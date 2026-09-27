@@ -116,13 +116,23 @@ public class ArticuloAumentoPrecioItemDto : INotifyPropertyChanged
         }
     }
 
+    public bool EsAlertaCodigoReutilizado { get; set; }
+    public bool EsBajaDePrecio => CostoAnterior > 0 && CostoNuevo < CostoAnterior - 0.01m;
+
     // Propiedades calculadas y de soporte para interfaz de usuario
     public string VariacionTexto => VariacionPorcentaje > 0 ? $"+{VariacionPorcentaje:N1}%" : $"{VariacionPorcentaje:N1}%";
-    public string EstadoVariacionTexto => EsAlertaVariacionExtrema ? $"⚠️ {VariacionTexto}" : VariacionTexto;
+    public string EstadoVariacionTexto => 
+        EsAlertaCodigoReutilizado ? $"⚠️ Reutilizado ({VariacionTexto})" :
+        EsAlertaVariacionExtrema ? $"⚠️ {VariacionTexto}" : 
+        EsBajaDePrecio ? $"📉 {VariacionTexto}" : 
+        VariacionTexto;
     public string SugerenciaBotonTexto => FactorSugerido.HasValue ? $"÷{FactorSugerido.Value}" : string.Empty;
     public bool MostrarBotonSugerido => FactorSugerido.HasValue && Math.Abs(_factorConversion - FactorSugerido.Value) > 0.01m;
-    public bool NoEsAlerta => !EsAlertaVariacionExtrema;
-    public string VariacionColorHex => VariacionPorcentaje > 0 ? "#16A34A" : (VariacionPorcentaje < 0 ? "#D97706" : "#64748B");
+    public bool NoEsAlerta => !EsAlertaVariacionExtrema && !EsAlertaCodigoReutilizado && !EsBajaDePrecio;
+    public string VariacionColorHex => 
+        EsAlertaCodigoReutilizado ? "#DC2626" :
+        EsBajaDePrecio ? "#2563EB" :
+        VariacionPorcentaje > 0 ? "#16A34A" : "#64748B";
     public string DescripcionCompleta => string.IsNullOrWhiteSpace(DescripcionProveedor) 
         ? Nombre 
         : $"{Nombre}\n(Mayorista: {DescripcionProveedor})";
@@ -141,6 +151,7 @@ public class ArticuloAumentoPrecioItemDto : INotifyPropertyChanged
         EsAlertaVariacionExtrema = VariacionPorcentaje > 80m || VariacionPorcentaje < -50m;
         
         OnPropertyChanged(nameof(NoEsAlerta));
+        OnPropertyChanged(nameof(EsBajaDePrecio));
         OnPropertyChanged(nameof(VariacionColorHex));
     }
 
@@ -157,6 +168,8 @@ public class ResumenPrevisualizacionAumentoDto
     public int CoincidenciasEncontradas { get; set; }
     public int CoincidenciasConCambioDePrecio { get; set; }
     public int CoincidenciasConAlerta { get; set; }
+    public int CoincidenciasConBajaDePrecio { get; set; }
+    public int CoincidenciasConCodigoReutilizado { get; set; }
     public int NoEncontradosEnCatalogo { get; set; }
     public List<ArticuloAumentoPrecioItemDto> ItemsParaActualizar { get; set; } = new();
 }

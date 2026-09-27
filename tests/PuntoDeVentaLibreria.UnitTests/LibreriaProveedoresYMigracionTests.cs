@@ -642,7 +642,144 @@ public class LibreriaProveedoresYMigracionTests
         item.UnidadesProveedor.Should().Be(4);
         item.UnidadesProveedorTexto.Should().Be("4 u.");
         item.TieneArticuloSueltoVinculado.Should().BeTrue();
+        item.EsPackArticulo.Should().BeTrue();
+        // El pack completo en catálogo debe conservar su costo íntegro mayorista (divisor 1) y NO sugerir dividirse
+        item.FactorConversion.Should().Be(1m);
+        item.FactorSugerido.Should().BeNull();
+        item.CostoNuevo.Should().Be(3500.00m);
+    }
+
+    [Fact]
+    public async Task PrevisualizarActualizacionPreciosProveedor_ArticuloSueltoConSaltoDePrecioMayorista_SugiereFactorConversion()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        // Artículo suelto individual (no es pack en el catálogo y su costo previo es unitario)
+        var artSuelto = new PuntoDeVentaLibreria.Domain.Entities.Catalogo.Articulo
+        {
+            Id = Guid.NewGuid(),
+            Nombre = "LAPICERAS X 1 - FILGO",
+            SKU = "FILGO-TUTTI-1",
+            CodigoProveedor = "36174",
+            PrecioCosto = 800m,
+            PrecioVenta = 2000m,
+            EsPack = false,
+            Activo = true
+        };
+
+        context.Articulos.Add(artSuelto);
+        await context.SaveChangesAsync();
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Precios");
+        worksheet.Cell(1, 1).Value = "Codigo";
+        worksheet.Cell(1, 2).Value = "Descripcion";
+        worksheet.Cell(1, 3).Value = "Costo";
+        worksheet.Cell(1, 4).Value = "Unidades";
+
+        worksheet.Cell(2, 1).Value = "36174";
+        worksheet.Cell(2, 2).Value = "ROLLER FILGO GEL TUTTI POP 1.0 x4u.";
+        worksheet.Cell(2, 3).Value = 3600.00; // Salto de 800 a 3600 (> 1.8x)
+        worksheet.Cell(2, 4).Value = 4;
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+
+        var resumen = await inventarioService.PrevisualizarActualizacionPreciosProveedorAsync(stream);
+
+        resumen.CoincidenciasEncontradas.Should().Be(1);
+        var item = resumen.ItemsParaActualizar.First();
+        item.UnidadesProveedor.Should().Be(4);
         item.FactorSugerido.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task PrevisualizarActualizacionPreciosProveedor_ConBajaDePrecio_MarcaEsBajaDePrecioYNoAplicaPorDefecto()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        var art = new PuntoDeVentaLibreria.Domain.Entities.Catalogo.Articulo
+        {
+            Id = Guid.NewGuid(),
+            Nombre = "RESMA AUTOR A4 75G 500H",
+            SKU = "RESMA-A4",
+            CodigoProveedor = "5001",
+            PrecioCosto = 5000m,
+            PrecioVenta = 9000m,
+            Activo = true
+        };
+
+        context.Articulos.Add(art);
+        await context.SaveChangesAsync();
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Precios");
+        worksheet.Cell(1, 1).Value = "Codigo";
+        worksheet.Cell(1, 2).Value = "Descripcion";
+        worksheet.Cell(1, 3).Value = "Costo";
+
+        worksheet.Cell(2, 1).Value = "5001";
+        worksheet.Cell(2, 2).Value = "RESMA AUTOR A4 75G 500H";
+        worksheet.Cell(2, 3).Value = 4500.00; // Baja de precio: 5000 -> 4500
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+
+        var resumen = await inventarioService.PrevisualizarActualizacionPreciosProveedorAsync(stream);
+
+        resumen.CoincidenciasEncontradas.Should().Be(1);
+        var item = resumen.ItemsParaActualizar.First();
+        item.EsBajaDePrecio.Should().BeTrue();
+        item.CostoAnterior.Should().Be(5000m);
+        item.CostoNuevo.Should().Be(4500m);
+        // Debe desmarcarse para revisión manual por protección de margen
+        item.Aplicar.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task PrevisualizarActualizacionPreciosProveedor_ConCodigoReutilizadoProveedor_DetectaAlertaYNoAplicaPorDefecto()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        var art = new PuntoDeVentaLibreria.Domain.Entities.Catalogo.Articulo
+        {
+            Id = Guid.NewGuid(),
+            Nombre = "CUADERNO GLORIA 48H RAYADO",
+            SKU = "CUAD-GLO",
+            CodigoProveedor = "9901",
+            PrecioCosto = 1200m,
+            PrecioVenta = 2200m,
+            Activo = true
+        };
+
+        context.Articulos.Add(art);
+        await context.SaveChangesAsync();
+
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Precios");
+        worksheet.Cell(1, 1).Value = "Codigo";
+        worksheet.Cell(1, 2).Value = "Descripcion";
+        worksheet.Cell(1, 3).Value = "Costo";
+
+        worksheet.Cell(2, 1).Value = "9901";
+        worksheet.Cell(2, 2).Value = "PLASTILINA JOVI ROJA 50G"; // Mismo código pero descripción 100% diferente
+        worksheet.Cell(2, 3).Value = 1350.00;
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+
+        var resumen = await inventarioService.PrevisualizarActualizacionPreciosProveedorAsync(stream);
+
+        resumen.CoincidenciasEncontradas.Should().Be(1);
+        var item = resumen.ItemsParaActualizar.First();
+        item.EsAlertaCodigoReutilizado.Should().BeTrue();
+        item.Aplicar.Should().BeFalse();
     }
 
     [Fact]

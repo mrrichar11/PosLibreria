@@ -151,26 +151,34 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
 
     private void ActualizarContadoresMetricas()
     {
-        if (TxtTotalCatalogo == null || TxtCoincidencias == null || TxtConCambio == null || 
+        if (TxtTotalCatalogo == null || TxtCoincidencias == null || TxtConAumento == null || 
             TxtConAlerta == null || TxtNoEncontrados == null || BorderAlertas == null) return;
 
         int total = _itemsComparados.Count;
-        int conCambio = _itemsComparados.Count(i => !i.EsAlertaVariacionExtrema && Math.Abs(i.CostoNuevo - i.CostoAnterior) > 0.01m);
+        int aumentos = _itemsComparados.Count(i => !i.EsAlertaVariacionExtrema && !i.EsAlertaCodigoReutilizado && i.CostoNuevo > i.CostoAnterior + 0.01m);
+        int bajas = _itemsComparados.Count(i => i.EsBajaDePrecio);
         int alertas = _itemsComparados.Count(i => i.EsAlertaVariacionExtrema);
+        int reutilizados = _itemsComparados.Count(i => i.EsAlertaCodigoReutilizado);
         int sinCambio = _itemsComparados.Count(i => Math.Abs(i.CostoNuevo - i.CostoAnterior) <= 0.01m);
 
         TxtTotalCatalogo.Text = $"Catálogo Local: {_totalCatalogo:N0}";
         TxtCoincidencias.Text = $"Coincidentes: {total:N0}";
-        TxtConCambio.Text = $"Con Variación: {conCambio:N0}";
-        TxtConAlerta.Text = $"⚠️ Posibles Bultos/Packs: {alertas:N0}";
+        TxtConAumento.Text = $"📈 Aumentos: {aumentos:N0}";
+        if (TxtBajasDePrecio != null) TxtBajasDePrecio.Text = $"📉 Bajas a Revisar: {bajas:N0}";
+        TxtConAlerta.Text = $"⚠️ Posibles Packs: {alertas:N0}";
+        if (TxtCodigosReutilizados != null) TxtCodigosReutilizados.Text = $"⚠️ Cód. Reutilizados: {reutilizados:N0}";
         TxtNoEncontrados.Text = $"Filas sin asociar en local: {_noEncontrados:N0}";
 
         BorderAlertas.Visibility = alertas > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (BorderBajas != null) BorderBajas.Visibility = bajas > 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (BorderReutilizados != null) BorderReutilizados.Visibility = reutilizados > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         // Textos de los filtros de radio
         if (RbFiltroTodos != null) RbFiltroTodos.Content = $"Mostrar Todos ({total:N0})";
-        if (RbFiltroAlertas != null) RbFiltroAlertas.Content = $"⚠️ Alertas / Posibles Packs ({alertas:N0})";
-        if (RbFiltroConCambio != null) RbFiltroConCambio.Content = $"📈 Variación Normal ({conCambio:N0})";
+        if (RbFiltroConCambio != null) RbFiltroConCambio.Content = $"📈 Aumentos ({aumentos:N0})";
+        if (RbFiltroBajas != null) RbFiltroBajas.Content = $"📉 Bajas a Revisar ({bajas:N0})";
+        if (RbFiltroAlertas != null) RbFiltroAlertas.Content = $"⚠️ Posibles Packs ({alertas:N0})";
+        if (RbFiltroReutilizados != null) RbFiltroReutilizados.Content = $"⚠️ Cód. Reutilizados ({reutilizados:N0})";
         if (RbFiltroSinCambio != null) RbFiltroSinCambio.Content = $"⏸️ Sin Cambios ({sinCambio:N0})";
 
         // Botón masivo para auto-aplicar sugerencias
@@ -195,8 +203,10 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         if (sender is RadioButton rb && rb.IsChecked == true)
         {
             if (rb == RbFiltroTodos) AplicarFiltroVista("Todos");
+            else if (rb == RbFiltroConCambio) AplicarFiltroVista("Aumentos");
+            else if (rb == RbFiltroBajas) AplicarFiltroVista("Bajas");
             else if (rb == RbFiltroAlertas) AplicarFiltroVista("Alertas");
-            else if (rb == RbFiltroConCambio) AplicarFiltroVista("ConCambio");
+            else if (rb == RbFiltroReutilizados) AplicarFiltroVista("Reutilizados");
             else if (rb == RbFiltroSinCambio) AplicarFiltroVista("SinCambio");
         }
     }
@@ -213,8 +223,10 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
 
             return tipoFiltro switch
             {
+                "Aumentos" => !item.EsAlertaVariacionExtrema && !item.EsAlertaCodigoReutilizado && item.CostoNuevo > item.CostoAnterior + 0.01m,
+                "Bajas" => item.EsBajaDePrecio,
                 "Alertas" => item.EsAlertaVariacionExtrema,
-                "ConCambio" => !item.EsAlertaVariacionExtrema && Math.Abs(item.CostoNuevo - item.CostoAnterior) > 0.01m,
+                "Reutilizados" => item.EsAlertaCodigoReutilizado,
                 "SinCambio" => Math.Abs(item.CostoNuevo - item.CostoAnterior) <= 0.01m,
                 _ => true
             };
@@ -253,14 +265,34 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
             "MR SYS - Conciliación de Packs", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
-    private void BtnMarcarTodos_Click(object sender, RoutedEventArgs e)
+    private void BtnMarcarSoloAumentos_Click(object sender, RoutedEventArgs e)
     {
         foreach (var item in _itemsComparados)
         {
-            // Solo marcar automáticamente los que tienen cambios y NO son alertas extremas
-            if (!item.EsAlertaVariacionExtrema && Math.Abs(item.CostoNuevo - item.CostoAnterior) > 0.01m)
+            if (!item.EsAlertaVariacionExtrema && !item.EsAlertaCodigoReutilizado && !item.EsBajaDePrecio && item.CostoNuevo > item.CostoAnterior + 0.01m)
             {
                 item.Aplicar = true;
+            }
+            else
+            {
+                item.Aplicar = false;
+            }
+        }
+        GridComparativa.Items.Refresh();
+        BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+    }
+
+    private void BtnMarcarTodos_Click(object sender, RoutedEventArgs e)
+    {
+        var view = CollectionViewSource.GetDefaultView(GridComparativa.ItemsSource);
+        foreach (var item in _itemsComparados)
+        {
+            if (view?.Filter == null || view.Filter(item))
+            {
+                if (!item.EsAlertaVariacionExtrema && !item.EsAlertaCodigoReutilizado)
+                {
+                    item.Aplicar = true;
+                }
             }
         }
         GridComparativa.Items.Refresh();
