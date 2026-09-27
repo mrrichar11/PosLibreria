@@ -44,6 +44,12 @@ public static class CalculoPreciosUtils
         return Math.Round(costoConIva * (1m + (margenPorcentaje / 100m)), 2);
     }
 
+    public static decimal CalcularPrecioVentaRedondeado(decimal costo, decimal margenPorcentaje, decimal ivaPorcentaje, ReglaRedondeoPrecio regla = ReglaRedondeoPrecio.CentenaCercana)
+    {
+        var venta = CalcularPrecioVenta(costo, margenPorcentaje, ivaPorcentaje);
+        return RedondearPrecioVenta(venta, regla);
+    }
+
     public static decimal CalcularMargenPorcentaje(decimal costo, decimal precioVenta)
     {
         if (costo <= 0) return 0;

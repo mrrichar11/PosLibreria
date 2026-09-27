@@ -16,6 +16,7 @@ public partial class ArticuloModalWindow : Window
     private readonly IConfiguracionService? _configuracionService;
     private readonly IProveedorService? _proveedorService;
     private IReadOnlyList<ArticuloDto> _articulosDisponibles = new List<ArticuloDto>();
+    private List<ArticuloDto> _todosArticulosFisicos = new();
     private decimal _margenConfigurado = 40m;
     private decimal _cotizacionDolar = 1350m;
     private bool _isCalculating;
@@ -149,6 +150,11 @@ public partial class ArticuloModalWindow : Window
     private void ChkEsPack_Checked(object sender, RoutedEventArgs e)
     {
         if (PanelDetallePack != null) PanelDetallePack.Visibility = Visibility.Visible;
+        if (CmbArticuloBase != null && (CmbArticuloBase.SelectedIndex < 0 || CmbArticuloBase.SelectedValue == null))
+        {
+            BuscarYSeleccionarArticuloBaseAutomatico();
+        }
+        ActualizarPanelDualPrecios();
     }
 
     private void ChkEsPack_Unchecked(object sender, RoutedEventArgs e)
@@ -286,28 +292,326 @@ public partial class ArticuloModalWindow : Window
         try
         {
             _articulosDisponibles = await _inventarioService.BuscarArticulosAsync(string.Empty);
-            var articulosFisicos = _articulosDisponibles
+            _todosArticulosFisicos = _articulosDisponibles
                 .Where(a => a.Id != Articulo.Id && a.Tipo != TipoArticulo.ComboKit)
                 .OrderBy(a => a.Nombre)
                 .ToList();
 
-            CmbArticuloParaCombo.ItemsSource = articulosFisicos;
-            if (articulosFisicos.Count > 0)
+            CmbArticuloParaCombo.ItemsSource = _todosArticulosFisicos;
+            if (_todosArticulosFisicos.Count > 0)
             {
                 CmbArticuloParaCombo.SelectedIndex = 0;
             }
 
-            CmbArticuloBase.ItemsSource = articulosFisicos;
-            if (Articulo.ArticuloBaseId.HasValue)
-            {
-                CmbArticuloBase.SelectedValue = Articulo.ArticuloBaseId.Value;
-            }
-            else if (articulosFisicos.Count > 0)
-            {
-                CmbArticuloBase.SelectedIndex = 0;
-            }
+            ActualizarFiltroArticulosBase();
+            BuscarYSeleccionarArticuloBaseAutomatico();
         }
         catch { }
+    }
+
+    private void TxtBuscarArticuloBase_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        ActualizarFiltroArticulosBase();
+    }
+
+    private void ActualizarFiltroArticulosBase()
+    {
+        if (CmbArticuloBase == null || _todosArticulosFisicos == null) return;
+        var filtro = TxtBuscarArticuloBase?.Text?.Trim().ToLowerInvariant() ?? "";
+
+        var currentSelectedId = CmbArticuloBase.SelectedValue as Guid? ?? Articulo.ArticuloBaseId;
+
+        IEnumerable<ArticuloDto> filtrados = _todosArticulosFisicos;
+        if (!string.IsNullOrWhiteSpace(filtro))
+        {
+            filtrados = _todosArticulosFisicos.Where(a =>
+                (!string.IsNullOrWhiteSpace(a.Nombre) && a.Nombre.ToLowerInvariant().Contains(filtro)) ||
+                (!string.IsNullOrWhiteSpace(a.CodigoProveedor) && a.CodigoProveedor.ToLowerInvariant().Contains(filtro)) ||
+                (!string.IsNullOrWhiteSpace(a.SKU) && a.SKU.ToLowerInvariant().Contains(filtro)) ||
+                (!string.IsNullOrWhiteSpace(a.CodigoBarras) && a.CodigoBarras.ToLowerInvariant().Contains(filtro)));
+        }
+
+        var lista = filtrados.ToList();
+        CmbArticuloBase.ItemsSource = lista;
+        if (currentSelectedId.HasValue && lista.Any(a => a.Id == currentSelectedId.Value))
+        {
+            CmbArticuloBase.SelectedValue = currentSelectedId.Value;
+        }
+    }
+
+    private void CmbArticuloBase_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (CmbArticuloBase.SelectedValue is Guid id)
+        {
+            Articulo.ArticuloBaseId = id;
+        }
+        ActualizarPanelDualPrecios();
+    }
+
+    private void TxtCantidadPorPack_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        ActualizarPanelDualPrecios();
+    }
+
+    private void BuscarYSeleccionarArticuloBaseAutomatico()
+    {
+        if (CmbArticuloBase == null || _todosArticulosFisicos == null) return;
+
+        // Si ya tenía un artículo base asignado
+        if (Articulo.ArticuloBaseId.HasValue)
+        {
+            CmbArticuloBase.SelectedValue = Articulo.ArticuloBaseId.Value;
+            ActualizarPanelDualPrecios();
+            return;
+        }
+
+        // Buscar coincidencia inteligente con artículo suelto (-1, /1, -U, o stem de nombre)
+        var candidato = BuscarCandidatoArticuloBase(_todosArticulosFisicos);
+        if (candidato != null)
+        {
+            CmbArticuloBase.SelectedValue = candidato.Id;
+            Articulo.ArticuloBaseId = candidato.Id;
+
+            // Si el pack todavía tiene cantidad 1, intentar inferir factor desde el nombre o descripción
+            if (Articulo.CantidadPorPack <= 1m)
+            {
+                var factorInferido = ExtraerFactorDesdeTexto(Articulo.Nombre);
+                if (factorInferido > 1)
+                {
+                    Articulo.CantidadPorPack = factorInferido;
+                    if (TxtCantidadPorPack != null) TxtCantidadPorPack.Text = factorInferido.ToString("0");
+                }
+            }
+        }
+        else
+        {
+            CmbArticuloBase.SelectedIndex = -1;
+        }
+
+        ActualizarPanelDualPrecios();
+    }
+
+    private static decimal ExtraerFactorDesdeTexto(string? texto)
+    {
+        if (string.IsNullOrWhiteSpace(texto)) return 1m;
+        var m = System.Text.RegularExpressions.Regex.Match(texto, @"\b(?:pack|caja|blister|bulto|potes?|display)?\s*[xX]\s*(\d{1,4})(?!\s*(?:g|gr|grs|gramos?|kg|kilos?|ml|cc|cm|mm|mts?|m|hojas?|hs|hjs|pag|paginas?)\b)\b");
+        if (m.Success && decimal.TryParse(m.Groups[1].Value, out var factor) && factor > 1)
+        {
+            return factor;
+        }
+        return 1m;
+    }
+
+    private ArticuloDto? BuscarCandidatoArticuloBase(IEnumerable<ArticuloDto> catalogo)
+    {
+        if (!string.IsNullOrWhiteSpace(Articulo.CodigoProveedor))
+        {
+            var codProv = Articulo.CodigoProveedor.Trim().ToUpperInvariant();
+            // 1. Coincidencia exacta con "-1", "/1", "-U", " - 1"
+            var exacto = catalogo.FirstOrDefault(a => 
+                !string.IsNullOrWhiteSpace(a.CodigoProveedor) && (
+                    a.CodigoProveedor.Trim().Equals($"{codProv}-1", StringComparison.OrdinalIgnoreCase) ||
+                    a.CodigoProveedor.Trim().Equals($"{codProv}/1", StringComparison.OrdinalIgnoreCase) ||
+                    a.CodigoProveedor.Trim().Equals($"{codProv}-U", StringComparison.OrdinalIgnoreCase) ||
+                    a.CodigoProveedor.Trim().Equals($"{codProv} - 1", StringComparison.OrdinalIgnoreCase)));
+            if (exacto != null) return exacto;
+
+            // 2. Empieza con el mismo código de proveedor y contiene "1" o "SUELTO"
+            var prefijo = catalogo.FirstOrDefault(a => 
+                !string.IsNullOrWhiteSpace(a.CodigoProveedor) && 
+                a.CodigoProveedor.Trim().StartsWith(codProv, StringComparison.OrdinalIgnoreCase) && 
+                a.CodigoProveedor.Length > codProv.Length);
+            if (prefijo != null) return prefijo;
+        }
+
+        // 3. Coincidencia por nombre (mismas palabras clave y contiene "x 1", "x1", "suelt", "unidad")
+        if (!string.IsNullOrWhiteSpace(Articulo.Nombre))
+        {
+            var palabras = Articulo.Nombre
+                .Split(new[] { ' ', '-', ',', '.', '/' }, StringSplitOptions.RemoveEmptyEntries)
+                .Where(p => p.Length > 2 && !System.Text.RegularExpressions.Regex.IsMatch(p, @"^(?:pack|caja|x\d+|u|\d+u)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                .ToList();
+
+            if (palabras.Count >= 2)
+            {
+                var candidatoNombre = catalogo.FirstOrDefault(a => 
+                    palabras.All(p => a.Nombre.Contains(p, StringComparison.OrdinalIgnoreCase)) &&
+                    System.Text.RegularExpressions.Regex.IsMatch(a.Nombre, @"\b(?:x\s*1|suelt[ao]|unidad)\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+                if (candidatoNombre != null) return candidatoNombre;
+            }
+        }
+
+        return null;
+    }
+
+    private async void BtnCrearArticuloSuelto_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.IsNullOrWhiteSpace(Articulo.Nombre))
+        {
+            MessageBox.Show("Ingrese primero el nombre del producto pack.", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        decimal cantPack = 1;
+        if (PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(TxtCantidadPorPack?.Text, out var cant) && cant > 1)
+        {
+            cantPack = cant;
+        }
+        else
+        {
+            cantPack = ExtraerFactorDesdeTexto(Articulo.Nombre);
+            if (cantPack > 1 && TxtCantidadPorPack != null)
+            {
+                TxtCantidadPorPack.Text = cantPack.ToString("0");
+            }
+        }
+
+        // Derivar nombre del artículo suelto:
+        // Quitar "x4u", "x 4", "x4", "pack", "caja" etc., y agregar " x 1u." o " (Unidad Suelta)"
+        var nombreSuelto = System.Text.RegularExpressions.Regex.Replace(Articulo.Nombre, @"\s*[xX]\s*\d+\s*(?:u|unid|unidades)?\b", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Trim();
+        if (nombreSuelto.Equals(Articulo.Nombre, StringComparison.OrdinalIgnoreCase))
+        {
+            nombreSuelto += " (Unidad Suelta)";
+        }
+        else
+        {
+            nombreSuelto += " x 1u.";
+        }
+
+        // Derivar código de proveedor: {PackCodProv}-1
+        string? codProvSuelto = null;
+        if (!string.IsNullOrWhiteSpace(Articulo.CodigoProveedor))
+        {
+            codProvSuelto = $"{Articulo.CodigoProveedor.Trim()}-1";
+        }
+
+        // Costo unitario = CostoPack / cantPack
+        PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(TxtCosto?.Text, out var costoPack);
+        decimal costoUnitario = Math.Round(costoPack / Math.Max(1, cantPack), 2);
+
+        PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(TxtMargen?.Text, out var ganancia);
+        if (ganancia <= 0) ganancia = _margenConfigurado > 0 ? _margenConfigurado : 60;
+
+        decimal iva = 21.0m;
+        if (CmbIva?.SelectedItem is ComboBoxItem itemIva && PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(itemIva.Tag?.ToString(), out var ivaParsed))
+        {
+            iva = ivaParsed;
+        }
+
+        decimal ventaUnitaria = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.CalcularPrecioVentaRedondeado(costoUnitario, ganancia, iva);
+
+        var nuevoSuelto = new ArticuloDto
+        {
+            Id = Guid.Empty,
+            SKU = await _inventarioService.GenerarSkuSugeridoAsync(),
+            CodigoProveedor = codProvSuelto,
+            Nombre = nombreSuelto,
+            PrecioCosto = costoUnitario,
+            PorcentajeGanancia = ganancia,
+            IvaPorcentaje = iva,
+            PrecioVenta = ventaUnitaria,
+            Rubro = (CmbRubro?.SelectedItem is ComboBoxItem cbiRubro) ? (cbiRubro.Tag?.ToString() ?? "Librería") : "Librería",
+            CategoriaId = Articulo.CategoriaId,
+            MarcaId = Articulo.MarcaId,
+            ProveedorId = Articulo.ProveedorId,
+            EsPack = false,
+            StockActual = 0,
+            StockMinimo = 5,
+            UnidadMedida = "UN"
+        };
+
+        try
+        {
+            var guardado = await _inventarioService.GuardarArticuloAsync(nuevoSuelto);
+            _articulosDisponibles = await _inventarioService.BuscarArticulosAsync(string.Empty);
+            _todosArticulosFisicos = _articulosDisponibles
+                .Where(a => a.Id != Articulo.Id && a.Tipo != TipoArticulo.ComboKit)
+                .OrderBy(a => a.Nombre)
+                .ToList();
+
+            ActualizarFiltroArticulosBase();
+            CmbArticuloBase.SelectedValue = guardado.Id;
+            Articulo.ArticuloBaseId = guardado.Id;
+            Articulo.CantidadPorPack = cantPack;
+
+            ActualizarPanelDualPrecios();
+
+            MessageBox.Show(
+                $"¡Artículo suelto individual creado y vinculado exitosamente!\n\n" +
+                $"• Nombre: {guardado.Nombre}\n" +
+                $"• Cód. Proveedor: {guardado.CodigoProveedor}\n" +
+                $"• Costo Unitario: ${guardado.PrecioCosto:N2}\n" +
+                $"• Precio Venta: ${guardado.PrecioVenta:N2}\n\n" +
+                $"Quedó seleccionado como el artículo base del pack.",
+                "MR SYS - Artículo Suelto Creado",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al crear el artículo suelto: {ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void ActualizarPanelDualPrecios()
+    {
+        if (TxtDualPackCosto == null || TxtDualPackVenta == null) return;
+
+        PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(TxtCosto?.Text, out var costoPack);
+        PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(TxtVenta?.Text, out var ventaPack);
+        PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(TxtCantidadPorPack?.Text, out var cantPack);
+        if (cantPack <= 0) cantPack = 1;
+
+        TxtDualPackCosto.Text = $"Costo Pack: ${costoPack:N2}";
+        TxtDualPackVenta.Text = $"Venta Pack: ${ventaPack:N2}";
+
+        decimal costoUnitarioSugerido = Math.Round(costoPack / cantPack, 2);
+        TxtDualSueltoCostoSugerido.Text = $"Costo Unitario Sugerido: ${costoUnitarioSugerido:N2} (${costoPack:N2} ÷ {cantPack:N0})";
+
+        if (CmbArticuloBase?.SelectedItem is ArticuloDto baseArt)
+        {
+            TxtDualSueltoCatalogo.Text = $"En Catálogo: Costo ${baseArt.PrecioCosto:N2} | Venta ${baseArt.PrecioVenta:N2} (Cód: {baseArt.CodigoProveedor ?? "-"})";
+            if (BtnSincronizarPrecioSuelto != null) BtnSincronizarPrecioSuelto.IsEnabled = true;
+        }
+        else
+        {
+            TxtDualSueltoCatalogo.Text = "No hay ningún artículo suelto seleccionado.";
+            if (BtnSincronizarPrecioSuelto != null) BtnSincronizarPrecioSuelto.IsEnabled = false;
+        }
+    }
+
+    private async void BtnSincronizarPrecioSuelto_Click(object sender, RoutedEventArgs e)
+    {
+        if (CmbArticuloBase?.SelectedItem is not ArticuloDto baseArt)
+        {
+            MessageBox.Show("Seleccione primero un artículo base para sincronizar.", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(TxtCosto?.Text, out var costoPack);
+        PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(TxtCantidadPorPack?.Text, out var cantPack);
+        if (cantPack <= 0) cantPack = 1;
+
+        decimal costoUnitario = Math.Round(costoPack / cantPack, 2);
+        baseArt.PrecioCosto = costoUnitario;
+        baseArt.PrecioVenta = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.CalcularPrecioVentaRedondeado(baseArt.PrecioCosto, baseArt.PorcentajeGanancia, baseArt.IvaPorcentaje);
+
+        try
+        {
+            await _inventarioService.GuardarArticuloAsync(baseArt);
+            ActualizarPanelDualPrecios();
+            MessageBox.Show(
+                $"Se sincronizó el artículo suelto '{baseArt.Nombre}':\n\n" +
+                $"• Costo Unitario: ${baseArt.PrecioCosto:N2}\n" +
+                $"• Precio de Venta: ${baseArt.PrecioVenta:N2}",
+                "Precio Sincronizado",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al sincronizar precio: {ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
     }
 
     private void CmbTipo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -642,6 +946,7 @@ public partial class ArticuloModalWindow : Window
                 TxtVenta.Text = venta.ToString("0.00", CultureInfo.InvariantCulture);
             }
             ActualizarSugerenciasRedondeo(venta);
+            ActualizarPanelDualPrecios();
         }
         finally
         {
@@ -668,6 +973,7 @@ public partial class ArticuloModalWindow : Window
                 TxtMargen.Text = margen.ToString("0.#", CultureInfo.InvariantCulture);
             }
             ActualizarSugerenciasRedondeo(venta);
+            ActualizarPanelDualPrecios();
         }
         finally
         {

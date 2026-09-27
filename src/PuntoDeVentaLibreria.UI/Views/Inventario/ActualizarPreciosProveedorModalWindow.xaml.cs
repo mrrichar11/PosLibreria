@@ -342,6 +342,7 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         }
 
         bool actualizarNombres = ChkActualizarNombreConDescripcionProveedor?.IsChecked == true;
+        bool sincronizarSueltos = ChkSincronizarSueltos?.IsChecked == true;
 
         var mensajeConfirmacion = $"¿Confirma actualizar los precios de costo y venta de {seleccionados.Count:N0} artículos?";
         if (asignarProveedorId.HasValue)
@@ -356,6 +357,10 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         {
             mensajeConfirmacion += "\n• Se reemplazarán los nombres locales por las descripciones del proveedor.";
         }
+        if (sincronizarSueltos)
+        {
+            mensajeConfirmacion += "\n• Se sincronizarán automáticamente los artículos sueltos vinculados (-1) con el costo unitario del pack.";
+        }
 
         var res = MessageBox.Show(
             mensajeConfirmacion,
@@ -369,7 +374,7 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
 
         try
         {
-            var resultado = await _inventarioService.AplicarActualizacionPreciosAsync(seleccionados, asignarProveedorId, asignarRubro, actualizarNombres);
+            var resultado = await _inventarioService.AplicarActualizacionPreciosAsync(seleccionados, asignarProveedorId, asignarRubro, actualizarNombres, sincronizarSueltos);
             PreciosActualizados = true;
 
             TxtMensajeResultado.Text = $"✅ {resultado.Mensaje}";

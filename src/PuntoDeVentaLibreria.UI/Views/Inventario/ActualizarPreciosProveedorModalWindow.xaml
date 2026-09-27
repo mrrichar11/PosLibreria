@@ -91,6 +91,11 @@
                         </ComboBox>
                     </StackPanel>
 
+                    <CheckBox x:Name="ChkSincronizarSueltos" 
+                              Content="🔄 Sincronizar artículos sueltos (-1) (Costo unitario = CostoPack / Unidades)" 
+                              IsChecked="True" FontWeight="Bold" Foreground="#15803D" VerticalAlignment="Center" Margin="0,0,16,4"
+                              ToolTip="Si un artículo es un pack o posee una versión suelta con '-1' (ej. 36174 y 36174-1), actualizará automáticamente el costo y precio de la unidad suelta."/>
+
                     <CheckBox x:Name="ChkActualizarNombreConDescripcionProveedor" 
                               Content="Actualizar nombres de artículos con la descripción del proveedor" 
                               IsChecked="False" FontWeight="SemiBold" Foreground="#334155" VerticalAlignment="Center" Margin="0,0,16,4"
@@ -167,7 +172,7 @@
                         <DataGridTextColumn Header="Cód. Prov." Binding="{Binding CodigoProveedor}" Width="85" IsReadOnly="True"/>
                         <DataGridTextColumn Header="Código Barras" Binding="{Binding CodigoBarras}" Width="110" IsReadOnly="True"/>
 
-                        <!-- Descripción con mayorista debajo si existe -->
+                        <!-- Descripción con mayorista debajo si existe y suelto vinculado -->
                         <DataGridTemplateColumn Header="Descripción del Artículo" Width="*">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -176,6 +181,9 @@
                                         <TextBlock Text="{Binding DescripcionProveedor, StringFormat='(Prov: {0})'}" 
                                                    FontSize="10.5" Foreground="#64748B" FontStyle="Italic" TextTrimming="CharacterEllipsis"
                                                    Visibility="{Binding DescripcionProveedor, Converter={StaticResource BoolToVisConverter}}"/>
+                                        <TextBlock Text="{Binding NombreArticuloSuelto, StringFormat='🔗 Suelto vinculado: {0}'}" 
+                                                   FontSize="10.5" Foreground="#15803D" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
+                                                   Visibility="{Binding TieneArticuloSueltoVinculado, Converter={StaticResource BoolToVisConverter}}"/>
                                     </StackPanel>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
@@ -184,6 +192,17 @@
                         <!-- Precios Anteriores y del Proveedor -->
                         <DataGridTextColumn Header="Costo Actual" Binding="{Binding CostoAnterior, StringFormat='${0:N2}'}" Width="85" IsReadOnly="True"/>
                         <DataGridTextColumn Header="Costo Lista" Binding="{Binding CostoOriginalProveedor, StringFormat='${0:N2}'}" Width="85" Foreground="#64748B" IsReadOnly="True"/>
+
+                        <!-- Unidades según Lista Mayorista -->
+                        <DataGridTemplateColumn Header="Unidades Prov." Width="95">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Border Background="#F1F5F9" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="4" Padding="5,2" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding UnidadesProveedorTexto}" FontWeight="Bold" FontSize="11" Foreground="#475569"/>
+                                    </Border>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
 
                         <!-- Divisor de Bulto/Pack -->
                         <DataGridTemplateColumn Header="Divisor/Pack" Width="105">

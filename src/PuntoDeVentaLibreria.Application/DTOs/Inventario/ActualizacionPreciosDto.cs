@@ -22,6 +22,11 @@ public class ArticuloAumentoPrecioItemDto : INotifyPropertyChanged
     public decimal CostoAnterior { get; set; }
     public decimal CostoOriginalProveedor { get; set; }
     public int? FactorSugerido { get; set; }
+    public int? UnidadesProveedor { get; set; }
+    public string UnidadesProveedorTexto => UnidadesProveedor.HasValue ? $"{UnidadesProveedor.Value} u." : "-";
+    public bool TieneArticuloSueltoVinculado { get; set; }
+    public string? NombreArticuloSuelto { get; set; }
+    public bool EsPackArticulo { get; set; }
     public decimal PorcentajeGanancia { get; set; }
     public decimal IvaPorcentaje { get; set; }
 

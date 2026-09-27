@@ -993,12 +993,57 @@ public class InventarioService : IInventarioService
         return null;
     }
 
-    private static ArticuloAumentoPrecioItemDto ConstruirItemDto(Articulo art, decimal costoNuevo, string? descProveedor)
+    private static decimal? ParsearUnidadesPack(string? valor)
+    {
+        if (string.IsNullOrWhiteSpace(valor)) return null;
+        var trimmed = valor.Trim();
+        if (CalculoPreciosUtils.TryParseMonto(trimmed, out var num) && num > 0)
+        {
+            return num;
+        }
+        var m = Regex.Match(trimmed, @"(\d+(?:[.,]\d+)?)");
+        if (m.Success && CalculoPreciosUtils.TryParseMonto(m.Groups[1].Value, out var val) && val > 0)
+        {
+            return val;
+        }
+        return null;
+    }
+
+    private static ArticuloAumentoPrecioItemDto ConstruirItemDto(
+        Articulo art, 
+        decimal costoNuevo, 
+        string? descProveedor, 
+        decimal? unidadesExcel = null, 
+        Articulo? artSuelto = null)
     {
         var factorSugerido = DetectarFactorPack(descProveedor, art.Nombre, art.PrecioCosto, costoNuevo);
 
+        int? unidadesParsed = (unidadesExcel.HasValue && unidadesExcel.Value > 1) 
+            ? (int)Math.Round(unidadesExcel.Value) 
+            : null;
+
+        if (unidadesParsed.HasValue && !factorSugerido.HasValue)
+        {
+            factorSugerido = unidadesParsed.Value;
+        }
+
         // Si el artículo ya tenía un factor de pack guardado (> 1) previamente, lo precargamos automáticamente
         decimal factorInicial = (art.CantidadPorPack > 1) ? art.CantidadPorPack : 1m;
+
+        // Si el artículo en nuestro catálogo no tenía pack configurado, pero el mayorista indica unidades > 1,
+        // o detectamos que el costo del mayorista es muy alto y coincide con el pack de las unidades de la columna:
+        if (factorInicial <= 1m && unidadesParsed.HasValue && unidadesParsed.Value > 1)
+        {
+            if (art.PrecioCosto > 0)
+            {
+                var ratioDirecto = costoNuevo / art.PrecioCosto;
+                var ratioDividido = (costoNuevo / unidadesParsed.Value) / art.PrecioCosto;
+                if (ratioDirecto > 1.8m && ratioDividido >= 0.45m && ratioDividido <= 1.95m)
+                {
+                    factorInicial = unidadesParsed.Value;
+                }
+            }
+        }
 
         var item = new ArticuloAumentoPrecioItemDto
         {
@@ -1012,6 +1057,10 @@ public class InventarioService : IInventarioService
             CostoOriginalProveedor = costoNuevo,
             FactorConversion = factorInicial,
             FactorSugerido = factorSugerido,
+            UnidadesProveedor = unidadesParsed,
+            TieneArticuloSueltoVinculado = artSuelto != null || art.ArticuloBaseId.HasValue,
+            NombreArticuloSuelto = artSuelto?.Nombre ?? art.ArticuloBase?.Nombre,
+            EsPackArticulo = art.EsPack || art.CantidadPorPack > 1 || artSuelto != null,
             PorcentajeGanancia = art.PorcentajeGanancia,
             IvaPorcentaje = art.IvaPorcentaje,
             VentaAnterior = art.PrecioVenta
@@ -1041,6 +1090,7 @@ public class InventarioService : IInventarioService
         var query = _context.Articulos
             .AsNoTracking()
             .Include(a => a.Proveedor)
+            .Include(a => a.ArticuloBase)
             .Where(a => a.Activo);
 
         if (proveedorId.HasValue && proveedorId.Value != Guid.Empty)
@@ -1076,6 +1126,8 @@ public class InventarioService : IInventarioService
             var codProvExcel = ObtenerValorColumna(row, "codigo", "codprov", "codigoproducto", "codigoproveedor")?.Trim();
             var codBarraExcel = ObtenerValorColumna(row, "codigodebarra", "codigobarra", "codbarra", "barra", "barcode")?.Trim();
             var descExcel = ObtenerValorColumna(row, "descripcion", "detalle", "nombre", "articulo", "producto", "denominacion")?.Trim();
+            var unidadesExcelStr = ObtenerValorColumna(row, "unidades", "unidad", "unid", "cant", "cantidad", "contenido", "bulto", "pack", "presentacion", "envase", "empaque");
+            decimal? unidadesExcel = ParsearUnidadesPack(unidadesExcelStr);
 
             // Costo S/IVA y C/IVA del proveedor
             CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "s/iva", "siva", "costo", "siniva", "costosiva", "preciocosto"), out var costoSiva);
@@ -1111,19 +1163,34 @@ public class InventarioService : IInventarioService
                 continue;
             }
 
+            // Buscar si tiene artículo suelto asociado (-1 o ArticuloBase)
+            Articulo? artSuelto = null;
+            if (art.ArticuloBase != null)
+            {
+                artSuelto = art.ArticuloBase;
+            }
+            else if (!string.IsNullOrWhiteSpace(art.CodigoProveedor))
+            {
+                var claveSuelto = $"{art.CodigoProveedor.Trim().ToUpperInvariant()}-1";
+                if (dictPorCodProv.TryGetValue(claveSuelto, out var encontradoSuelto) && encontradoSuelto.Id != art.Id)
+                {
+                    artSuelto = encontradoSuelto;
+                }
+            }
+
             // Si ya procesamos este artículo de la tienda:
             if (itemsPorArticulo.TryGetValue(art.Id, out _))
             {
                 // Si el nuevo match es por código de proveedor y el anterior fue por código de barras, reemplazamos por el más específico
                 if (matchPorCodigoProveedor)
                 {
-                    itemsPorArticulo[art.Id] = ConstruirItemDto(art, costoNuevo, descExcel);
+                    itemsPorArticulo[art.Id] = ConstruirItemDto(art, costoNuevo, descExcel, unidadesExcel, artSuelto);
                 }
                 // Si ya fue emparejado, no duplicamos la fila
                 continue;
             }
 
-            itemsPorArticulo[art.Id] = ConstruirItemDto(art, costoNuevo, descExcel);
+            itemsPorArticulo[art.Id] = ConstruirItemDto(art, costoNuevo, descExcel, unidadesExcel, artSuelto);
         }
 
         resumen.CoincidenciasEncontradas = itemsPorArticulo.Count;
@@ -1143,6 +1210,7 @@ public class InventarioService : IInventarioService
         Guid? asignarProveedorId = null, 
         string? asignarRubro = null,
         bool actualizarNombresConDescripcionProveedor = false,
+        bool sincronizarArticulosSueltos = true,
         CancellationToken ct = default)
     {
         var itemsSeleccionados = items.Where(i => i.Aplicar).ToList();
@@ -1180,6 +1248,21 @@ public class InventarioService : IInventarioService
         int proveedoresAsignados = 0;
         int rubrosAsignados = 0;
         int nombresActualizados = 0;
+        int sueltosActualizados = 0;
+        int packsVinculados = 0;
+
+        // Pre-cargar catálogo indexado por CodigoProveedor si se van a sincronizar artículos sueltos
+        Dictionary<string, Articulo>? dictSueltosPorCodProv = null;
+        if (sincronizarArticulosSueltos)
+        {
+            var articulosConCodProv = await _context.Articulos
+                .Where(a => a.Activo && !string.IsNullOrWhiteSpace(a.CodigoProveedor))
+                .ToListAsync(ct);
+
+            dictSueltosPorCodProv = articulosConCodProv
+                .GroupBy(a => a.CodigoProveedor!.Trim().ToUpperInvariant())
+                .ToDictionary(g => g.Key, g => g.First());
+        }
 
         foreach (var a in articulos)
         {
@@ -1219,12 +1302,67 @@ public class InventarioService : IInventarioService
                 }
 
                 actualizados++;
+
+                // 3. Cascada automática a Artículo Suelto Vinculado (-1 o ArticuloBase)
+                if (sincronizarArticulosSueltos)
+                {
+                    Articulo? artSuelto = null;
+                    decimal factorSuelto = a.CantidadPorPack > 1 ? a.CantidadPorPack : (item.FactorConversion > 1 ? item.FactorConversion : (item.UnidadesProveedor ?? 1));
+
+                    if (a.ArticuloBaseId.HasValue)
+                    {
+                        artSuelto = await _context.Articulos.FirstOrDefaultAsync(b => b.Id == a.ArticuloBaseId.Value, ct);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(a.CodigoProveedor) && dictSueltosPorCodProv != null)
+                    {
+                        var claveSuelto = $"{a.CodigoProveedor.Trim().ToUpperInvariant()}-1";
+                        if (dictSueltosPorCodProv.TryGetValue(claveSuelto, out var encontradoSuelto) && encontradoSuelto.Id != a.Id)
+                        {
+                            artSuelto = encontradoSuelto;
+                            // Auto-vincular pack al artículo suelto si no estaba vinculado
+                            a.EsPack = true;
+                            a.ArticuloBaseId = artSuelto.Id;
+                            if (factorSuelto > 1) a.CantidadPorPack = factorSuelto;
+                            packsVinculados++;
+                        }
+                    }
+
+                    if (artSuelto != null && factorSuelto > 1)
+                    {
+                        // Costo unitario = CostoPack / factor
+                        artSuelto.PrecioCosto = Math.Round(a.PrecioCosto / factorSuelto, 2);
+                        artSuelto.PrecioVenta = CalculoPreciosUtils.CalcularPrecioVentaRedondeado(
+                            artSuelto.PrecioCosto, 
+                            artSuelto.PorcentajeGanancia, 
+                            artSuelto.IvaPorcentaje, 
+                            item.ReglaRedondeo);
+
+                        if (proveedorAsignar != null && artSuelto.ProveedorId != proveedorAsignar.Id)
+                        {
+                            artSuelto.ProveedorId = proveedorAsignar.Id;
+                        }
+                        if (!string.IsNullOrWhiteSpace(asignarRubro) && artSuelto.Rubro != asignarRubro)
+                        {
+                            artSuelto.Rubro = asignarRubro;
+                        }
+
+                        sueltosActualizados++;
+                    }
+                }
             }
         }
 
         await _context.SaveChangesAsync(ct);
 
         var mensaje = $"Se actualizaron los precios de {actualizados} artículos exitosamente.";
+        if (sueltosActualizados > 0)
+        {
+            mensaje += $" Se sincronizaron {sueltosActualizados} artículos sueltos individuales (-1).";
+        }
+        if (packsVinculados > 0)
+        {
+            mensaje += $" Se vincularon automáticamente {packsVinculados} packs a sus unidades sueltas.";
+        }
         if (nombresActualizados > 0)
         {
             mensaje += $" Se estandarizaron {nombresActualizados} nombres con el catálogo del proveedor.";

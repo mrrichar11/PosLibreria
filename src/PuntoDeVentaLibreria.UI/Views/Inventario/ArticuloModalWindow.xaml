@@ -138,24 +138,90 @@
                         <TextBlock Text="Al vender esta caja/pack, descuenta automáticamente las unidades del artículo base seleccionado."
                                    FontSize="11" Foreground="#64748B" Margin="24,2,0,8"/>
 
-                        <Grid x:Name="PanelDetallePack" Visibility="Collapsed" Margin="24,0,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="140"/>
-                            </Grid.ColumnDefinitions>
+                        <StackPanel x:Name="PanelDetallePack" Visibility="Collapsed" Margin="24,0,0,0">
+                            <!-- Fila de Selección y Búsqueda del Artículo Suelto -->
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="130"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
 
-                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                <TextBlock Text="Artículo Base Suelto vinculado (*):" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                                <ComboBox x:Name="CmbArticuloBase" DisplayMemberPath="Nombre" SelectedValuePath="Id"
-                                          FontSize="12" Padding="6,4"/>
-                            </StackPanel>
+                                <!-- Artículo Base y Búsqueda -->
+                                <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                    <DockPanel LastChildFill="False" Margin="0,0,0,4">
+                                        <TextBlock Text="Artículo Base Suelto vinculado (*):" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                        <TextBox x:Name="TxtBuscarArticuloBase" Width="170" DockPanel.Dock="Right"
+                                                 FontSize="11" Padding="4,2" TextChanged="TxtBuscarArticuloBase_TextChanged"
+                                                 ToolTip="Filtrar por código de proveedor, SKU o nombre para encontrar la unidad suelta"/>
+                                        <TextBlock Text="🔍 Filtrar:" FontSize="10.5" Foreground="#64748B" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    </DockPanel>
+                                    <ComboBox x:Name="CmbArticuloBase" SelectedValuePath="Id"
+                                              FontSize="12" Padding="6,4" SelectionChanged="CmbArticuloBase_SelectionChanged">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding CodigoProveedor, StringFormat='[{0}] '}" FontWeight="Bold" Foreground="#2563EB"
+                                                               Visibility="{Binding CodigoProveedor, Converter={StaticResource BoolToVisConverter}}"/>
+                                                    <TextBlock Text="{Binding Nombre}" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="{Binding PrecioCosto, StringFormat=' - Costo: ${0:N2}'}" Foreground="#64748B" FontSize="11"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                </StackPanel>
 
-                            <StackPanel Grid.Column="1">
-                                <TextBlock Text="Unidades por Pack (*):" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
-                                <TextBox x:Name="TxtCantidadPorPack" Text="{Binding CantidadPorPack, UpdateSourceTrigger=PropertyChanged}"
-                                         FontSize="13" FontWeight="Bold" HorizontalContentAlignment="Center" Padding="6,4"/>
-                            </StackPanel>
-                        </Grid>
+                                <!-- Unidades por Pack -->
+                                <StackPanel Grid.Column="1" Margin="0,0,10,0">
+                                    <TextBlock Text="Unidades por Pack (*):" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <TextBox x:Name="TxtCantidadPorPack" Text="{Binding CantidadPorPack, UpdateSourceTrigger=PropertyChanged}"
+                                             FontSize="13" FontWeight="Bold" HorizontalContentAlignment="Center" Padding="6,4"
+                                             TextChanged="TxtCantidadPorPack_TextChanged"/>
+                                </StackPanel>
+
+                                <!-- Botón Generar Suelto (-1) -->
+                                <StackPanel Grid.Column="2" VerticalAlignment="Bottom">
+                                    <Button x:Name="BtnCrearArticuloSuelto" Content="⚡ Crear Suelto (-1)" Click="BtnCrearArticuloSuelto_Click"
+                                            Background="#ECFDF5" Foreground="#047857" BorderBrush="#A7F3D0" BorderThickness="1.5"
+                                            FontWeight="Bold" FontSize="11.5" Padding="10,6" Cursor="Hand"
+                                            ToolTip="Genera automáticamente el artículo suelto por unidad con código '[CodProv]-1', costo prorrateado y margen comercial."/>
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- TARJETA DUAL DE PRECIOS: PACK VS UNIDAD SUELTA -->
+                            <Border Background="#F0FDF4" BorderBrush="#BBF7D0" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,4,0,0">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="1.2*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- Columna Pack -->
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="📦 PACK COMPLETO" FontWeight="Bold" FontSize="11" Foreground="#166534" Margin="0,0,0,4"/>
+                                        <TextBlock x:Name="TxtDualPackCosto" Text="Costo Pack: $0,00" FontSize="11.5" Foreground="#334155"/>
+                                        <TextBlock x:Name="TxtDualPackVenta" Text="Venta Pack: $0,00" FontSize="11.5" FontWeight="SemiBold" Foreground="#0284C7"/>
+                                    </StackPanel>
+
+                                    <Border Grid.Column="1" Width="1" Background="#CBD5E1" Margin="12,0"/>
+
+                                    <!-- Columna Unidad Suelta -->
+                                    <StackPanel Grid.Column="2">
+                                        <DockPanel LastChildFill="False" Margin="0,0,0,4">
+                                            <TextBlock Text="📄 UNIDAD SUELTA VINCULADA" FontWeight="Bold" FontSize="11" Foreground="#166534" VerticalAlignment="Center"/>
+                                            <Button x:Name="BtnSincronizarPrecioSuelto" DockPanel.Dock="Right" Content="🔄 Sincronizar Precio" 
+                                                    Click="BtnSincronizarPrecioSuelto_Click"
+                                                    Background="#DCFCE7" Foreground="#15803D" BorderBrush="#86EFAC" BorderThickness="1"
+                                                    FontWeight="Bold" FontSize="10.5" Padding="6,2" Cursor="Hand"
+                                                    ToolTip="Aplica el costo unitario (Costo Pack / Unidades) y recalcula la venta en el artículo suelto"/>
+                                        </DockPanel>
+                                        <TextBlock x:Name="TxtDualSueltoCostoSugerido" Text="Costo Unitario Sugerido: $0,00" FontSize="11.5" FontWeight="Bold" Foreground="#B91C1C"/>
+                                        <TextBlock x:Name="TxtDualSueltoCatalogo" Text="En Catálogo: Costo $0,00 | Venta $0,00" FontSize="11" Foreground="#475569"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
                 </Border>
 

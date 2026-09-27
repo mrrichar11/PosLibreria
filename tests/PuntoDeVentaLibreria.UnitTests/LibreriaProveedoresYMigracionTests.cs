@@ -580,4 +580,142 @@ public class LibreriaProveedoresYMigracionTests
         artDb.PrecioCosto.Should().Be(1300m);
         artDb.PrecioVenta.Should().Be(2400m);
     }
+
+    [Fact]
+    public async Task PrevisualizarActualizacionPreciosProveedor_ConColumnaUnidades_DetectaUnidadesYVinculacionSuelto()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        // Artículo Pack
+        var artPack = new PuntoDeVentaLibreria.Domain.Entities.Catalogo.Articulo
+        {
+            Id = Guid.NewGuid(),
+            Nombre = "ROLLER FILGO GEL TUTTI POP 1.0 x4u.",
+            SKU = "FILGO-TUTTI-4",
+            CodigoProveedor = "36174",
+            PrecioCosto = 3084.93m,
+            PrecioVenta = 6300m,
+            CantidadPorPack = 4,
+            EsPack = true,
+            Activo = true
+        };
+
+        // Artículo Suelto (-1)
+        var artSuelto = new PuntoDeVentaLibreria.Domain.Entities.Catalogo.Articulo
+        {
+            Id = Guid.NewGuid(),
+            Nombre = "LAPICERAS X 1 - FILGO",
+            SKU = "FILGO-TUTTI-1",
+            CodigoProveedor = "36174-1",
+            PrecioCosto = 771.23m,
+            PrecioVenta = 2000m,
+            Activo = true
+        };
+
+        artPack.ArticuloBaseId = artSuelto.Id;
+        context.Articulos.AddRange(artPack, artSuelto);
+        await context.SaveChangesAsync();
+
+        // Crear Excel en memoria con columna 'Unidades'
+        using var workbook = new ClosedXML.Excel.XLWorkbook();
+        var worksheet = workbook.Worksheets.Add("Precios");
+        worksheet.Cell(1, 1).Value = "Codigo";
+        worksheet.Cell(1, 2).Value = "Descripcion";
+        worksheet.Cell(1, 3).Value = "Costo";
+        worksheet.Cell(1, 4).Value = "Unidades";
+
+        worksheet.Cell(2, 1).Value = "36174";
+        worksheet.Cell(2, 2).Value = "ROLLER FILGO GEL TUTTI POP 1.0 x4u.";
+        worksheet.Cell(2, 3).Value = 3500.00;
+        worksheet.Cell(2, 4).Value = 4;
+
+        using var stream = new MemoryStream();
+        workbook.SaveAs(stream);
+        stream.Position = 0;
+
+        var resumen = await inventarioService.PrevisualizarActualizacionPreciosProveedorAsync(stream);
+
+        resumen.CoincidenciasEncontradas.Should().Be(1);
+        var item = resumen.ItemsParaActualizar.First();
+        item.CodigoProveedor.Should().Be("36174");
+        item.UnidadesProveedor.Should().Be(4);
+        item.UnidadesProveedorTexto.Should().Be("4 u.");
+        item.TieneArticuloSueltoVinculado.Should().BeTrue();
+        item.FactorSugerido.Should().Be(4);
+    }
+
+    [Fact]
+    public async Task AplicarActualizacionPrecios_ConCascadaArticuloSuelto_ActualizaYVinculaArticuloSueltoMenosUno()
+    {
+        using var context = CrearContextoEnMemoria();
+        var inventarioService = new InventarioService(context);
+
+        // Pack importado sin vincular aún
+        var artPack = new PuntoDeVentaLibreria.Domain.Entities.Catalogo.Articulo
+        {
+            Id = Guid.NewGuid(),
+            Nombre = "ROLLER FILGO GEL TUTTI POP 1.0 x4u.",
+            SKU = "PACK-36174",
+            CodigoProveedor = "36174",
+            PrecioCosto = 2800m,
+            PrecioVenta = 5600m,
+            EsPack = false,
+            Activo = true
+        };
+
+        // Artículo suelto individual con '-1'
+        var artSuelto = new PuntoDeVentaLibreria.Domain.Entities.Catalogo.Articulo
+        {
+            Id = Guid.NewGuid(),
+            Nombre = "LAPICERAS X 1 - FILGO",
+            SKU = "SUELTO-36174-1",
+            CodigoProveedor = "36174-1",
+            PrecioCosto = 700m,
+            PorcentajeGanancia = 100m,
+            IvaPorcentaje = 21m,
+            PrecioVenta = 1700m,
+            Activo = true
+        };
+
+        context.Articulos.AddRange(artPack, artSuelto);
+        await context.SaveChangesAsync();
+
+        var item = new ArticuloAumentoPrecioItemDto
+        {
+            ArticuloId = artPack.Id,
+            SKU = artPack.SKU,
+            Nombre = artPack.Nombre,
+            CodigoProveedor = artPack.CodigoProveedor,
+            CostoAnterior = 2800m,
+            CostoOriginalProveedor = 4000m,
+            FactorConversion = 1m,
+            UnidadesProveedor = 4,
+            CostoNuevo = 4000m,
+            VentaNueva = 8000m,
+            Aplicar = true
+        };
+
+        var resultado = await inventarioService.AplicarActualizacionPreciosAsync(
+            new[] { item }, 
+            sincronizarArticulosSueltos: true);
+
+        resultado.TotalActualizados.Should().Be(1);
+        resultado.Mensaje.Should().Contain("sincronizaron 1 artículos sueltos individuales (-1)");
+
+        // 1. Pack actualizado y auto-vinculado
+        var packDb = await context.Articulos.FindAsync(artPack.Id);
+        packDb!.PrecioCosto.Should().Be(4000m);
+        packDb.PrecioVenta.Should().Be(8000m);
+        packDb.EsPack.Should().BeTrue();
+        packDb.ArticuloBaseId.Should().Be(artSuelto.Id);
+        packDb.CantidadPorPack.Should().Be(4);
+
+        // 2. Artículo suelto con costo y venta sincronizados automáticamente (4000 / 4 = 1000)
+        var sueltoDb = await context.Articulos.FindAsync(artSuelto.Id);
+        sueltoDb!.PrecioCosto.Should().Be(1000m);
+        // Costo con IVA = 1210. Con 100% margen = 2420. Redondeado a centena = 2400.
+        sueltoDb.PrecioVenta.Should().BeGreaterThan(2000m);
+    }
 }
+
