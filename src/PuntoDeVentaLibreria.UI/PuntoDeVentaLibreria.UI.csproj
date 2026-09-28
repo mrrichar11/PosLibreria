@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\PuntoDeVentaLibreria.Domain\PuntoDeVentaLibreria.Domain.csproj" />
@@ -10,6 +10,7 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="WPF-UI" Version="4.3.0" />
+    <PackageReference Include="ClosedXML" Version="0.102.3" />
   </ItemGroup>
 
   <PropertyGroup>

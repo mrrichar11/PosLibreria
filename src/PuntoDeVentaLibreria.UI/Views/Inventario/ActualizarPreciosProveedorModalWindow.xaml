@@ -188,6 +188,9 @@
 
                     <!-- Acciones Masivas -->
                     <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button x:Name="BtnExportarExcel" Content="📥 Exportar Excel" Click="BtnExportarExcel_Click"
+                                Background="#F0FDF4" BorderBrush="#86EFAC" BorderThickness="1" Foreground="#15803D" FontWeight="Bold" FontSize="11" Padding="8,4" Cursor="Hand" Margin="0,0,8,0"
+                                ToolTip="Exportar los artículos visibles a una planilla Excel (.xlsx)"/>
                         <Button x:Name="BtnAutoAplicarDivisores" Content="✨ Auto-aplicar divisores" Click="BtnAutoAplicarDivisores_Click"
                                 Background="#EDE9FE" BorderBrush="#C4B5FD" BorderThickness="1" Foreground="#6D28D9" FontWeight="Bold" FontSize="11" Padding="8,4" Cursor="Hand" Margin="0,0,8,0"/>
                         <Button Content="☑️ Solo aumentos" Click="BtnMarcarSoloAumentos_Click" Background="Transparent" BorderThickness="0" Foreground="#15803D" FontWeight="Bold" FontSize="11" Cursor="Hand" Margin="0,0,6,0"/>
@@ -203,7 +206,7 @@
             <Grid>
                 <DataGrid x:Name="GridComparativa" AutoGenerateColumns="False" CanUserAddRows="False" CanUserDeleteRows="False"
                           HeadersVisibility="Column" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#F1F5F9"
-                          RowHeight="44" FontSize="12" Background="White" BorderThickness="0"
+                          MinRowHeight="44" FontSize="12" Background="White" BorderThickness="0"
                           MouseDoubleClick="GridComparativa_MouseDoubleClick">
                     <DataGrid.Columns>
                         <!-- Aplicar -->
@@ -224,10 +227,18 @@
                                         <TextBlock Text="{Binding NombreArticuloSuelto, StringFormat='🔗 Suelto vinculado: {0}'}" 
                                                    FontSize="10.5" Foreground="#15803D" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
                                                    Visibility="{Binding TieneArticuloSueltoVinculado, Converter={StaticResource BoolToVisConverter}}"/>
-                                        <Border Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="4" Padding="4,2" Margin="0,2,0,0"
+                                        <Border Background="#FEF2F2" BorderBrush="#FECACA" BorderThickness="1" CornerRadius="4" Padding="6,3" Margin="0,3,0,0"
                                                 Visibility="{Binding EsAlertaCodigoReutilizado, Converter={StaticResource BoolToVisConverter}}">
-                                            <TextBlock Text="{Binding DescripcionProveedor, StringFormat='⚠️ CÓDIGO REUTILIZADO? Mayorista lista: \'{0}\''}" 
-                                                       FontWeight="Bold" Foreground="#DC2626" FontSize="10.5" TextTrimming="CharacterEllipsis"/>
+                                            <WrapPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DescripcionProveedor, StringFormat='⚠️ CÓDIGO DISTINTO? Mayorista lista: \'{0}\''}" 
+                                                           FontWeight="Bold" Foreground="#DC2626" FontSize="10.5" VerticalAlignment="Center" Margin="0,0,8,2"/>
+                                                <Button Content="🏷️ Usar nombre mayorista" Click="BtnAdoptarNombreMayorista_Click"
+                                                        Background="#DC2626" Foreground="White" FontWeight="Bold" FontSize="9.5" Padding="6,2" Margin="0,0,4,2" Cursor="Hand" BorderThickness="0"
+                                                        ToolTip="Si es el mismo producto, adopta la descripción del mayorista y quita la alerta"/>
+                                                <Button Content="🔓 Liberar código" Click="BtnLiberarCodigoFila_Click"
+                                                        Background="#FFF" BorderBrush="#DC2626" BorderThickness="1" Foreground="#DC2626" FontWeight="Bold" FontSize="9.5" Padding="6,2" Margin="0,0,0,2" Cursor="Hand"
+                                                        ToolTip="Quita el código de proveedor a este artículo para que quede libre para el mayorista"/>
+                                            </WrapPanel>
                                         </Border>
                                     </StackPanel>
                                 </DataTemplate>

@@ -230,6 +230,19 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         var view = CollectionViewSource.GetDefaultView(GridComparativa.ItemsSource);
         if (view == null) return;
 
+        // Confirmar cualquier edición pendiente en la grilla para evitar InvalidOperationException:
+        // "No se permite 'Filter' durante una transacción AddNew o EditItem"
+        try
+        {
+            GridComparativa.CommitEdit(DataGridEditingUnit.Row, true);
+            if (view is IEditableCollectionView editableView)
+            {
+                if (editableView.IsEditingItem) editableView.CommitEdit();
+                if (editableView.IsAddingNew) editableView.CommitNew();
+            }
+        }
+        catch { }
+
         view.Filter = obj =>
         {
             if (obj is not ArticuloAumentoPrecioItemDto item) return false;
@@ -360,6 +373,157 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
             item.Aplicar = false;
             GridComparativa.Items.Refresh();
             BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+        }
+    }
+
+    private async void BtnAdoptarNombreMayorista_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.DataContext is ArticuloAumentoPrecioItemDto item)
+        {
+            if (string.IsNullOrWhiteSpace(item.DescripcionProveedor)) return;
+
+            item.Nombre = item.DescripcionProveedor;
+            item.EsAlertaCodigoReutilizado = false;
+            item.Recalcular();
+
+            if (!item.EsAlertaVariacionExtrema && !item.EsBajaDePrecio)
+            {
+                item.Aplicar = true;
+            }
+
+            try
+            {
+                var art = await _inventarioService.ObtenerPorIdAsync(item.ArticuloId);
+                if (art != null)
+                {
+                    art.Nombre = item.DescripcionProveedor;
+                    await _inventarioService.GuardarArticuloAsync(art);
+                }
+            }
+            catch { }
+
+            GridComparativa.Items.Refresh();
+            ActualizarContadoresMetricas();
+            BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+        }
+    }
+
+    private async void BtnLiberarCodigoFila_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.DataContext is ArticuloAumentoPrecioItemDto item)
+        {
+            var confirm = MessageBox.Show(
+                $"¿Desea quitar el código de proveedor '{item.CodigoProveedor}' del artículo '{item.Nombre}'?\n\nEsto liberará el código para que en el futuro pertenezca al producto del mayorista ('{item.DescripcionProveedor}').\n\nEl artículo '{item.Nombre}' mantendrá su SKU y código de barras intactos en el catálogo.",
+                "Liberar Código de Proveedor",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (confirm == MessageBoxResult.Yes)
+            {
+                try
+                {
+                    var art = await _inventarioService.ObtenerPorIdAsync(item.ArticuloId);
+                    if (art != null)
+                    {
+                        art.CodigoProveedor = null;
+                        await _inventarioService.GuardarArticuloAsync(art);
+                    }
+
+                    _itemsComparados.Remove(item);
+                    GridComparativa.Items.Refresh();
+                    ActualizarContadoresMetricas();
+                    BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+
+                    MessageBox.Show($"El código '{item.CodigoProveedor}' fue desvinculado con éxito. Ahora queda libre para el mayorista.", 
+                        "MR SYS", MessageBoxButton.OK, MessageBoxImage.Information);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error al liberar el código: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+            }
+        }
+    }
+
+    private void BtnExportarExcel_Click(object sender, RoutedEventArgs e)
+    {
+        if (_itemsComparados == null || _itemsComparados.Count == 0)
+        {
+            MessageBox.Show("No hay datos en la lista para exportar.", "Aviso", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var sfd = new SaveFileDialog
+        {
+            Filter = "Archivos de Excel (*.xlsx)|*.xlsx",
+            FileName = $"Comparativa_Precios_{DateTime.Now:yyyyMMdd_HHmm}.xlsx",
+            Title = "Exportar Comparativa de Precios"
+        };
+
+        if (sfd.ShowDialog() != true) return;
+
+        try
+        {
+            var view = CollectionViewSource.GetDefaultView(GridComparativa.ItemsSource);
+            var itemsParaExportar = _itemsComparados
+                .Where(item => view?.Filter == null || view.Filter(item))
+                .ToList();
+
+            using var workbook = new ClosedXML.Excel.XLWorkbook();
+            var ws = workbook.Worksheets.Add("Comparativa");
+
+            string[] headers = 
+            { 
+                "Aplicar", "SKU", "Cód. Proveedor", "Código Barras", "Descripción Local", 
+                "Descripción Proveedor", "Costo Anterior", "Costo Mayorista", "Unidades", 
+                "Divisor Aplicado", "Costo Nuevo", "Venta Anterior", "Venta Nueva", "% Variación", "Estado / Alerta" 
+            };
+
+            for (int i = 0; i < headers.Length; i++)
+            {
+                var cell = ws.Cell(1, i + 1);
+                cell.Value = headers[i];
+                cell.Style.Font.Bold = true;
+                cell.Style.Fill.BackgroundColor = ClosedXML.Excel.XLColor.FromHtml("#6D28D9");
+                cell.Style.Font.FontColor = ClosedXML.Excel.XLColor.White;
+            }
+
+            int rowIdx = 2;
+            foreach (var item in itemsParaExportar)
+            {
+                ws.Cell(rowIdx, 1).Value = item.Aplicar ? "SÍ" : "NO";
+                ws.Cell(rowIdx, 2).Value = item.SKU;
+                ws.Cell(rowIdx, 3).Value = item.CodigoProveedor;
+                ws.Cell(rowIdx, 4).Value = item.CodigoBarras;
+                ws.Cell(rowIdx, 5).Value = item.Nombre;
+                ws.Cell(rowIdx, 6).Value = item.DescripcionProveedor;
+                ws.Cell(rowIdx, 7).Value = (double)item.CostoAnterior;
+                ws.Cell(rowIdx, 8).Value = (double)item.CostoOriginalProveedor;
+                ws.Cell(rowIdx, 9).Value = item.UnidadesProveedor ?? 1;
+                ws.Cell(rowIdx, 10).Value = (double)item.FactorConversion;
+                ws.Cell(rowIdx, 11).Value = (double)item.CostoNuevo;
+                ws.Cell(rowIdx, 12).Value = (double)item.VentaAnterior;
+                ws.Cell(rowIdx, 13).Value = (double)item.VentaNueva;
+                ws.Cell(rowIdx, 14).Value = (double)item.VariacionPorcentaje;
+                ws.Cell(rowIdx, 15).Value = item.EsAlertaCodigoReutilizado ? "CÓDIGO DISTINTO" : (item.EsAlertaVariacionExtrema ? "VARIACIÓN EXTREMA" : (item.EsBajaDePrecio ? "BAJA" : "NORMAL"));
+
+                rowIdx++;
+            }
+
+            ws.Columns().AdjustToContents();
+            workbook.SaveAs(sfd.FileName);
+
+            var abrir = MessageBox.Show($"Se exportaron {itemsParaExportar.Count} filas a Excel con éxito.\n\n¿Desea abrir el archivo ahora?", 
+                "Exportación Exitosa", MessageBoxButton.YesNo, MessageBoxImage.Information);
+
+            if (abrir == MessageBoxResult.Yes)
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(sfd.FileName) { UseShellExecute = true });
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Error al exportar a Excel:\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
