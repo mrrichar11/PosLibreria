@@ -7,6 +7,7 @@ using Microsoft.Win32;
 using PuntoDeVentaLibreria.Application.DTOs.Inventario;
 using PuntoDeVentaLibreria.Application.DTOs.Proveedores;
 using PuntoDeVentaLibreria.Application.Services;
+using PuntoDeVentaLibreria.Infrastructure.Services;
 
 namespace PuntoDeVentaLibreria.UI.Views.Inventario;
 
@@ -140,7 +141,7 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
             _filtroTipoActual = "Todos";
             AplicarFiltroVista();
 
-            BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+            ActualizarBotonAplicarHabilitado();
         }
         catch (Exception ex)
         {
@@ -152,6 +153,51 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
             PbProgreso.Visibility = Visibility.Collapsed;
             BtnComparar.IsEnabled = true;
         }
+    }
+
+    private void SafeRefreshGrid()
+    {
+        if (GridComparativa == null || GridComparativa.ItemsSource == null) return;
+        try
+        {
+            GridComparativa.CancelEdit();
+            GridComparativa.CommitEdit(DataGridEditingUnit.Row, true);
+            var view = CollectionViewSource.GetDefaultView(GridComparativa.ItemsSource);
+            if (view is IEditableCollectionView editableView)
+            {
+                if (editableView.IsEditingItem) editableView.CommitEdit();
+                if (editableView.IsAddingNew) editableView.CommitNew();
+            }
+            GridComparativa.Items.Refresh();
+        }
+        catch
+        {
+            try
+            {
+                var view = CollectionViewSource.GetDefaultView(GridComparativa.ItemsSource);
+                if (view is IEditableCollectionView editableView && editableView.IsEditingItem)
+                {
+                    editableView.CancelEdit();
+                }
+                GridComparativa.Items.Refresh();
+            }
+            catch { }
+        }
+    }
+
+    private void ActualizarBotonAplicarHabilitado()
+    {
+        if (BtnAplicarAumento == null) return;
+        int cant = _itemsComparados?.Count(i => i.Aplicar) ?? 0;
+        BtnAplicarAumento.IsEnabled = cant > 0;
+        BtnAplicarAumento.Content = cant > 0 
+            ? $"💾 Actualizar Precios Seleccionados ({cant:N0})" 
+            : "💾 Actualizar Precios Seleccionados";
+    }
+
+    private void ChkFilaAplicar_Click(object sender, RoutedEventArgs e)
+    {
+        ActualizarBotonAplicarHabilitado();
     }
 
     private void ActualizarContadoresMetricas()
@@ -322,9 +368,11 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
                     item.VentaAnterior = actualizado.PrecioVenta;
                     item.PorcentajeGanancia = actualizado.PorcentajeGanancia;
                     item.IvaPorcentaje = actualizado.IvaPorcentaje;
+                    item.EsAlertaCodigoReutilizado = InventarioService.SonNombresCompletamenteDiferentes(item.Nombre, item.DescripcionProveedor);
                     item.Recalcular();
-                    GridComparativa.Items.Refresh();
+                    SafeRefreshGrid();
                     ActualizarContadoresMetricas();
+                    ActualizarBotonAplicarHabilitado();
                 }
             }
         }
@@ -352,9 +400,9 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
                     if (ok)
                     {
                         _itemsComparados.Remove(item);
-                        GridComparativa.Items.Refresh();
+                        SafeRefreshGrid();
                         ActualizarContadoresMetricas();
-                        BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+                        ActualizarBotonAplicarHabilitado();
                         MessageBox.Show("Artículo eliminado con éxito del catálogo.", "MR SYS", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                 }
@@ -371,8 +419,8 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         if (sender is Button btn && btn.DataContext is ArticuloAumentoPrecioItemDto item)
         {
             item.Aplicar = false;
-            GridComparativa.Items.Refresh();
-            BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+            SafeRefreshGrid();
+            ActualizarBotonAplicarHabilitado();
         }
     }
 
@@ -402,9 +450,9 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
             }
             catch { }
 
-            GridComparativa.Items.Refresh();
+            SafeRefreshGrid();
             ActualizarContadoresMetricas();
-            BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+            ActualizarBotonAplicarHabilitado();
         }
     }
 
@@ -430,9 +478,9 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
                     }
 
                     _itemsComparados.Remove(item);
-                    GridComparativa.Items.Refresh();
+                    SafeRefreshGrid();
                     ActualizarContadoresMetricas();
-                    BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+                    ActualizarBotonAplicarHabilitado();
 
                     MessageBox.Show($"El código '{item.CodigoProveedor}' fue desvinculado con éxito. Ahora queda libre para el mayorista.", 
                         "MR SYS", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -534,7 +582,7 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
             item.FactorConversion = item.FactorSugerido.Value;
             item.Aplicar = true;
             ActualizarContadoresMetricas();
-            BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+            ActualizarBotonAplicarHabilitado();
         }
     }
 
@@ -552,8 +600,8 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         }
 
         ActualizarContadoresMetricas();
-        GridComparativa.Items.Refresh();
-        BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+        SafeRefreshGrid();
+        ActualizarBotonAplicarHabilitado();
 
         MessageBox.Show($"Se aplicaron automáticamente los factores divisores a {aplicados:N0} artículos en base a su presentación.", 
             "MR SYS - Conciliación de Packs", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -572,8 +620,8 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
                 item.Aplicar = false;
             }
         }
-        GridComparativa.Items.Refresh();
-        BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+        SafeRefreshGrid();
+        ActualizarBotonAplicarHabilitado();
     }
 
     private void BtnMarcarTodos_Click(object sender, RoutedEventArgs e)
@@ -589,8 +637,8 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
                 }
             }
         }
-        GridComparativa.Items.Refresh();
-        BtnAplicarAumento.IsEnabled = _itemsComparados.Any(i => i.Aplicar);
+        SafeRefreshGrid();
+        ActualizarBotonAplicarHabilitado();
     }
 
     private void BtnDesmarcarTodos_Click(object sender, RoutedEventArgs e)
@@ -599,8 +647,8 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
         {
             item.Aplicar = false;
         }
-        GridComparativa.Items.Refresh();
-        BtnAplicarAumento.IsEnabled = false;
+        SafeRefreshGrid();
+        ActualizarBotonAplicarHabilitado();
     }
 
     private void CmbReglaRedondeo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -612,7 +660,7 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
             item.ReglaRedondeo = regla;
             item.Recalcular();
         }
-        GridComparativa?.Items?.Refresh();
+        SafeRefreshGrid();
     }
 
     private PuntoDeVentaLibreria.Application.Common.ReglaRedondeoPrecio ObtenerReglaRedondeoSeleccionada()
@@ -703,22 +751,43 @@ public partial class ActualizarPreciosProveedorModalWindow : Window
             var resultado = await _inventarioService.AplicarActualizacionPreciosAsync(seleccionados, asignarProveedorId, asignarRubro, actualizarNombres, sincronizarSueltos);
             PreciosActualizados = true;
 
+            // Quitar de la lista los artículos actualizados para permitir revisión iterativa por lotes
+            var idsActualizados = seleccionados.Select(s => s.ArticuloId).ToHashSet();
+            _itemsComparados.RemoveAll(i => idsActualizados.Contains(i.ArticuloId));
+
+            GridComparativa.ItemsSource = null;
+            GridComparativa.ItemsSource = _itemsComparados;
+            AplicarFiltroVista();
+            ActualizarContadoresMetricas();
+            ActualizarBotonAplicarHabilitado();
+
             TxtMensajeResultado.Text = $"✅ {resultado.Mensaje}";
             TxtMensajeResultado.Foreground = System.Windows.Media.Brushes.DarkViolet;
 
-            MessageBox.Show(
-                resultado.Mensaje,
-                "MR SYS - Precios Actualizados",
-                MessageBoxButton.OK,
-                MessageBoxImage.Information);
+            if (_itemsComparados.Count == 0)
+            {
+                MessageBox.Show(
+                    $"{resultado.Mensaje}\n\nTodos los artículos de la lista han sido procesados.",
+                    "MR SYS - Precios Actualizados",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
 
-            DialogResult = true;
-            Close();
+                DialogResult = true;
+                Close();
+            }
+            else
+            {
+                MessageBox.Show(
+                    $"{resultado.Mensaje}\n\nQuedan {_itemsComparados.Count:N0} artículos pendientes en la comparativa para continuar revisando.",
+                    "MR SYS - Lote Actualizado con Éxito",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
         }
         catch (Exception ex)
         {
             MessageBox.Show($"Error al aplicar precios: {ex.Message}", "MR SYS Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            BtnAplicarAumento.IsEnabled = true;
+            ActualizarBotonAplicarHabilitado();
         }
         finally
         {

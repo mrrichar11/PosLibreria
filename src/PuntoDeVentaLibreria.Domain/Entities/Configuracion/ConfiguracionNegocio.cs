@@ -24,6 +24,12 @@ public class ConfiguracionNegocio : BaseEntity
     public bool Habilitar6Cuotas { get; set; } = true;
     public decimal Recargo6Cuotas { get; set; } = 25.0m;
 
+    /// <summary>Porcentaje de recargo de tarjeta para precio de lista (default 25%)</summary>
+    public decimal PorcentajeRecargoTarjeta { get; set; } = 25.0m;
+
+    /// <summary>Recargo financiero mayor configurado (tomando siempre el mayor, que será 25%)</summary>
+    public decimal RecargoTarjetaMayor => Math.Max(PorcentajeRecargoTarjeta, Math.Max(Recargo6Cuotas, Math.Max(Recargo3Cuotas, RecargoCuotasTarjetaCredito)));
+
     public decimal TopeFiadoDefecto { get; set; } = 60000m;
     public decimal TopeMensualRetiroDueño { get; set; } = 700000m;
     public string TemaInterfaz { get; set; } = "Light";

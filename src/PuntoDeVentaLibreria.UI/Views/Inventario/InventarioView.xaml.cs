@@ -85,6 +85,15 @@ public partial class InventarioView : UserControl
         await ViewModel.CargarDatosAsync();
     }
 
+    private void BtnListaAnterior_Click(object sender, RoutedEventArgs e)
+    {
+        var modal = new ConsultaListaAnteriorModalWindow(_inventarioService)
+        {
+            Owner = Window.GetWindow(this)
+        };
+        modal.ShowDialog();
+    }
+
     private async void CmbPorPagina_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (ViewModel == null || CmbPorPagina?.SelectedItem is not ComboBoxItem item) return;

@@ -1,0 +1,195 @@
+<Window x:Class="PuntoDeVentaLibreria.UI.Views.Inventario.ConsultaListaAnteriorModalWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="🛡️ Consulta de Lista Original del Sistema Anterior (Histórico Intacto)" 
+        Height="640" Width="1050"
+        MinHeight="500" MinWidth="850"
+        WindowStartupLocation="CenterOwner"
+        Background="#F8FAFC"
+        FontFamily="Segoe UI Variable, Segoe UI, sans-serif">
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- Cabecera -->
+            <RowDefinition Height="Auto"/> <!-- Buscador y Carga -->
+            <RowDefinition Height="*"/>    <!-- Grilla de Artículos Históricos -->
+            <RowDefinition Height="Auto"/> <!-- Botonera y Nota -->
+        </Grid.RowDefinitions>
+
+        <!-- CABECERA -->
+        <Border Grid.Row="0" Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="10" Padding="16,12" Margin="0,0,0,12">
+            <DockPanel LastChildFill="True">
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Badge Total -->
+                    <Border Background="#EFF6FF" BorderBrush="#BFDBFE" BorderThickness="1" CornerRadius="6" Padding="12,6" Margin="0,0,10,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="🛡️ Resguardo: " FontSize="12" FontWeight="SemiBold" Foreground="#1E40AF"/>
+                            <TextBlock x:Name="TxtTotalRegistros" Text="0 productos" FontSize="12" FontWeight="Bold" Foreground="#1D4ED8"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Botón Cargar / Reemplazar Excel -->
+                    <Button Content="📁 Cargar / Subir Excel Exportado" Click="BtnCargarExcel_Click"
+                            Background="#16A34A" Foreground="White" FontWeight="Bold" Padding="14,7" FontSize="12" Cursor="Hand"
+                            ToolTip="Subir el archivo Excel (ej. PRECIOS LISTA SISTEMA.xlsx) para almacenarlo intacto como referencia"/>
+                </StackPanel>
+
+                <StackPanel VerticalAlignment="Center">
+                    <DockPanel>
+                        <TextBlock Text="📜 " FontSize="18" VerticalAlignment="Center"/>
+                        <TextBlock Text="LISTA ORIGINAL DEL SISTEMA ANTERIOR (AUDITORÍA &amp; RESGUARDO)" FontSize="16" FontWeight="Bold" Foreground="#0F172A"/>
+                    </DockPanel>
+                    <TextBlock Text="Consulte la lista exportada original para verificar qué producto o precio tenía cualquier código dudoso o modificado." 
+                               FontSize="11.5" Foreground="#64748B" Margin="0,3,0,0"/>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <!-- BUSCADOR -->
+        <Border Grid.Row="1" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,10">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="🔍 Buscar en lista original:" FontSize="13" FontWeight="Bold" Foreground="#475569" VerticalAlignment="Center" Margin="0,0,10,0"/>
+
+                <TextBox x:Name="TxtBuscar" Grid.Column="1" FontSize="14" FontWeight="SemiBold" Padding="8,5"
+                         TextChanged="TxtBuscar_TextChanged" KeyDown="TxtBuscar_KeyDown"/>
+
+                <Button Grid.Column="2" Content="Buscar [ENTER]" Click="BtnBuscar_Click"
+                        Margin="8,0,0,0" Padding="14,6" FontWeight="Bold" Background="#2563EB" Foreground="White" Cursor="Hand"/>
+            </Grid>
+        </Border>
+
+        <!-- GRILLA DE PRODUCTOS HISTÓRICOS -->
+        <Border Grid.Row="2" Background="White" BorderBrush="#CBD5E1" BorderThickness="1" CornerRadius="8">
+            <DataGrid x:Name="GridHistorico"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      IsReadOnly="True"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="Horizontal"
+                      HorizontalGridLinesBrush="#F1F5F9"
+                      RowHeight="36"
+                      FontSize="12.5"
+                      Background="White"
+                      BorderThickness="0">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Código" Binding="{Binding Codigo}" Width="100">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Foreground" Value="#0F172A"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Margin" Value="6,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="Cód. Proveedor" Binding="{Binding CodigoProveedor}" Width="110">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#64748B"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Margin" Value="4,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="Código Barras" Binding="{Binding CodigoBarras}" Width="120">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#475569"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Margin" Value="4,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="Descripción Original" Binding="{Binding Descripcion}" Width="*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                                <Setter Property="Foreground" Value="#1E293B"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Margin" Value="4,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="P. Venta Antiguo" Binding="{Binding PrecioVenta, StringFormat='${0:N2}'}" Width="120">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="Black"/>
+                                <Setter Property="Foreground" Value="#2563EB"/>
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Margin" Value="0,0,8,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="P. Lista Antiguo" Binding="{Binding PrecioLista, StringFormat='${0:N2}'}" Width="110">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#475569"/>
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Margin" Value="0,0,8,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="Costo Antiguo" Binding="{Binding PrecioCosto, StringFormat='${0:N2}'}" Width="105">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#64748B"/>
+                                <Setter Property="HorizontalAlignment" Value="Right"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Margin" Value="0,0,8,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="Rubro" Binding="{Binding Rubro}" Width="100">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#059669"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Margin" Value="4,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="Proveedor" Binding="{Binding Proveedor}" Width="110">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#64748B"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                <Setter Property="Margin" Value="4,0"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- BOTONERA INFERIOR -->
+        <DockPanel Grid.Row="3" Margin="0,12,0,0">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="🛡️ Esta lista es 100% de solo lectura. No modifica ningún precio de su sistema actual." 
+                           FontSize="11.5" Foreground="#047857" FontWeight="SemiBold"/>
+            </StackPanel>
+
+            <Button Content="Cerrar [ESC]" Click="BtnCerrar_Click" HorizontalAlignment="Right"
+                    Padding="18,8" FontSize="13" Cursor="Hand"/>
+        </DockPanel>
+    </Grid>
+</Window>

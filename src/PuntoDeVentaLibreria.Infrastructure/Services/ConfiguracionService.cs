@@ -50,6 +50,7 @@ public class ConfiguracionService : IConfiguracionService
             Recargo3Cuotas = config.Recargo3Cuotas,
             Habilitar6Cuotas = config.Habilitar6Cuotas,
             Recargo6Cuotas = config.Recargo6Cuotas,
+            PorcentajeRecargoTarjeta = config.PorcentajeRecargoTarjeta > 0 ? config.PorcentajeRecargoTarjeta : 25.0m,
             MargenGananciaSugerido = config.MargenGananciaSugerido,
             TopeFiadoDefecto = config.TopeFiadoDefecto,
             TopeMensualRetiroDueño = config.TopeMensualRetiroDueño,
@@ -104,6 +105,7 @@ public class ConfiguracionService : IConfiguracionService
         config.Recargo3Cuotas = dto.Recargo3Cuotas;
         config.Habilitar6Cuotas = dto.Habilitar6Cuotas;
         config.Recargo6Cuotas = dto.Recargo6Cuotas;
+        config.PorcentajeRecargoTarjeta = dto.PorcentajeRecargoTarjeta > 0 ? dto.PorcentajeRecargoTarjeta : 25.0m;
         config.MargenGananciaSugerido = dto.MargenGananciaSugerido;
         config.TopeFiadoDefecto = dto.TopeFiadoDefecto;
         config.TopeMensualRetiroDueño = dto.TopeMensualRetiroDueño;

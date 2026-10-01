@@ -97,6 +97,11 @@
                                 Background="#F8FAFC" Foreground="#334155" BorderBrush="#CBD5E1" BorderThickness="1"
                                 Padding="12,6" FontWeight="SemiBold" FontSize="12" Margin="0,0,8,0" Cursor="Hand"
                                 ToolTip="Administrar lista de proveedores y distribuidores de librería"/>
+
+                        <Button Content="📜 Lista Sistema Anterior" Click="BtnListaAnterior_Click"
+                                Background="#FFFBEB" Foreground="#B45309" BorderBrush="#FDE68A" BorderThickness="1.5"
+                                Padding="12,6" FontWeight="Bold" FontSize="12" Margin="0,0,8,0" Cursor="Hand"
+                                ToolTip="Consultar lista de precios exportada original del sistema anterior (auditoría intacta de códigos y precios)"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
@@ -170,8 +175,16 @@
                     </DataGridTemplateColumn>
                     <DataGridTextColumn Header="Proveedor" Binding="{Binding ProveedorNombre}" Width="105"/>
                     <DataGridTextColumn Header="Ubicación" Binding="{Binding Ubicacion}" Width="95"/>
-                    <DataGridTextColumn Header="P. Costo" Binding="{Binding PrecioCosto, StringFormat='${0:N2}'}" Width="90"/>
-                    <DataGridTextColumn Header="P. Venta" Binding="{Binding PrecioVenta, StringFormat='${0:N2}'}" Width="100">
+                    <DataGridTextColumn Header="P. Efectivo" Binding="{Binding PrecioVenta, StringFormat='${0:N2}'}" Width="95">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="Bold"/>
+                                <Setter Property="Foreground" Value="#15803D"/>
+                                <Setter Property="VerticalAlignment" Value="Center"/>
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="P. Tarjeta" Binding="{Binding PrecioTarjeta, StringFormat='${0:N2}'}" Width="95">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="FontWeight" Value="Bold"/>

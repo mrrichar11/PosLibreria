@@ -13,11 +13,31 @@ public partial class PosItemModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Subtotal))]
+    [NotifyPropertyChangedFor(nameof(SubtotalEfectivo))]
+    [NotifyPropertyChangedFor(nameof(AhorroTotal))]
     private decimal _cantidad = 1;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Subtotal))]
+    [NotifyPropertyChangedFor(nameof(PrecioEfectivo))]
+    [NotifyPropertyChangedFor(nameof(SubtotalEfectivo))]
+    [NotifyPropertyChangedFor(nameof(AhorroTotal))]
+    [NotifyPropertyChangedFor(nameof(PorcentajeDescuentoEfectivoTexto))]
     private decimal _precioUnitario;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PrecioEfectivo))]
+    [NotifyPropertyChangedFor(nameof(SubtotalEfectivo))]
+    [NotifyPropertyChangedFor(nameof(AhorroTotal))]
+    [NotifyPropertyChangedFor(nameof(PorcentajeDescuentoEfectivoTexto))]
+    private decimal _precioEfectivoManual;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PrecioEfectivo))]
+    [NotifyPropertyChangedFor(nameof(SubtotalEfectivo))]
+    [NotifyPropertyChangedFor(nameof(AhorroTotal))]
+    [NotifyPropertyChangedFor(nameof(PorcentajeDescuentoEfectivoTexto))]
+    private decimal _porcentajeDescuentoEfectivo = 10m;
 
     public decimal PrecioCosto { get; set; }
     public bool EsCombo { get; set; }
@@ -30,4 +50,16 @@ public partial class PosItemModel : ObservableObject
     public string? DetalleDolar { get; set; }
 
     public decimal Subtotal => Cantidad * PrecioUnitario;
+    public decimal PrecioEfectivo
+    {
+        get => PrecioEfectivoManual > 0 
+            ? PrecioEfectivoManual 
+            : Math.Round(PrecioUnitario * (1m - (PorcentajeDescuentoEfectivo / 100m)), 2);
+        set => PrecioEfectivoManual = value;
+    }
+    public decimal SubtotalEfectivo => Cantidad * PrecioEfectivo;
+    public decimal AhorroTotal => Math.Max(0m, Subtotal - SubtotalEfectivo);
+    public string PorcentajeDescuentoEfectivoTexto => PrecioUnitario > 0 && PrecioEfectivo < PrecioUnitario
+        ? $"-{Math.Round((PrecioUnitario - PrecioEfectivo) / PrecioUnitario * 100m, 1):0.#}%"
+        : $"-{PorcentajeDescuentoEfectivo:0.#}%";
 }

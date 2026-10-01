@@ -25,16 +25,31 @@ public partial class CobroModalViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(TotalFinal))]
     [NotifyPropertyChangedFor(nameof(Vuelto))]
     [NotifyPropertyChangedFor(nameof(FaltaPagar))]
+    [NotifyPropertyChangedFor(nameof(TieneDescuento))]
     private decimal _descuentoEfectivoMonto;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(TotalFinal))]
     [NotifyPropertyChangedFor(nameof(Vuelto))]
     [NotifyPropertyChangedFor(nameof(FaltaPagar))]
+    [NotifyPropertyChangedFor(nameof(TieneRecargo))]
     private decimal _recargoCuotasMonto;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(Es1Cuota))]
+    [NotifyPropertyChangedFor(nameof(Es3Cuotas))]
+    [NotifyPropertyChangedFor(nameof(Es6Cuotas))]
+    [NotifyPropertyChangedFor(nameof(MetodoPagoDetalle))]
     private int _cantidadCuotas = 1;
+
+    [ObservableProperty]
+    private decimal _porcentajeDescuentoEfectivo = 10.0m;
+
+    [ObservableProperty]
+    private decimal _recargo3Cuotas = 15.0m;
+
+    [ObservableProperty]
+    private decimal _recargo6Cuotas = 25.0m;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(Vuelto))]
@@ -87,6 +102,51 @@ public partial class CobroModalViewModel : ObservableObject
     public bool EsTransferencia => MetodoPago == "Transferencia";
     public bool EsCtaCte => MetodoPago == "CtaCte";
 
+    public bool TieneDescuento => DescuentoEfectivoMonto > 0;
+    public bool TieneRecargo => RecargoCuotasMonto > 0;
+
+    public bool Es1Cuota
+    {
+        get => CantidadCuotas == 1;
+        set { if (value) CantidadCuotas = 1; }
+    }
+
+    public bool Es3Cuotas
+    {
+        get => CantidadCuotas == 3;
+        set { if (value) CantidadCuotas = 3; }
+    }
+
+    public bool Es6Cuotas
+    {
+        get => CantidadCuotas == 6;
+        set { if (value) CantidadCuotas = 6; }
+    }
+
+    public string MetodoPagoBadge => MetodoPago switch
+    {
+        "Efectivo" => DescuentoEfectivoMonto > 0 && TotalACobrar > 0 
+            ? $"💵 EFECTIVO (-{DescuentoEfectivoMonto / TotalACobrar * 100:0.#}%)" 
+            : $"💵 EFECTIVO (-{PorcentajeDescuentoEfectivo:0.#}%)",
+        "Transferencia" => DescuentoEfectivoMonto > 0 && TotalACobrar > 0 
+            ? $"📱 TRANSFERENCIA (-{DescuentoEfectivoMonto / TotalACobrar * 100:0.#}%)" 
+            : $"📱 TRANSFERENCIA (-{PorcentajeDescuentoEfectivo:0.#}%)",
+        "Debito" => "💳 DÉBITO",
+        "Credito" => "💳 CRÉDITO",
+        "CtaCte" => "📒 CTA. CTE.",
+        _ => MetodoPago
+    };
+
+    public string MetodoPagoDetalle => MetodoPago switch
+    {
+        "Efectivo" => $"Descuento promocional: ${DescuentoEfectivoMonto:N2}",
+        "Transferencia" => $"Descuento promocional: ${DescuentoEfectivoMonto:N2}",
+        "Debito" => "Precio de Lista (Sin recargo)",
+        "Credito" => CantidadCuotas == 1 ? "1 Pago (Sin recargo)" : (CantidadCuotas == 3 ? $"3 Cuotas (+{Recargo3Cuotas:0.#}%)" : $"6 Cuotas (+{Recargo6Cuotas:0.#}%)"),
+        "CtaCte" => "Venta a crédito en cuenta fiada",
+        _ => string.Empty
+    };
+
     public decimal TotalFinal => Math.Max(0, TotalACobrar - DescuentoEfectivoMonto + RecargoCuotasMonto);
     public decimal Vuelto => Math.Max(0, MontoEntregado - TotalFinal);
     public decimal FaltaPagar => Math.Max(0, TotalFinal - MontoEntregado);
@@ -100,14 +160,24 @@ public partial class CobroModalViewModel : ObservableObject
     [ObservableProperty]
     private string _simboloMoneda = "$";
 
+    [ObservableProperty]
+    private decimal _totalEfectivo;
+
     public CobroModalViewModel(
         decimal totalACobrar, 
         IEnumerable<ClienteDto>? clientes = null,
         string? billetesConfig = null,
-        string? simboloMoneda = null)
+        string? simboloMoneda = null,
+        decimal porcentajeDescuentoEfectivo = 10.0m,
+        decimal recargo3Cuotas = 15.0m,
+        decimal recargo6Cuotas = 25.0m,
+        decimal? totalEfectivo = null)
     {
         TotalACobrar = totalACobrar;
-        MontoEntregado = totalACobrar;
+        TotalEfectivo = totalEfectivo ?? (porcentajeDescuentoEfectivo > 0 ? Math.Round(totalACobrar * (1m - (porcentajeDescuentoEfectivo / 100m)), 2) : totalACobrar);
+        PorcentajeDescuentoEfectivo = porcentajeDescuentoEfectivo;
+        Recargo3Cuotas = recargo3Cuotas;
+        Recargo6Cuotas = recargo6Cuotas;
 
         if (!string.IsNullOrWhiteSpace(simboloMoneda))
         {
@@ -123,6 +193,57 @@ public partial class CobroModalViewModel : ObservableObject
         }
 
         CargarBilletes(billetesConfig);
+        ActualizarDescuentosYRecargos();
+        MontoEntregado = TotalFinal;
+    }
+
+    public void ActualizarDescuentosYRecargos()
+    {
+        if (MetodoPago == "Efectivo" || MetodoPago == "Transferencia")
+        {
+            if (TotalEfectivo > 0 && TotalEfectivo < TotalACobrar)
+            {
+                DescuentoEfectivoMonto = TotalACobrar - TotalEfectivo;
+            }
+            else
+            {
+                DescuentoEfectivoMonto = Math.Round(TotalACobrar * (PorcentajeDescuentoEfectivo / 100m), 2);
+            }
+            RecargoCuotasMonto = 0m;
+        }
+        else if (MetodoPago == "Credito")
+        {
+            DescuentoEfectivoMonto = 0m;
+            if (CantidadCuotas == 3)
+            {
+                RecargoCuotasMonto = Math.Round(TotalACobrar * (Recargo3Cuotas / 100m), 2);
+            }
+            else if (CantidadCuotas == 6)
+            {
+                RecargoCuotasMonto = Math.Round(TotalACobrar * (Recargo6Cuotas / 100m), 2);
+            }
+            else
+            {
+                RecargoCuotasMonto = 0m;
+            }
+        }
+        else
+        {
+            DescuentoEfectivoMonto = 0m;
+            RecargoCuotasMonto = 0m;
+        }
+
+        OnPropertyChanged(nameof(MetodoPagoBadge));
+        OnPropertyChanged(nameof(MetodoPagoDetalle));
+    }
+
+    partial void OnCantidadCuotasChanged(int value)
+    {
+        ActualizarDescuentosYRecargos();
+        if (MetodoPago == "Credito")
+        {
+            MontoEntregado = TotalFinal;
+        }
     }
 
     private void CargarBilletes(string? billetesConfig)
@@ -200,11 +321,16 @@ public partial class CobroModalViewModel : ObservableObject
     {
         MetodoPago = metodo;
         MensajeValidacion = string.Empty;
+        ActualizarDescuentosYRecargos();
 
         if (metodo != "Efectivo")
         {
-            DescuentoEfectivoMonto = 0;
             MontoEntregado = TotalFinal;
+        }
+        else
+        {
+            MontoEntregado = TotalFinal;
+            _iniciandoConteoBilletes = true;
         }
 
         if (metodo == "CtaCte" && ClienteSeleccionado == null)

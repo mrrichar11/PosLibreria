@@ -210,7 +210,15 @@
                           MouseDoubleClick="GridComparativa_MouseDoubleClick">
                     <DataGrid.Columns>
                         <!-- Aplicar -->
-                        <DataGridCheckBoxColumn Header="Aplicar" Binding="{Binding Aplicar, UpdateSourceTrigger=PropertyChanged}" Width="55"/>
+                        <DataGridTemplateColumn Header="Aplicar" Width="55">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <CheckBox IsChecked="{Binding Aplicar, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
+                                              Click="ChkFilaAplicar_Click" 
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="SKU" Binding="{Binding SKU}" Width="75" FontWeight="SemiBold" IsReadOnly="True"/>
                         <DataGridTextColumn Header="Cód. Prov." Binding="{Binding CodigoProveedor}" Width="85" IsReadOnly="True"/>
                         <DataGridTextColumn Header="Código Barras" Binding="{Binding CodigoBarras}" Width="110" IsReadOnly="True"/>

@@ -91,6 +91,44 @@ public static class DatabaseInitializer
 
         try
         {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN PorcentajeRecargoTarjeta NUMERIC NOT NULL DEFAULT 25.0;", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync("ALTER TABLE Articulos ADD COLUMN PrecioTarjeta NUMERIC NOT NULL DEFAULT 0;", cancellationToken);
+        }
+        catch { }
+
+        // Tabla de resguardo histórico para la lista de precios exportada del sistema anterior
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(@"
+                CREATE TABLE IF NOT EXISTS ArticulosHistoricosSistemaAnterior (
+                    Id TEXT PRIMARY KEY,
+                    Codigo TEXT NOT NULL,
+                    CodigoProveedor TEXT NULL,
+                    CodigoBarras TEXT NULL,
+                    Descripcion TEXT NOT NULL,
+                    PrecioVenta NUMERIC NOT NULL DEFAULT 0,
+                    PrecioLista NUMERIC NOT NULL DEFAULT 0,
+                    PrecioCosto NUMERIC NOT NULL DEFAULT 0,
+                    Rubro TEXT NULL,
+                    SubRubro TEXT NULL,
+                    Proveedor TEXT NULL,
+                    FechaCarga TEXT NOT NULL,
+                    ArchivoOrigen TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS IX_Hist_Codigo ON ArticulosHistoricosSistemaAnterior(Codigo);
+                CREATE INDEX IF NOT EXISTS IX_Hist_CodigoBarras ON ArticulosHistoricosSistemaAnterior(CodigoBarras);
+                CREATE INDEX IF NOT EXISTS IX_Hist_Descripcion ON ArticulosHistoricosSistemaAnterior(Descripcion);
+            ", cancellationToken);
+        }
+        catch { }
+
+        try
+        {
             await context.Database.ExecuteSqlRawAsync("ALTER TABLE Configuraciones ADD COLUMN NombreTerminal TEXT NOT NULL DEFAULT 'Caja Principal';", cancellationToken);
         }
         catch { }

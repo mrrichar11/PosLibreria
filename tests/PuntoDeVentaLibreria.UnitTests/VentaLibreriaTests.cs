@@ -225,4 +225,103 @@ public class VentaLibreriaTests
         var clienteDb = await context.Clientes.FindAsync(cliente.Id);
         clienteDb!.SaldoDeudorActual.Should().Be(10000m); // 1000 anterior + 9000 de la compra fiada
     }
+
+    [Fact]
+    public async Task ProcesarVenta_ConDescuentoEfectivo_AplicaDescuentoYRegistraCajaCorrectamente()
+    {
+        using var context = CrearContextoEnMemoria();
+        var turno = new TurnoCaja { MontoInicialEfectivo = 10000m, UsuarioApertura = "admin" };
+        context.TurnosCaja.Add(turno);
+
+        var lapicera = new Articulo
+        {
+            Nombre = "Lapicera Bic Cristal Azul",
+            SKU = "BIC-AZUL",
+            PrecioCosto = 60m,
+            PrecioVenta = 125m,
+            StockActual = 100,
+            Tipo = TipoArticulo.Estandar
+        };
+        context.Articulos.Add(lapicera);
+        await context.SaveChangesAsync();
+
+        var service = new VentaService(context);
+        // Venta de 2 lapiceras a $125 = $250 lista. Descuento 10% efectivo = $25. Total = $225
+        decimal subtotal = 250m;
+        decimal descuento10 = Math.Round(subtotal * 0.10m, 2); // 25.00
+        var dto = new RegistrarVentaDto
+        {
+            TurnoCajaId = turno.Id,
+            MetodoPago = "Efectivo",
+            DescuentoEfectivoMonto = descuento10,
+            MontoEntregado = 300m,
+            Vuelto = 75m,
+            Items = new List<ItemCarritoDto>
+            {
+                new()
+                {
+                    ArticuloId = lapicera.Id,
+                    Descripcion = lapicera.Nombre,
+                    Cantidad = 2,
+                    PrecioUnitario = 125m
+                }
+            }
+        };
+
+        var resultado = await service.ProcesarVentaAsync(dto);
+
+        resultado.SubtotalBruto.Should().Be(250m);
+        resultado.DescuentoMonto.Should().Be(25m);
+        resultado.TotalCobrado.Should().Be(225m);
+        resultado.Vuelto.Should().Be(75m);
+
+        var movCaja = await context.MovimientosCaja.FirstOrDefaultAsync(m => m.VentaId == resultado.VentaId);
+        movCaja.Should().NotBeNull();
+        movCaja!.Monto.Should().Be(225m);
+        movCaja.MetodoPago.Should().Be("Efectivo");
+    }
+
+    [Fact]
+    public async Task ProcesarVenta_ConDescuentoTransferenciaQR_AplicaDescuentoYRegistraCajaCorrectamente()
+    {
+        using var context = CrearContextoEnMemoria();
+        var turno = new TurnoCaja { MontoInicialEfectivo = 10000m, UsuarioApertura = "admin" };
+        context.TurnosCaja.Add(turno);
+        await context.SaveChangesAsync();
+
+        var service = new VentaService(context);
+        decimal descuento10 = 100m;
+        var dto = new RegistrarVentaDto
+        {
+            TurnoCajaId = turno.Id,
+            MetodoPago = "Transferencia",
+            ReferenciaPago = "Alias / MP / Comprobante 1234",
+            DescuentoEfectivoMonto = descuento10,
+            MontoEntregado = 900m,
+            Vuelto = 0m,
+            Items = new List<ItemCarritoDto>
+            {
+                new()
+                {
+                    ArticuloId = null,
+                    Descripcion = "Mochila Escolar Estampada",
+                    Cantidad = 1,
+                    PrecioUnitario = 1000m,
+                    EsVentaManual = true
+                }
+            }
+        };
+
+        var resultado = await service.ProcesarVentaAsync(dto);
+
+        resultado.SubtotalBruto.Should().Be(1000m);
+        resultado.DescuentoMonto.Should().Be(100m);
+        resultado.TotalCobrado.Should().Be(900m);
+        resultado.MetodoPago.Should().Be("Transferencia");
+
+        var movCaja = await context.MovimientosCaja.FirstOrDefaultAsync(m => m.VentaId == resultado.VentaId);
+        movCaja.Should().NotBeNull();
+        movCaja!.Monto.Should().Be(900m);
+        movCaja.MetodoPago.Should().Be("Transferencia");
+    }
 }

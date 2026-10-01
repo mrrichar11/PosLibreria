@@ -60,6 +60,7 @@ public class InventarioService : IInventarioService
             var dto = MapToDto(exacto);
             var vMatch = dto.Variantes.FirstOrDefault(v => v.CodigoBarras != null && v.CodigoBarras.Equals(limpio, StringComparison.OrdinalIgnoreCase));
             if (vMatch != null) dto.VarianteEscaneada = vMatch;
+            await EnriquecerVinculoPackOUnidadAsync(dto, ct);
             return new List<ArticuloDto> { dto };
         }
 
@@ -212,6 +213,7 @@ public class InventarioService : IInventarioService
             dto.VarianteEscaneada = vMatch;
         }
 
+        await EnriquecerVinculoPackOUnidadAsync(dto, ct);
         return dto;
     }
 
@@ -228,7 +230,10 @@ public class InventarioService : IInventarioService
                 .ThenInclude(c => c.ComponenteArticulo)
             .FirstOrDefaultAsync(a => a.Id == id, ct);
 
-        return art != null ? MapToDto(art) : null;
+        if (art == null) return null;
+        var dto = MapToDto(art);
+        await EnriquecerVinculoPackOUnidadAsync(dto, ct);
+        return dto;
     }
 
     public async Task<IReadOnlyList<ArticuloDto>> ObtenerBotonesRapidosAsync(CancellationToken ct = default)
@@ -274,6 +279,7 @@ public class InventarioService : IInventarioService
         entidad.IvaPorcentaje = dto.IvaPorcentaje;
         entidad.PorcentajeGanancia = dto.PorcentajeGanancia;
         entidad.PrecioVenta = dto.PrecioVenta;
+        entidad.PrecioTarjeta = dto.PrecioTarjeta > 0 ? dto.PrecioTarjeta : Math.Round(dto.PrecioVenta * 1.25m, 2);
         entidad.EsPrecioDolar = dto.EsPrecioDolar;
         entidad.PrecioCostoDolar = dto.PrecioCostoDolar;
         entidad.StockActual = dto.StockActual;
@@ -620,13 +626,18 @@ public class InventarioService : IInventarioService
             if (pcgan <= 0) pcgan = mapeo.PorcentajeGananciaDefecto > 0 ? mapeo.PorcentajeGananciaDefecto : 60.0m;
 
             CalculoPreciosUtils.TryParseMonto(ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaPrecioVenta, "precio", "precioventa", "pvp", "publico", "pventa"), out var precio);
-            if (precio <= 0 && costo > 0)
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaPrecioTarjeta, "tarjeta", "preciotarjeta", "tarj", "pcredito"), out var pTarjeta);
+
+            if (precio <= 0 && pTarjeta > 0)
+            {
+                // Si la lista solo trae precio tarjeta, el precio contado se calcula descontando el recargo (dividido 1.25)
+                precio = Math.Round(pTarjeta / 1.25m, 2);
+            }
+            else if (precio <= 0 && costo > 0)
             {
                 precio = CalculoPreciosUtils.CalcularPrecioVenta(costo, pcgan, pciva);
             }
 
-            // Precio Tarjeta & Recargo Financiero
-            CalculoPreciosUtils.TryParseMonto(ObtenerValorPorColumnaOMapeo(row, mapeo.ColumnaPrecioTarjeta, "tarjeta", "preciotarjeta", "tarj", "pcredito"), out var pTarjeta);
             decimal? recargoPct = null;
             if (pTarjeta > 0 && precio > 0 && pTarjeta > precio)
             {
@@ -838,6 +849,9 @@ public class InventarioService : IInventarioService
                     articulo.IvaPorcentaje = item.IvaPorcentaje > 0 ? item.IvaPorcentaje : 21.0m;
                     articulo.PorcentajeGanancia = item.PorcentajeGanancia > 0 ? item.PorcentajeGanancia : 60.0m;
                     articulo.PrecioVenta = item.PrecioVenta;
+                    articulo.PrecioTarjeta = (item.PrecioTarjeta.HasValue && item.PrecioTarjeta.Value > 0)
+                        ? item.PrecioTarjeta.Value
+                        : Math.Round(item.PrecioVenta * 1.25m, 2);
                     articulo.Activo = true;
 
                     // Si el usuario especificó stock inicial a cargar
@@ -877,6 +891,9 @@ public class InventarioService : IInventarioService
                         IvaPorcentaje = item.IvaPorcentaje > 0 ? item.IvaPorcentaje : 21.0m,
                         PorcentajeGanancia = item.PorcentajeGanancia > 0 ? item.PorcentajeGanancia : 60.0m,
                         PrecioVenta = item.PrecioVenta,
+                        PrecioTarjeta = (item.PrecioTarjeta.HasValue && item.PrecioTarjeta.Value > 0)
+                            ? item.PrecioTarjeta.Value
+                            : Math.Round(item.PrecioVenta * 1.25m, 2),
                         StockActual = item.StockImportar,
                         StockMinimo = 5,
                         Activo = true
@@ -1063,7 +1080,7 @@ public class InventarioService : IInventarioService
         return null;
     }
 
-    private static bool SonNombresCompletamenteDiferentes(string nombreLocal, string? nombreProveedor)
+    public static bool SonNombresCompletamenteDiferentes(string nombreLocal, string? nombreProveedor)
     {
         if (string.IsNullOrWhiteSpace(nombreLocal) || string.IsNullOrWhiteSpace(nombreProveedor)) return false;
 
@@ -1159,16 +1176,14 @@ public class InventarioService : IInventarioService
         // Si no está disponible, se analiza el texto y saltos de costo.
         var factorSugerido = unidadesParsed ?? DetectarFactorPack(descProveedor, art.Nombre, art.PrecioCosto, costoNuevo);
 
-        // ¿El artículo en la tienda ya es el pack completo?
-        // Es pack completo si:
-        // - Ya está configurado como EsPack, o
-        // - Tiene un artículo suelto vinculado o encontrado con '-1', o
-        // - Su costo anterior sin dividir ya está en el rango normal del costo mayorista (ratio 0.45 a 1.95)
+        // ¿El artículo en la tienda ya es el pack completo o tiene artículo suelto asociado?
         bool esPackCompletoEnCatalogo = art.EsPack 
             || (artSuelto != null)
+            || art.ArticuloBaseId.HasValue
             || (art.PrecioCosto > 0 && (costoNuevo / art.PrecioCosto >= 0.45m && costoNuevo / art.PrecioCosto <= 1.95m));
 
         decimal factorInicial = 1m;
+        decimal costoAnterior = art.PrecioCosto;
 
         if (esPackCompletoEnCatalogo)
         {
@@ -1176,6 +1191,17 @@ public class InventarioService : IInventarioService
             // NO se debe sugerir dividir el costo del pack. El artículo suelto se sincroniza automáticamente por separado.
             factorInicial = 1m;
             factorSugerido = null;
+
+            // Autocorrección si en el pasado se había guardado erróneamente el costo unitario en el artículo pack
+            if (art.CantidadPorPack > 1 && art.PrecioCosto > 0)
+            {
+                var ratioDirecto = Math.Abs((costoNuevo / art.PrecioCosto) - 1m);
+                var ratioAjustado = Math.Abs((costoNuevo / (art.PrecioCosto * art.CantidadPorPack)) - 1m);
+                if (ratioAjustado < ratioDirecto && ratioAjustado < 0.3m)
+                {
+                    costoAnterior = Math.Round(art.PrecioCosto * art.CantidadPorPack, 2);
+                }
+            }
         }
         else
         {
@@ -1204,7 +1230,7 @@ public class InventarioService : IInventarioService
             CodigoProveedor = art.CodigoProveedor,
             CodigoBarras = art.CodigoBarras,
             DescripcionProveedor = descProveedor,
-            CostoAnterior = art.PrecioCosto,
+            CostoAnterior = costoAnterior,
             CostoOriginalProveedor = costoNuevo,
             FactorConversion = factorInicial,
             FactorSugerido = factorSugerido,
@@ -1422,20 +1448,93 @@ public class InventarioService : IInventarioService
                 .ToDictionary(g => g.Key, g => g.First());
         }
 
+        var configNegocio = await _context.Configuraciones.AsNoTracking().FirstOrDefaultAsync(ct);
+        decimal recargoTarjetaMult = 1m + ((configNegocio?.PorcentajeRecargoTarjeta ?? 25m) / 100m);
+
         foreach (var a in articulos)
         {
             if (dictItems.TryGetValue(a.Id, out var item))
             {
-                a.PrecioCosto = item.CostoNuevo;
-                a.PrecioVenta = item.VentaNueva;
+                // Identificar si este artículo es pack o se va a vincular a un suelto
+                Articulo? artSuelto = null;
+                decimal factorPack = item.FactorConversion > 1 ? item.FactorConversion : (a.CantidadPorPack > 1 ? a.CantidadPorPack : (item.UnidadesProveedor ?? 1));
 
-                // 1. Persistir el divisor de pack/bulto elegido para que se recuerde en futuras listas
-                if (item.FactorConversion >= 1m)
+                if (sincronizarArticulosSueltos)
                 {
-                    a.CantidadPorPack = item.FactorConversion;
+                    if (a.ArticuloBaseId.HasValue)
+                    {
+                        artSuelto = await _context.Articulos.FirstOrDefaultAsync(b => b.Id == a.ArticuloBaseId.Value, ct);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(a.CodigoProveedor) && dictSueltosPorCodProv != null)
+                    {
+                        var claveSuelto = $"{a.CodigoProveedor.Trim().ToUpperInvariant()}-1";
+                        if (dictSueltosPorCodProv.TryGetValue(claveSuelto, out var encontradoSuelto) && encontradoSuelto.Id != a.Id)
+                        {
+                            artSuelto = encontradoSuelto;
+                        }
+                    }
                 }
 
-                // 2. Guardar la descripción oficial del catálogo del mayorista y actualizar nombre si se solicitó
+                bool esPackOConSuelto = a.EsPack || artSuelto != null || a.ArticuloBaseId.HasValue;
+
+                if (esPackOConSuelto && factorPack > 1)
+                {
+                    // =========================================================================
+                    // 1. EL ARTÍCULO 'a' ES EL PACK COMPLETO (Código del mayorista en factura):
+                    // Debe conservar el costo íntegro del pack mayorista (CostoOriginalProveedor).
+                    // Su precio de venta se calcula sobre el costo total del pack.
+                    // =========================================================================
+                    a.EsPack = true;
+                    a.CantidadPorPack = factorPack;
+                    a.PrecioCosto = item.CostoOriginalProveedor;
+                    a.PrecioVenta = item.FactorConversion == 1m 
+                        ? item.VentaNueva 
+                        : CalculoPreciosUtils.CalcularPrecioVentaRedondeado(
+                            a.PrecioCosto, 
+                            a.PorcentajeGanancia, 
+                            a.IvaPorcentaje, 
+                            item.ReglaRedondeo);
+                    a.PrecioTarjeta = Math.Round(a.PrecioVenta * recargoTarjetaMult, 2);
+
+                    // =========================================================================
+                    // 2. EL ARTÍCULO SUELTO ('artSuelto') ES LA UNIDAD INDIVIDUAL:
+                    // Su costo es CostoOriginalProveedor / factorPack (UNA SOLA DIVISIÓN).
+                    // Su precio de venta es el unitario.
+                    // =========================================================================
+                    if (sincronizarArticulosSueltos && artSuelto != null)
+                    {
+                        a.ArticuloBaseId = artSuelto.Id;
+                        artSuelto.PrecioCosto = Math.Round(item.CostoOriginalProveedor / factorPack, 2);
+                        artSuelto.PrecioVenta = CalculoPreciosUtils.CalcularPrecioVentaRedondeado(
+                            artSuelto.PrecioCosto, 
+                            artSuelto.PorcentajeGanancia, 
+                            artSuelto.IvaPorcentaje, 
+                            item.ReglaRedondeo);
+                        artSuelto.PrecioTarjeta = Math.Round(artSuelto.PrecioVenta * recargoTarjetaMult, 2);
+
+                        if (proveedorAsignar != null && artSuelto.ProveedorId != proveedorAsignar.Id)
+                        {
+                            artSuelto.ProveedorId = proveedorAsignar.Id;
+                        }
+                        if (!string.IsNullOrWhiteSpace(asignarRubro) && artSuelto.Rubro != asignarRubro)
+                        {
+                            artSuelto.Rubro = asignarRubro;
+                        }
+
+                        sueltosActualizados++;
+                        packsVinculados++;
+                    }
+                }
+                else
+                {
+                    // Artículo estándar o unitario (no es pack o factor == 1)
+                    a.PrecioCosto = item.CostoNuevo;
+                    a.PrecioVenta = item.VentaNueva;
+                    a.PrecioTarjeta = Math.Round(a.PrecioVenta * recargoTarjetaMult, 2);
+                    if (factorPack > 1) a.CantidadPorPack = factorPack;
+                }
+
+                // Guardar la descripción oficial del catálogo del mayorista y actualizar nombre si se solicitó
                 if (!string.IsNullOrWhiteSpace(item.DescripcionProveedor))
                 {
                     a.Descripcion = item.DescripcionProveedor;
@@ -1460,53 +1559,6 @@ public class InventarioService : IInventarioService
                 }
 
                 actualizados++;
-
-                // 3. Cascada automática a Artículo Suelto Vinculado (-1 o ArticuloBase)
-                if (sincronizarArticulosSueltos)
-                {
-                    Articulo? artSuelto = null;
-                    decimal factorSuelto = a.CantidadPorPack > 1 ? a.CantidadPorPack : (item.FactorConversion > 1 ? item.FactorConversion : (item.UnidadesProveedor ?? 1));
-
-                    if (a.ArticuloBaseId.HasValue)
-                    {
-                        artSuelto = await _context.Articulos.FirstOrDefaultAsync(b => b.Id == a.ArticuloBaseId.Value, ct);
-                    }
-                    else if (!string.IsNullOrWhiteSpace(a.CodigoProveedor) && dictSueltosPorCodProv != null)
-                    {
-                        var claveSuelto = $"{a.CodigoProveedor.Trim().ToUpperInvariant()}-1";
-                        if (dictSueltosPorCodProv.TryGetValue(claveSuelto, out var encontradoSuelto) && encontradoSuelto.Id != a.Id)
-                        {
-                            artSuelto = encontradoSuelto;
-                            // Auto-vincular pack al artículo suelto si no estaba vinculado
-                            a.EsPack = true;
-                            a.ArticuloBaseId = artSuelto.Id;
-                            if (factorSuelto > 1) a.CantidadPorPack = factorSuelto;
-                            packsVinculados++;
-                        }
-                    }
-
-                    if (artSuelto != null && factorSuelto > 1)
-                    {
-                        // Costo unitario = CostoPack / factor
-                        artSuelto.PrecioCosto = Math.Round(a.PrecioCosto / factorSuelto, 2);
-                        artSuelto.PrecioVenta = CalculoPreciosUtils.CalcularPrecioVentaRedondeado(
-                            artSuelto.PrecioCosto, 
-                            artSuelto.PorcentajeGanancia, 
-                            artSuelto.IvaPorcentaje, 
-                            item.ReglaRedondeo);
-
-                        if (proveedorAsignar != null && artSuelto.ProveedorId != proveedorAsignar.Id)
-                        {
-                            artSuelto.ProveedorId = proveedorAsignar.Id;
-                        }
-                        if (!string.IsNullOrWhiteSpace(asignarRubro) && artSuelto.Rubro != asignarRubro)
-                        {
-                            artSuelto.Rubro = asignarRubro;
-                        }
-
-                        sueltosActualizados++;
-                    }
-                }
             }
         }
 
@@ -1638,6 +1690,7 @@ public class InventarioService : IInventarioService
         IvaPorcentaje = a.IvaPorcentaje,
         PorcentajeGanancia = a.PorcentajeGanancia,
         PrecioVenta = a.PrecioVenta,
+        PrecioTarjeta = a.PrecioTarjeta > 0 ? a.PrecioTarjeta : Math.Round(a.PrecioVenta * 1.25m, 2),
         EsPrecioDolar = a.EsPrecioDolar,
         PrecioCostoDolar = a.PrecioCostoDolar,
         StockActual = a.Variantes != null && a.Variantes.Any(v => v.Activo)
@@ -1814,5 +1867,153 @@ public class InventarioService : IInventarioService
         }
         int resto = suma % 10;
         return (resto == 0) ? 0 : 10 - resto;
+    }
+
+    public async Task<ArticuloDto> EnriquecerVinculoPackOUnidadAsync(ArticuloDto dto, CancellationToken ct = default)
+    {
+        if (dto == null) return dto!;
+
+        Articulo? vinculado = null;
+
+        // 1. Si tiene ArticuloBaseId explícito
+        if (dto.ArticuloBaseId.HasValue)
+        {
+            vinculado = await _context.Articulos.AsNoTracking().FirstOrDefaultAsync(a => a.Id == dto.ArticuloBaseId.Value && a.Activo, ct);
+        }
+
+        // 2. Si no encontró y es un pack, buscar si algún suelto tiene ArticuloBaseId = dto.Id
+        if (vinculado == null && dto.EsPack)
+        {
+            vinculado = await _context.Articulos.AsNoTracking().FirstOrDefaultAsync(a => a.ArticuloBaseId == dto.Id && a.Activo, ct);
+        }
+
+        // 3. Buscar por convención de SKU (-1)
+        if (vinculado == null && !string.IsNullOrWhiteSpace(dto.SKU))
+        {
+            if (dto.SKU.EndsWith("-1"))
+            {
+                var skuBase = dto.SKU[..^2];
+                vinculado = await _context.Articulos.AsNoTracking().FirstOrDefaultAsync(a => a.SKU == skuBase && a.Activo, ct);
+            }
+            else
+            {
+                var skuSuelto = dto.SKU + "-1";
+                vinculado = await _context.Articulos.AsNoTracking().FirstOrDefaultAsync(a => a.SKU == skuSuelto && a.Activo, ct);
+            }
+        }
+
+        if (vinculado != null)
+        {
+            dto.ArticuloVinculadoId = vinculado.Id;
+            dto.ArticuloVinculadoNombre = vinculado.Nombre;
+            dto.ArticuloVinculadoSKU = vinculado.SKU;
+            dto.ArticuloVinculadoCodigoBarras = vinculado.CodigoBarras;
+            dto.ArticuloVinculadoPrecioVenta = vinculado.PrecioVenta;
+            dto.ArticuloVinculadoPrecioTarjeta = vinculado.PrecioTarjeta > 0 ? vinculado.PrecioTarjeta : Math.Round(vinculado.PrecioVenta * 1.25m, 2);
+            dto.ArticuloVinculadoEsPack = vinculado.EsPack;
+            dto.ArticuloVinculadoCantidadPorPack = vinculado.CantidadPorPack > 0 ? vinculado.CantidadPorPack : (dto.CantidadPorPack > 0 ? dto.CantidadPorPack : 1);
+        }
+
+        return dto;
+    }
+
+    public async Task<int> ImportarListaSistemaAnteriorAsync(Stream excelStream, string nombreArchivo, CancellationToken ct = default)
+    {
+        var (_, rows) = LeerExcelSimple(excelStream);
+        if (rows.Count == 0) return 0;
+
+        // Si ya había registros cargados, los limpiamos para reemplazar con la nueva lista sin duplicar
+        _context.ArticulosHistoricosSistemaAnterior.RemoveRange(_context.ArticulosHistoricosSistemaAnterior);
+        await _context.SaveChangesAsync(ct);
+
+        var listaNuevos = new List<PuntoDeVentaLibreria.Domain.Entities.Auditoria.ArticuloHistoricoSistemaAnterior>();
+        var fecha = DateTime.Now;
+
+        foreach (var row in rows)
+        {
+            string codigo = ObtenerValorColumna(row, "codigo", "sku", "cod") ?? "";
+            string descrip = ObtenerValorColumna(row, "descrip", "descripcion", "nombre", "articulo") ?? "";
+
+            if (string.IsNullOrWhiteSpace(codigo) && string.IsNullOrWhiteSpace(descrip))
+                continue;
+
+            string? codProv = ObtenerValorColumna(row, "codprov", "cod_prov", "codigoproveedor");
+            string? codBarra = ObtenerValorColumna(row, "codbarra", "codigobarra", "barra", "barcode");
+            string? rubro = ObtenerValorColumna(row, "rubro", "categoria");
+            string? subrubro = ObtenerValorColumna(row, "subrubro", "subcategoria");
+            string? provee = ObtenerValorColumna(row, "provee", "proveedor");
+
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "precio", "precioventa", "pvp"), out decimal precioVenta);
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "plista", "preciolista"), out decimal precioLista);
+            if (precioLista <= 0) precioLista = precioVenta;
+
+            CalculoPreciosUtils.TryParseMonto(ObtenerValorColumna(row, "costo", "preciocosto", "pcompra"), out decimal precioCosto);
+
+            listaNuevos.Add(new PuntoDeVentaLibreria.Domain.Entities.Auditoria.ArticuloHistoricoSistemaAnterior
+            {
+                Id = Guid.NewGuid(),
+                Codigo = codigo,
+                CodigoProveedor = string.IsNullOrWhiteSpace(codProv) ? null : codProv,
+                CodigoBarras = string.IsNullOrWhiteSpace(codBarra) ? null : codBarra,
+                Descripcion = descrip,
+                PrecioVenta = precioVenta,
+                PrecioLista = precioLista > 0 ? precioLista : precioVenta,
+                PrecioCosto = precioCosto,
+                Rubro = rubro,
+                SubRubro = subrubro,
+                Proveedor = provee,
+                FechaCarga = fecha,
+                ArchivoOrigen = nombreArchivo
+            });
+        }
+
+        if (listaNuevos.Count > 0)
+        {
+            await _context.ArticulosHistoricosSistemaAnterior.AddRangeAsync(listaNuevos, ct);
+            await _context.SaveChangesAsync(ct);
+        }
+
+        return listaNuevos.Count;
+    }
+
+    public async Task<List<PuntoDeVentaLibreria.Domain.Entities.Auditoria.ArticuloHistoricoSistemaAnterior>> BuscarEnListaSistemaAnteriorAsync(string query, CancellationToken ct = default)
+    {
+        var q = query?.Trim();
+        if (string.IsNullOrWhiteSpace(q))
+        {
+            return await _context.ArticulosHistoricosSistemaAnterior
+                .AsNoTracking()
+                .OrderBy(a => a.Descripcion)
+                .Take(100)
+                .ToListAsync(ct);
+        }
+
+        var qUpper = q.ToUpperInvariant();
+        return await _context.ArticulosHistoricosSistemaAnterior
+            .AsNoTracking()
+            .Where(a => a.Codigo.ToUpper().Contains(qUpper) ||
+                        (a.CodigoBarras != null && a.CodigoBarras.Contains(q)) ||
+                        (a.CodigoProveedor != null && a.CodigoProveedor.ToUpper().Contains(qUpper)) ||
+                        a.Descripcion.ToUpper().Contains(qUpper) ||
+                        (a.Rubro != null && a.Rubro.ToUpper().Contains(qUpper)) ||
+                        (a.Proveedor != null && a.Proveedor.ToUpper().Contains(qUpper)))
+            .OrderBy(a => a.Descripcion)
+            .Take(100)
+            .ToListAsync(ct);
+    }
+
+    public async Task<int> ObtenerTotalRegistrosListaAnteriorAsync(CancellationToken ct = default)
+    {
+        return await _context.ArticulosHistoricosSistemaAnterior.CountAsync(ct);
+    }
+
+    public async Task<PuntoDeVentaLibreria.Domain.Entities.Auditoria.ArticuloHistoricoSistemaAnterior?> BuscarArticuloHistoricoPorCodigoOBarrasAsync(string codigo, CancellationToken ct = default)
+    {
+        var q = codigo?.Trim();
+        if (string.IsNullOrWhiteSpace(q)) return null;
+
+        return await _context.ArticulosHistoricosSistemaAnterior
+            .AsNoTracking()
+            .FirstOrDefaultAsync(a => a.Codigo == q || a.CodigoBarras == q || a.CodigoProveedor == q, ct);
     }
 }

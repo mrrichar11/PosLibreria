@@ -19,7 +19,9 @@ public partial class ArticuloModalWindow : Window
     private List<ArticuloDto> _todosArticulosFisicos = new();
     private decimal _margenConfigurado = 40m;
     private decimal _cotizacionDolar = 1350m;
+    private decimal _recargoTarjetaConfigurado = 25m;
     private bool _isCalculating;
+    private bool _isTarjetaManual;
 
     public ObservableCollection<ArticuloVarianteDto> VariantesLista { get; } = new();
     public ArticuloDto Articulo { get; }
@@ -89,6 +91,22 @@ public partial class ArticuloModalWindow : Window
             TxtCosto.Text = Articulo.PrecioCosto > 0 ? Articulo.PrecioCosto.ToString("0.##", CultureInfo.InvariantCulture) : "0";
             TxtMargen.Text = Articulo.PorcentajeGanancia > 0 ? Articulo.PorcentajeGanancia.ToString("0.#", CultureInfo.InvariantCulture) : "40";
             TxtVenta.Text = Articulo.PrecioVenta > 0 ? Articulo.PrecioVenta.ToString("0.##", CultureInfo.InvariantCulture) : "0";
+            
+            if (Articulo.PrecioTarjeta > 0)
+            {
+                TxtPrecioTarjeta.Text = Articulo.PrecioTarjeta.ToString("0.##", CultureInfo.InvariantCulture);
+            }
+            else if (Articulo.PrecioVenta > 0)
+            {
+                var t = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.RedondearPrecioVenta(Articulo.PrecioVenta * (1m + (_recargoTarjetaConfigurado / 100m)), PuntoDeVentaLibreria.Application.Common.ReglaRedondeoPrecio.CentenaCercana);
+                Articulo.PrecioTarjeta = t;
+                TxtPrecioTarjeta.Text = t.ToString("0.##", CultureInfo.InvariantCulture);
+            }
+            else
+            {
+                TxtPrecioTarjeta.Text = "0";
+            }
+
             SincronizarIvaUI();
         }
         finally
@@ -176,6 +194,12 @@ public partial class ArticuloModalWindow : Window
                 if (cfg.CotizacionDolar > 0)
                 {
                     _cotizacionDolar = cfg.CotizacionDolar;
+                }
+                _recargoTarjetaConfigurado = cfg.RecargoTarjetaMayor;
+                if (_recargoTarjetaConfigurado <= 0) _recargoTarjetaConfigurado = 25.0m;
+                if (TxtRecargoTarjetaBadge != null)
+                {
+                    TxtRecargoTarjetaBadge.Text = $" (+{_recargoTarjetaConfigurado:0.#}%)";
                 }
             }
         }
@@ -945,6 +969,17 @@ public partial class ArticuloModalWindow : Window
             {
                 TxtVenta.Text = venta.ToString("0.00", CultureInfo.InvariantCulture);
             }
+
+            if (!_isTarjetaManual)
+            {
+                var tarjeta = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.RedondearPrecioVenta(venta * (1m + (_recargoTarjetaConfigurado / 100m)), PuntoDeVentaLibreria.Application.Common.ReglaRedondeoPrecio.CentenaCercana);
+                Articulo.PrecioTarjeta = tarjeta;
+                if (TxtPrecioTarjeta != null && !TxtPrecioTarjeta.IsFocused)
+                {
+                    TxtPrecioTarjeta.Text = tarjeta.ToString("0.00", CultureInfo.InvariantCulture);
+                }
+            }
+
             ActualizarSugerenciasRedondeo(venta);
             ActualizarPanelDualPrecios();
         }
@@ -972,12 +1007,37 @@ public partial class ArticuloModalWindow : Window
             {
                 TxtMargen.Text = margen.ToString("0.#", CultureInfo.InvariantCulture);
             }
+
+            if (!_isTarjetaManual)
+            {
+                var tarjeta = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.RedondearPrecioVenta(venta * (1m + (_recargoTarjetaConfigurado / 100m)), PuntoDeVentaLibreria.Application.Common.ReglaRedondeoPrecio.CentenaCercana);
+                Articulo.PrecioTarjeta = tarjeta;
+                if (TxtPrecioTarjeta != null && !TxtPrecioTarjeta.IsFocused)
+                {
+                    TxtPrecioTarjeta.Text = tarjeta.ToString("0.00", CultureInfo.InvariantCulture);
+                }
+            }
+
             ActualizarSugerenciasRedondeo(venta);
             ActualizarPanelDualPrecios();
         }
         finally
         {
             _isCalculating = false;
+        }
+    }
+
+    private void TxtPrecioTarjeta_TextChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_isCalculating) return;
+        if (TxtPrecioTarjeta != null && TxtPrecioTarjeta.IsFocused)
+        {
+            _isTarjetaManual = true;
+        }
+
+        if (PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.TryParseMonto(TxtPrecioTarjeta?.Text, out var pt))
+        {
+            Articulo.PrecioTarjeta = pt;
         }
     }
 
@@ -1102,6 +1162,14 @@ public partial class ArticuloModalWindow : Window
         if (TryParseMonto(TxtCosto.Text, out var c)) Articulo.PrecioCosto = c;
         if (TryParseMonto(TxtMargen.Text, out var m)) Articulo.PorcentajeGanancia = m;
         if (TryParseMonto(TxtVenta.Text, out var v)) Articulo.PrecioVenta = v;
+        if (TryParseMonto(TxtPrecioTarjeta.Text, out var pt))
+        {
+            Articulo.PrecioTarjeta = pt;
+        }
+        else if (Articulo.PrecioVenta > 0)
+        {
+            Articulo.PrecioTarjeta = PuntoDeVentaLibreria.Application.Common.CalculoPreciosUtils.RedondearPrecioVenta(Articulo.PrecioVenta * (1m + (_recargoTarjetaConfigurado / 100m)), PuntoDeVentaLibreria.Application.Common.ReglaRedondeoPrecio.CentenaCercana);
+        }
 
         Articulo.EsPrecioDolar = ChkEsPrecioDolar.IsChecked == true;
         if (Articulo.EsPrecioDolar && TryParseMonto(TxtCostoDolar.Text, out var usdVal))

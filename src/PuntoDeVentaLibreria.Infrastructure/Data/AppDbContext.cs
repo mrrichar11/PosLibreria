@@ -33,6 +33,7 @@ public class AppDbContext : DbContext
     public DbSet<ConfiguracionNegocio> Configuraciones => Set<ConfiguracionNegocio>();
     public DbSet<Usuario> Usuarios => Set<Usuario>();
     public DbSet<LicenciaSistema> Licencias => Set<LicenciaSistema>();
+    public DbSet<PuntoDeVentaLibreria.Domain.Entities.Auditoria.ArticuloHistoricoSistemaAnterior> ArticulosHistoricosSistemaAnterior => Set<PuntoDeVentaLibreria.Domain.Entities.Auditoria.ArticuloHistoricoSistemaAnterior>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

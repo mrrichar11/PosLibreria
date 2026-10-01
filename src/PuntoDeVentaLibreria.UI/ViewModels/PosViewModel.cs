@@ -38,6 +38,15 @@ public partial class PosViewModel : ObservableObject
     private decimal _totalVenta;
 
     [ObservableProperty]
+    private decimal _porcentajeDescuentoEfectivo = 10m;
+
+    [ObservableProperty]
+    private decimal _totalEfectivo;
+
+    [ObservableProperty]
+    private decimal _totalAhorroEfectivo;
+
+    [ObservableProperty]
     private bool _esCajaAbierta;
 
     [ObservableProperty]
@@ -68,6 +77,7 @@ public partial class PosViewModel : ObservableObject
     public Func<string, string, int, string, Task>? SolicitarVistaPreviaTicket { get; set; }
     public Func<string, Task<ArticuloDto?>>? SolicitarAltaRapidaArticulo { get; set; }
     public Func<string, Task<bool>>? SolicitarConfirmacionAltaRapida { get; set; }
+    public Func<Task<ArticuloDto?>>? SolicitarConsultarPrecioDialogo { get; set; }
 
     public IInventarioService InventarioService => _inventarioService;
 
@@ -99,6 +109,7 @@ public partial class PosViewModel : ObservableObject
         {
             var cfg = await _configuracionService.ObtenerConfiguracionAsync();
             if (cfg.CotizacionDolar > 0) _cotizacionDolar = cfg.CotizacionDolar;
+            if (cfg.PorcentajeDescuentoEfectivo >= 0) PorcentajeDescuentoEfectivo = cfg.PorcentajeDescuentoEfectivo;
         }
         catch { }
 
@@ -239,7 +250,7 @@ public partial class PosViewModel : ObservableObject
         if (itemExistente != null)
         {
             itemExistente.Cantidad += 1;
-            MensajeEstado = $"Incrementado: {itemExistente.Descripcion} (x{itemExistente.Cantidad})";
+            MensajeEstado = $"Incrementado: {itemExistente.Descripcion} (x{itemExistente.Cantidad}) | 💳 Tarjeta: ${itemExistente.Subtotal:N2} | 💵 Efectivo: ${itemExistente.SubtotalEfectivo:N2}";
             RecalcularTotales();
             return;
         }
@@ -247,7 +258,8 @@ public partial class PosViewModel : ObservableObject
         var descripcion = variante != null ? $"{art.Nombre} ({variante.Nombre})" : art.Nombre;
         var codigoBarras = variante?.CodigoBarras ?? art.CodigoBarras;
 
-        decimal precioUnitario = art.PrecioVenta;
+        decimal precioEfectivo = art.PrecioVenta;
+        decimal precioTarjeta = art.PrecioTarjeta > 0 ? art.PrecioTarjeta : Math.Round(art.PrecioVenta * 1.25m, 2);
         decimal precioCosto = art.PrecioCosto;
         string? detalleDolar = null;
 
@@ -256,7 +268,8 @@ public partial class PosViewModel : ObservableObject
             decimal tc = _cotizacionDolar > 0 ? _cotizacionDolar : 1350m;
             precioCosto = Math.Round(art.PrecioCostoDolar * tc, 2);
             decimal pCalculado = CalculoPreciosUtils.CalcularPrecioVenta(precioCosto, art.PorcentajeGanancia, art.IvaPorcentaje);
-            precioUnitario = CalculoPreciosUtils.RedondearPrecioVenta(pCalculado, ReglaRedondeoPrecio.CentenaCercana);
+            precioEfectivo = CalculoPreciosUtils.RedondearPrecioVenta(pCalculado, ReglaRedondeoPrecio.CentenaCercana);
+            precioTarjeta = Math.Round(precioEfectivo * 1.25m, 2);
             detalleDolar = $"USD ${art.PrecioCostoDolar:N2} x ${tc:N0}";
         }
 
@@ -268,7 +281,9 @@ public partial class PosViewModel : ObservableObject
             SKU = art.SKU,
             CodigoBarras = codigoBarras,
             Descripcion = descripcion,
-            PrecioUnitario = precioUnitario,
+            PrecioUnitario = precioTarjeta,
+            PrecioEfectivo = precioEfectivo,
+            PorcentajeDescuentoEfectivo = PorcentajeDescuentoEfectivo,
             PrecioCosto = precioCosto,
             Cantidad = 1,
             EsCombo = art.Tipo == TipoArticulo.ComboKit,
@@ -280,7 +295,7 @@ public partial class PosViewModel : ObservableObject
 
         nuevo.PropertyChanged += (s, e) => RecalcularTotales();
         Items.Add(nuevo);
-        MensajeEstado = $"Agregado: {descripcion}";
+        MensajeEstado = $"Agregado: {descripcion} | 💳 Tarjeta: ${nuevo.PrecioUnitario:N2} | 💵 Efectivo/Transf.: ${nuevo.PrecioEfectivo:N2}";
     }
 
     [RelayCommand]
@@ -369,6 +384,8 @@ public partial class PosViewModel : ObservableObject
             CodigoBarras = i.CodigoBarras,
             Descripcion = i.Descripcion,
             PrecioUnitario = i.PrecioUnitario,
+            PrecioEfectivo = i.PrecioEfectivo,
+            PorcentajeDescuentoEfectivo = i.PorcentajeDescuentoEfectivo,
             PrecioCosto = i.PrecioCosto,
             Cantidad = i.Cantidad,
             EsCombo = i.EsCombo,
@@ -412,6 +429,8 @@ public partial class PosViewModel : ObservableObject
                     CodigoBarras = i.CodigoBarras,
                     Descripcion = i.Descripcion,
                     PrecioUnitario = i.PrecioUnitario,
+                    PrecioEfectivo = i.PrecioEfectivo,
+                    PorcentajeDescuentoEfectivo = i.PorcentajeDescuentoEfectivo,
                     PrecioCosto = i.PrecioCosto,
                     Cantidad = i.Cantidad,
                     EsCombo = i.EsCombo,
@@ -471,6 +490,7 @@ public partial class PosViewModel : ObservableObject
                     CodigoBarras = null,
                     Descripcion = desc,
                     PrecioUnitario = precio,
+                    PorcentajeDescuentoEfectivo = PorcentajeDescuentoEfectivo,
                     PrecioCosto = 0m,
                     Cantidad = cant,
                     EsVentaManual = true
@@ -479,7 +499,7 @@ public partial class PosViewModel : ObservableObject
                 nuevoManual.PropertyChanged += (s, e) => RecalcularTotales();
                 Items.Add(nuevoManual);
                 RecalcularTotales();
-                MensajeEstado = $"Venta manual agregada: {desc} x{cant} (${precio:N2})";
+                MensajeEstado = $"Venta manual agregada: {desc} x{cant} | 💳 ${nuevoManual.Subtotal:N2} | 💵 ${nuevoManual.SubtotalEfectivo:N2}";
             }
             return;
         }
@@ -492,6 +512,7 @@ public partial class PosViewModel : ObservableObject
             CodigoBarras = null,
             Descripcion = descDef,
             PrecioUnitario = 100m,
+            PorcentajeDescuentoEfectivo = PorcentajeDescuentoEfectivo,
             PrecioCosto = 0m,
             Cantidad = 1,
             EsVentaManual = true
@@ -501,6 +522,19 @@ public partial class PosViewModel : ObservableObject
         Items.Add(nuevo);
         RecalcularTotales();
         MensajeEstado = "Artículo manual agregado. Ajuste precio y cantidad.";
+    }
+
+    [RelayCommand]
+    public async Task ConsultarPrecioAsync()
+    {
+        if (SolicitarConsultarPrecioDialogo != null)
+        {
+            var artSeleccionado = await SolicitarConsultarPrecioDialogo();
+            if (artSeleccionado != null)
+            {
+                await AgregarArticuloAlTicketAsync(artSeleccionado);
+            }
+        }
     }
 
     [RelayCommand]
@@ -519,7 +553,15 @@ public partial class PosViewModel : ObservableObject
 
         var config = await _configuracionService.ObtenerConfiguracionAsync();
         var clientes = await _clienteService.BuscarClientesAsync(string.Empty);
-        var cobroVm = new CobroModalViewModel(TotalVenta, clientes, config.BilletesHabilitados, config.SimboloMoneda);
+        var cobroVm = new CobroModalViewModel(
+            TotalVenta, 
+            clientes, 
+            config.BilletesHabilitados, 
+            config.SimboloMoneda,
+            config.PorcentajeDescuentoEfectivo,
+            config.Recargo3Cuotas,
+            config.Recargo6Cuotas,
+            TotalEfectivo);
 
         if (SolicitarCobroDialogo != null)
         {
@@ -640,6 +682,8 @@ public partial class PosViewModel : ObservableObject
         SubtotalBruto = Items.Sum(i => i.Subtotal);
         TotalDescuentos = 0; // Descuentos por cupón o globales
         TotalVenta = SubtotalBruto - TotalDescuentos;
+        TotalEfectivo = Items.Sum(i => i.SubtotalEfectivo);
+        TotalAhorroEfectivo = Math.Max(0m, TotalVenta - TotalEfectivo);
         CantidadArticulos = Items.Sum(i => i.Cantidad);
         OnPropertyChanged(nameof(HayItemsEnCarrito));
         OnPropertyChanged(nameof(HayVentasEnEspera));

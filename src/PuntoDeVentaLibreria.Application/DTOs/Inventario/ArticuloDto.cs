@@ -22,6 +22,7 @@ public class ArticuloDto
     public decimal IvaPorcentaje { get; set; } = 21.0m;
     public decimal PorcentajeGanancia { get; set; }
     public decimal PrecioVenta { get; set; }
+    public decimal PrecioTarjeta { get; set; }
     public bool EsPrecioDolar { get; set; } = false;
     public decimal PrecioCostoDolar { get; set; } = 0.0m;
     public decimal StockActual { get; set; }
@@ -39,6 +40,17 @@ public class ArticuloDto
     public Guid? ArticuloBaseId { get; set; }
     public string ArticuloBaseNombre { get; set; } = string.Empty;
     public decimal CantidadPorPack { get; set; } = 1;
+
+    // Vínculo Dual Pack / Suelto (-1)
+    public bool TieneVinculoPackOUnidad => ArticuloVinculadoId.HasValue;
+    public Guid? ArticuloVinculadoId { get; set; }
+    public string? ArticuloVinculadoNombre { get; set; }
+    public string? ArticuloVinculadoSKU { get; set; }
+    public string? ArticuloVinculadoCodigoBarras { get; set; }
+    public decimal ArticuloVinculadoPrecioVenta { get; set; }
+    public decimal ArticuloVinculadoPrecioTarjeta { get; set; }
+    public bool ArticuloVinculadoEsPack { get; set; }
+    public decimal ArticuloVinculadoCantidadPorPack { get; set; } = 1;
 
     // Auditoría / Conteo de Stock
     public DateTime? UltimaAuditoriaStock { get; set; }

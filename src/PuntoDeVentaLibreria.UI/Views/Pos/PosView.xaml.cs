@@ -113,6 +113,20 @@ public partial class PosView : UserControl
             return Task.FromResult(res == MessageBoxResult.Yes);
         };
 
+        ViewModel.SolicitarConsultarPrecioDialogo = () =>
+        {
+            var modal = new ConsultarPrecioModalWindow(
+                ViewModel.InventarioService, 
+                ViewModel.PorcentajeDescuentoEfectivo)
+            {
+                Owner = Window.GetWindow(this)
+            };
+
+            var dialogResult = modal.ShowDialog();
+            TxtCodigoBarras.Focus();
+            return Task.FromResult(dialogResult == true ? modal.ArticuloSeleccionado : null);
+        };
+
         Loaded += async (s, e) =>
         {
             await ViewModel.InicializarAsync();
@@ -161,6 +175,14 @@ public partial class PosView : UserControl
                 if (ViewModel.PausarVentaActualCommand.CanExecute(null))
                 {
                     ViewModel.PausarVentaActualCommand.Execute(null);
+                    e.Handled = true;
+                }
+            }
+            else if (e.Key == Key.F5)
+            {
+                if (ViewModel.ConsultarPrecioCommand.CanExecute(null))
+                {
+                    await ViewModel.ConsultarPrecioCommand.ExecuteAsync(null);
                     e.Handled = true;
                 }
             }

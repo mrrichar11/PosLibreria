@@ -20,6 +20,9 @@ public class ConfiguracionNegocioDto
     public bool Habilitar6Cuotas { get; set; } = true;
     public decimal Recargo6Cuotas { get; set; } = 25.0m;
 
+    public decimal PorcentajeRecargoTarjeta { get; set; } = 25.0m;
+    public decimal RecargoTarjetaMayor => Math.Max(PorcentajeRecargoTarjeta, Math.Max(Recargo6Cuotas, Math.Max(Recargo3Cuotas, RecargoCuotasTarjetaCredito)));
+
     public decimal MargenGananciaSugerido { get; set; } = 65.0m;
     public decimal TopeFiadoDefecto { get; set; } = 60000m;
     public decimal TopeMensualRetiroDueño { get; set; } = 700000m;

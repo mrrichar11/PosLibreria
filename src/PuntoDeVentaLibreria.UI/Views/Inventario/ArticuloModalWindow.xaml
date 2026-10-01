@@ -308,9 +308,10 @@
                             </Grid.RowDefinitions>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="1*"/>
-                                <ColumnDefinition Width="1.5*"/>
-                                <ColumnDefinition Width="0.9*"/>
                                 <ColumnDefinition Width="1.3*"/>
+                                <ColumnDefinition Width="0.8*"/>
+                                <ColumnDefinition Width="1.1*"/>
+                                <ColumnDefinition Width="1.2*"/>
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Precio Costo ($):" FontSize="12" FontWeight="SemiBold" Margin="0,0,6,4"/>
@@ -331,10 +332,19 @@
                                      TextChanged="TxtMargen_TextChanged"
                                      FontSize="14" FontWeight="Bold" Padding="8,6" Margin="6,0,6,0"/>
 
-                            <TextBlock Grid.Row="0" Grid.Column="3" Text="Precio Venta ($):" FontSize="12" FontWeight="SemiBold" Foreground="#0284C7" Margin="6,0,0,4"/>
+                            <TextBlock Grid.Row="0" Grid.Column="3" Text="P. Contado / Ef. ($):" FontSize="12" FontWeight="Bold" Foreground="#15803D" Margin="6,0,6,4"/>
                             <TextBox x:Name="TxtVenta" Grid.Row="1" Grid.Column="3" 
                                      TextChanged="TxtVenta_TextChanged"
-                                     FontSize="16" FontWeight="Black" Foreground="#0369A1" Padding="8,6" Margin="6,0,0,0"/>
+                                     FontSize="16" FontWeight="Black" Foreground="#166534" Padding="8,6" Margin="6,0,6,0"/>
+
+                            <StackPanel Grid.Row="0" Grid.Column="4" Orientation="Horizontal" Margin="6,0,0,4">
+                                <TextBlock Text="💳 P. Tarjeta ($):" FontSize="12" FontWeight="Bold" Foreground="#7C3AED"/>
+                                <TextBlock x:Name="TxtRecargoTarjetaBadge" Text=" (+25%)" FontSize="11" FontWeight="Bold" Foreground="#9333EA"/>
+                            </StackPanel>
+                            <TextBox x:Name="TxtPrecioTarjeta" Grid.Row="1" Grid.Column="4" 
+                                     TextChanged="TxtPrecioTarjeta_TextChanged"
+                                     ToolTip="Precio de lista para cobro con tarjeta. Se completa automáticamente al ingresar el precio de contado, o puede editarlo manualmente."
+                                     FontSize="16" FontWeight="Black" Foreground="#6D28D9" Padding="8,6" Margin="6,0,0,0"/>
 
                             <!-- Botones de Redondeo Rápido a Centena -->
                             <StackPanel x:Name="PnlBotonesRedondeo" Grid.Row="2" Grid.Column="3" Orientation="Horizontal" Margin="6,4,0,0" Visibility="Collapsed">
@@ -349,7 +359,7 @@
                             </StackPanel>
                         </Grid>
 
-                        <TextBlock Text="💡 Al ingresar Costo o IVA, el sistema calcula automáticamente el Precio de Venta según el margen. También puede tipear el Precio de Venta final y se actualizará el margen." 
+                        <TextBlock Text="💡 Ingrese el Costo y Margen para calcular el Precio de Contado / Efectivo. El Precio Tarjeta se completa automáticamente según el recargo configurado (+25%), o puede editarlo manualmente." 
                                    FontSize="10.5" Foreground="#64748B" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>

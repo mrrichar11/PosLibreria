@@ -30,5 +30,14 @@ public interface IInventarioService
     // Auditoría y Conteo rápido de Stock por Góndola (Sunday-Ready & Gradual)
     Task<ArticuloDto> AjustarStockRapidoAsync(Guid articuloId, decimal nuevoStock, string motivo = "Auditoría de Stock", string usuarioNombre = "Administrador", Guid? articuloVarianteId = null, CancellationToken ct = default);
     Task<AuditoriaStockProgresoDto> ObtenerProgresoAuditoriaAsync(CancellationToken ct = default);
+
+    // Vínculo Dual Pack / Suelto (-1)
+    Task<ArticuloDto> EnriquecerVinculoPackOUnidadAsync(ArticuloDto dto, CancellationToken ct = default);
+
+    // Resguardo y Consulta de Lista Original del Sistema Anterior (Histórico Intacto)
+    Task<int> ImportarListaSistemaAnteriorAsync(Stream excelStream, string nombreArchivo, CancellationToken ct = default);
+    Task<List<PuntoDeVentaLibreria.Domain.Entities.Auditoria.ArticuloHistoricoSistemaAnterior>> BuscarEnListaSistemaAnteriorAsync(string query, CancellationToken ct = default);
+    Task<int> ObtenerTotalRegistrosListaAnteriorAsync(CancellationToken ct = default);
+    Task<PuntoDeVentaLibreria.Domain.Entities.Auditoria.ArticuloHistoricoSistemaAnterior?> BuscarArticuloHistoricoPorCodigoOBarrasAsync(string codigo, CancellationToken ct = default);
 }
 
