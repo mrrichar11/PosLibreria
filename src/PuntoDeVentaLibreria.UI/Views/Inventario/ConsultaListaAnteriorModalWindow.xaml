@@ -77,6 +77,9 @@
                       HeadersVisibility="Column"
                       GridLinesVisibility="Horizontal"
                       HorizontalGridLinesBrush="#F1F5F9"
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                      ScrollViewer.CanContentScroll="True"
                       RowHeight="36"
                       FontSize="12.5"
                       Background="White"
@@ -113,7 +116,7 @@
                         </DataGridTextColumn.ElementStyle>
                     </DataGridTextColumn>
 
-                    <DataGridTextColumn Header="Descripción Original" Binding="{Binding Descripcion}" Width="*">
+                    <DataGridTextColumn Header="Descripción Original" Binding="{Binding Descripcion}" Width="*" MinWidth="220">
                         <DataGridTextColumn.ElementStyle>
                             <Style TargetType="TextBlock">
                                 <Setter Property="FontWeight" Value="SemiBold"/>

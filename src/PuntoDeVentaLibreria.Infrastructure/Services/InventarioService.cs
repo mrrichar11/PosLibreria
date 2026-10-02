@@ -279,7 +279,9 @@ public class InventarioService : IInventarioService
         entidad.IvaPorcentaje = dto.IvaPorcentaje;
         entidad.PorcentajeGanancia = dto.PorcentajeGanancia;
         entidad.PrecioVenta = dto.PrecioVenta;
-        entidad.PrecioTarjeta = dto.PrecioTarjeta > 0 ? dto.PrecioTarjeta : Math.Round(dto.PrecioVenta * 1.25m, 2);
+        entidad.PrecioTarjeta = (dto.PrecioTarjeta > 0 && dto.PrecioTarjeta >= dto.PrecioVenta) 
+            ? dto.PrecioTarjeta 
+            : Math.Round(dto.PrecioVenta * 1.25m, 2);
         entidad.EsPrecioDolar = dto.EsPrecioDolar;
         entidad.PrecioCostoDolar = dto.PrecioCostoDolar;
         entidad.StockActual = dto.StockActual;
@@ -638,6 +640,12 @@ public class InventarioService : IInventarioService
                 precio = CalculoPreciosUtils.CalcularPrecioVenta(costo, pcgan, pciva);
             }
 
+            // Regla de Oro: Si en el Excel viene precio de tarjeta menor al precio contado, corregirlo inmediatamente
+            if (pTarjeta > 0 && precio > 0 && pTarjeta < precio)
+            {
+                pTarjeta = Math.Round(precio * 1.25m, 2);
+            }
+
             decimal? recargoPct = null;
             if (pTarjeta > 0 && precio > 0 && pTarjeta > precio)
             {
@@ -849,7 +857,7 @@ public class InventarioService : IInventarioService
                     articulo.IvaPorcentaje = item.IvaPorcentaje > 0 ? item.IvaPorcentaje : 21.0m;
                     articulo.PorcentajeGanancia = item.PorcentajeGanancia > 0 ? item.PorcentajeGanancia : 60.0m;
                     articulo.PrecioVenta = item.PrecioVenta;
-                    articulo.PrecioTarjeta = (item.PrecioTarjeta.HasValue && item.PrecioTarjeta.Value > 0)
+                    articulo.PrecioTarjeta = (item.PrecioTarjeta.HasValue && item.PrecioTarjeta.Value >= item.PrecioVenta)
                         ? item.PrecioTarjeta.Value
                         : Math.Round(item.PrecioVenta * 1.25m, 2);
                     articulo.Activo = true;
@@ -891,7 +899,7 @@ public class InventarioService : IInventarioService
                         IvaPorcentaje = item.IvaPorcentaje > 0 ? item.IvaPorcentaje : 21.0m,
                         PorcentajeGanancia = item.PorcentajeGanancia > 0 ? item.PorcentajeGanancia : 60.0m,
                         PrecioVenta = item.PrecioVenta,
-                        PrecioTarjeta = (item.PrecioTarjeta.HasValue && item.PrecioTarjeta.Value > 0)
+                        PrecioTarjeta = (item.PrecioTarjeta.HasValue && item.PrecioTarjeta.Value >= item.PrecioVenta)
                             ? item.PrecioTarjeta.Value
                             : Math.Round(item.PrecioVenta * 1.25m, 2),
                         StockActual = item.StockImportar,
@@ -1690,7 +1698,7 @@ public class InventarioService : IInventarioService
         IvaPorcentaje = a.IvaPorcentaje,
         PorcentajeGanancia = a.PorcentajeGanancia,
         PrecioVenta = a.PrecioVenta,
-        PrecioTarjeta = a.PrecioTarjeta > 0 ? a.PrecioTarjeta : Math.Round(a.PrecioVenta * 1.25m, 2),
+        PrecioTarjeta = (a.PrecioTarjeta > 0 && a.PrecioTarjeta >= a.PrecioVenta) ? a.PrecioTarjeta : Math.Round(a.PrecioVenta * 1.25m, 2),
         EsPrecioDolar = a.EsPrecioDolar,
         PrecioCostoDolar = a.PrecioCostoDolar,
         StockActual = a.Variantes != null && a.Variantes.Any(v => v.Activo)
@@ -1909,7 +1917,9 @@ public class InventarioService : IInventarioService
             dto.ArticuloVinculadoSKU = vinculado.SKU;
             dto.ArticuloVinculadoCodigoBarras = vinculado.CodigoBarras;
             dto.ArticuloVinculadoPrecioVenta = vinculado.PrecioVenta;
-            dto.ArticuloVinculadoPrecioTarjeta = vinculado.PrecioTarjeta > 0 ? vinculado.PrecioTarjeta : Math.Round(vinculado.PrecioVenta * 1.25m, 2);
+            dto.ArticuloVinculadoPrecioTarjeta = (vinculado.PrecioTarjeta > 0 && vinculado.PrecioTarjeta >= vinculado.PrecioVenta) 
+                ? vinculado.PrecioTarjeta 
+                : Math.Round(vinculado.PrecioVenta * 1.25m, 2);
             dto.ArticuloVinculadoEsPack = vinculado.EsPack;
             dto.ArticuloVinculadoCantidadPorPack = vinculado.CantidadPorPack > 0 ? vinculado.CantidadPorPack : (dto.CantidadPorPack > 0 ? dto.CantidadPorPack : 1);
         }

@@ -259,7 +259,7 @@ public partial class PosViewModel : ObservableObject
         var codigoBarras = variante?.CodigoBarras ?? art.CodigoBarras;
 
         decimal precioEfectivo = art.PrecioVenta;
-        decimal precioTarjeta = art.PrecioTarjeta > 0 ? art.PrecioTarjeta : Math.Round(art.PrecioVenta * 1.25m, 2);
+        decimal precioTarjeta = (art.PrecioTarjeta > 0 && art.PrecioTarjeta >= art.PrecioVenta) ? art.PrecioTarjeta : Math.Round(art.PrecioVenta * 1.25m, 2);
         decimal precioCosto = art.PrecioCosto;
         string? detalleDolar = null;
 

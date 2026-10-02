@@ -240,6 +240,9 @@
                           CanUserDeleteRows="False"
                           GridLinesVisibility="Horizontal"
                           HeadersVisibility="Column"
+                          ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                          ScrollViewer.VerticalScrollBarVisibility="Auto"
+                          ScrollViewer.CanContentScroll="True"
                           RowHeight="34"
                           FontSize="11.5"
                           BorderThickness="0"
@@ -270,7 +273,7 @@
                         <DataGridTextColumn Header="Código Barras" Binding="{Binding CodigoBarras}" Width="120" IsReadOnly="True"/>
 
                         <!-- Descripción / Nombre del Producto -->
-                        <DataGridTextColumn Header="Descripción del Producto" Binding="{Binding Nombre}" Width="*" IsReadOnly="True">
+                        <DataGridTextColumn Header="Descripción del Producto" Binding="{Binding Nombre}" Width="*" MinWidth="220" IsReadOnly="True">
                             <DataGridTextColumn.ElementStyle>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="FontWeight" Value="SemiBold"/>

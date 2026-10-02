@@ -101,6 +101,18 @@ public static class DatabaseInitializer
         }
         catch { }
 
+        // Mantenimiento y corrección automática: Asegurar que TODO artículo con precio venta tenga su PrecioTarjeta
+        // y que NUNCA sea inferior al precio de contado (debe tener el recargo configurado de tarjeta o 25% por defecto)
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(@"
+                UPDATE Articulos 
+                SET PrecioTarjeta = ROUND(PrecioVenta * (1.0 + (COALESCE((SELECT PorcentajeRecargoTarjeta FROM Configuraciones LIMIT 1), 25.0) / 100.0)), 2) 
+                WHERE Activo = 1 AND PrecioVenta > 0 AND (PrecioTarjeta <= 0 OR PrecioTarjeta < PrecioVenta);
+            ", cancellationToken);
+        }
+        catch { }
+
         // Tabla de resguardo histórico para la lista de precios exportada del sistema anterior
         try
         {

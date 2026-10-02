@@ -127,6 +127,9 @@
                       HeadersVisibility="Column"
                       GridLinesVisibility="Horizontal"
                       HorizontalGridLinesBrush="{DynamicResource HorizontalGridLinesBrush}"
+                      ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto"
+                      ScrollViewer.CanContentScroll="True"
                       RowHeight="44"
                       FontSize="13"
                       Background="{DynamicResource FondoDataGridBrush}"
@@ -137,7 +140,7 @@
                     <DataGridTextColumn Header="Rubro" Binding="{Binding Rubro}" Width="90"/>
                     <DataGridTextColumn Header="SKU" Binding="{Binding SKU}" Width="95"/>
                     <DataGridTextColumn Header="Cód. Prov." Binding="{Binding CodigoProveedor}" Width="85"/>
-                    <DataGridTemplateColumn Header="Descripción del Artículo / Útil" Width="*">
+                    <DataGridTemplateColumn Header="Descripción del Artículo / Útil" Width="*" MinWidth="220">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <StackPanel VerticalAlignment="Center" Margin="4,2">

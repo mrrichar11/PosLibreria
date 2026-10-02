@@ -92,7 +92,7 @@ public partial class ArticuloModalWindow : Window
             TxtMargen.Text = Articulo.PorcentajeGanancia > 0 ? Articulo.PorcentajeGanancia.ToString("0.#", CultureInfo.InvariantCulture) : "40";
             TxtVenta.Text = Articulo.PrecioVenta > 0 ? Articulo.PrecioVenta.ToString("0.##", CultureInfo.InvariantCulture) : "0";
             
-            if (Articulo.PrecioTarjeta > 0)
+            if (Articulo.PrecioTarjeta > 0 && Articulo.PrecioTarjeta >= Articulo.PrecioVenta)
             {
                 TxtPrecioTarjeta.Text = Articulo.PrecioTarjeta.ToString("0.##", CultureInfo.InvariantCulture);
             }
@@ -1162,7 +1162,7 @@ public partial class ArticuloModalWindow : Window
         if (TryParseMonto(TxtCosto.Text, out var c)) Articulo.PrecioCosto = c;
         if (TryParseMonto(TxtMargen.Text, out var m)) Articulo.PorcentajeGanancia = m;
         if (TryParseMonto(TxtVenta.Text, out var v)) Articulo.PrecioVenta = v;
-        if (TryParseMonto(TxtPrecioTarjeta.Text, out var pt))
+        if (TryParseMonto(TxtPrecioTarjeta.Text, out var pt) && pt >= Articulo.PrecioVenta && pt > 0)
         {
             Articulo.PrecioTarjeta = pt;
         }

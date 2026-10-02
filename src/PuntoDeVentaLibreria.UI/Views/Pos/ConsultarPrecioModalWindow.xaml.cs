@@ -160,7 +160,7 @@ public partial class ConsultarPrecioModalWindow : Window
     {
         ArticuloSeleccionado = art;
 
-        decimal precioTarjeta = art.PrecioTarjeta > 0 ? art.PrecioTarjeta : Math.Round(art.PrecioVenta * 1.25m, 2);
+        decimal precioTarjeta = (art.PrecioTarjeta > 0 && art.PrecioTarjeta >= art.PrecioVenta) ? art.PrecioTarjeta : Math.Round(art.PrecioVenta * 1.25m, 2);
         decimal precioEfectivo = art.PrecioVenta;
         string detalleExtra = string.Empty;
 
@@ -195,7 +195,7 @@ public partial class ConsultarPrecioModalWindow : Window
             PanelVinculoPackUnidad.Visibility = Visibility.Visible;
             BtnLlevarVinculadoInferior.Visibility = Visibility.Visible;
 
-            decimal pTarjetaVinc = art.ArticuloVinculadoPrecioTarjeta > 0 
+            decimal pTarjetaVinc = (art.ArticuloVinculadoPrecioTarjeta > 0 && art.ArticuloVinculadoPrecioTarjeta >= art.ArticuloVinculadoPrecioVenta) 
                 ? art.ArticuloVinculadoPrecioTarjeta 
                 : Math.Round(art.ArticuloVinculadoPrecioVenta * 1.25m, 2);
             decimal pEfectivoVinc = art.ArticuloVinculadoPrecioVenta;
